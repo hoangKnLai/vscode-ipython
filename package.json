@@ -2,7 +2,7 @@
 	"name": "ipython",
 	"displayName": "ipython",
 	"description": "IPython integration supporting direct interactive usage and commands.",
-	"version": "2021.9.26",
+	"version": "2021.9.260",
 	"publisher": "HoangKimLai",
 	"repository": "https://github.com/hoangKnLai/vscode-ipython",
 	"engines": {
@@ -18,7 +18,6 @@
 		"ipython.runSelections",
 		"ipython.runCell"
 	],
-
 	"main": "./out/extension.js",
 	"contributes": {
 		"configuration": {
@@ -31,7 +30,10 @@
 				},
 				"ipython.startupCommands": {
 					"type": "array",
-					"default": ["%load_ext autoreload", "%autoreload 2"],
+					"default": [
+						"%load_ext autoreload",
+						"%autoreload 2"
+					],
 					"description": "Lists of command to execute line-by-line after launching IPython terminal (e.g. '%autoreload 2') "
 				}
 			}
