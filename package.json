@@ -4,6 +4,7 @@
 	"description": "IPython integration supporting direct interactive usage and commands.",
 	"version": "2021.9.26",
 	"publisher": "HoangKimLai",
+	"repository": "https://github.com/hoangKnLai/vscode-ipython",
 	"engines": {
 		"vscode": "^1.60.0"
 	},
