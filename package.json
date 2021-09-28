@@ -2,7 +2,7 @@
 	"name": "ipython",
 	"displayName": "ipython",
 	"description": "IPython integration supporting direct interactive usage and commands.",
-	"version": "2021.9.260",
+	"version": "2021.9.28",
 	"publisher": "HoangKimLai",
 	"repository": "https://github.com/hoangKnLai/vscode-ipython",
 	"engines": {
@@ -106,10 +106,8 @@
 				"key": "ctrl+alt+enter",
 				"when": "editorTextFocus && !notebookEditorFocused"
 			},
-
 			{
 				"DEV COMMENT": "--- Disable known overrided keybinds below!!",
-
 				"command": "python.execSelectionInTerminal",
 				"key": "",
 				"when": ""
@@ -125,7 +123,6 @@
 				"when": ""
 			}
 		]
-
 	},
 	"scripts": {
 		"vscode:prepublish": "npm run compile",
