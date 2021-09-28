@@ -2,7 +2,7 @@
 	"name": "ipython",
 	"displayName": "ipython",
 	"description": "IPython integration supporting direct interactive usage and commands.",
-	"version": "2021.9.28",
+	"version": "2021.10.0",
 	"publisher": "HoangKimLai",
 	"repository": "https://github.com/hoangKnLai/vscode-ipython",
 	"engines": {
