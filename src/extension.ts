@@ -8,8 +8,12 @@ import * as vscode from 'vscode';
 export function activate(context: vscode.ExtensionContext) {
 	// Use the console to output diagnostic information (console.log) and errors (console.error)
 	// This line of code will only be executed once when your extension is activated
-	let terminalName = 'IPython';
-	let cellPattern:RegExp = /^(?:# %%)/;
+	let terminalName = 'IPython';  //TODO: consider making configurable?!
+
+	let config = vscode.workspace.getConfiguration('ipython');
+	let cellFlag = config.get('cellTag') as string;
+	let cellPattern = new RegExp(`^(?:${cellFlag})`);
+	console.log('Cell Flag: ' + cellFlag);
 	let endOfLine:string = '\n';
 
 	async function createTerminal(){
@@ -26,9 +30,6 @@ export function activate(context: vscode.ExtensionContext) {
 		await vscode.commands.executeCommand('python.createTerminal');
 		await vscode.commands.executeCommand('workbench.action.terminal.renameWithArg', {name : terminalName});
 		let terminal = vscode.window.activeTerminal as vscode.Terminal;
-
-		// -- Use Config
-		let config = vscode.workspace.getConfiguration('ipython');
 
 		// Launch options
 		let launchArgs = config.get('launchArgs');
@@ -48,26 +49,22 @@ export function activate(context: vscode.ExtensionContext) {
 
 	async function getTerminal() {
 		let terminal = vscode.window.activeTerminal;
-		if (terminal === undefined){
-			return terminal;
-		}else if (terminal.name === 'IPython') {
-			return terminal;
+		if (terminal !== undefined){
+			if (terminal.name === 'IPython') {
+				return terminal;
+			}
 		}
 
 		let terminals = vscode.window.terminals;
 		if (terminals.length > 1) {
-			let terminal = undefined;
-			for (let i = terminals.length - 1; i > 0; i--) {
-				terminal = terminals[i];
-				if (terminal.name === 'IPython'){
-					return terminal;
+			for (let i = terminals.length - 1; i >= 0; i--) {
+				if (terminals[i].name === terminalName){
+					return terminals[i];
 				}
 			}
 		} else {
 			let terminal = await createTerminal();
-			if (terminal === undefined){
-				console.error('Failed to get an IPython Terminal');
-			}else{
+			if (terminal !== undefined){
 				return terminal;
 			}
 		}
@@ -93,14 +90,14 @@ export function activate(context: vscode.ExtensionContext) {
 		console.log('IPython Run File Command: ' + cmd);
 		let terminal = await getTerminal();
 		if (terminal !== undefined){
+			terminal.show(true);
 			terminal.sendText(cmd);
-			terminal.show();
 		}
 	};
 
 	// -- Run a Selected Group of Text
 	async function runSelections(){
-		console.log('IPython run file...');
+		console.log('IPython run selection...');
 		let editor = vscode.window.activeTextEditor;
 		if (editor === undefined){
 			console.error('Unable to access Active Text Editor');
@@ -112,22 +109,25 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 
 		let terminal = await getTerminal();
-		if (terminal === undefined){
+		if (terminal !== undefined){
+			for (let select of editor.selections){
+				let range = select.with();  // current select range
+				let text = editor.document.getText(range);
+				if (text.length > 0){
+					console.log('IPython Run Selection: ' + text);
+					terminal.show(true);
+					terminal.sendText(text);
+				}
+			}
+		} else{
 			console.error('Unable to get an IPython Terminal');
-			return;
-		}
-
-		for (let select of editor.selections){
-			let range = select.with();  // current select range
-			let text = editor.document.getText(range);
-			console.log('IPython Run Selection: ' + text);
-			terminal.sendText(text);
 		}
 	}
 
 	//-- Run a Cell using %load
 	// REF: https://ipython.readthedocs.io/en/stable/interactive/magics.html#magic-load
-	async function runCell(){
+	async function runCell(isNext: boolean){
+		console.log('IPython run cell...');
 		let editor = vscode.window.activeTextEditor;
 		if (editor === undefined){
 			console.error('Unable to access Active Text Editor');
@@ -154,9 +154,9 @@ export function activate(context: vscode.ExtensionContext) {
 			}
 		}
 		let cellStop = lines.length;
-		for (let i = startLine; i < lines.length; i++){
+		for (let i = startLine + 1; i < lines.length; i++){
 			if (lines[i].trim().match(cellPattern)){
-				cellStop = i;  // include last for slicing
+				cellStop = i;
 				break;
 			}
 		}
@@ -173,17 +173,37 @@ export function activate(context: vscode.ExtensionContext) {
 			console.error('Unable to get an IPython Terminal');
 			return;
 		}
-		cellStart++;  // line number if 1-indexed, stop line is inclusive for IPython %load
+		cellStart += 1;  // line number is 1-indexed, stop line is inclusive for IPython %load
+		let endOfFile = cellStop === lines.length;
+		if (endOfFile){
+			cellStop -= 1;
+		}
 		let cmd = `%load -r ${cellStart.toString()}-${cellStop.toString()} ${fileName}`;
 		console.log('IPython Run Cell: ' + cmd);
+		terminal.show(true);
 		terminal.sendText(cmd);
 		terminal.sendText('');   // newline to execute loaded lines
+
+		if (isNext && !endOfFile){
+			let newPosition = new vscode.Position(cellStop, 0);
+			let newSelection = new vscode.Selection(newPosition, newPosition);
+			editor.selection = newSelection;
+		}
+		// Return cursor to editor
+		// await vscode.window.showTextDocument(editor.document, undefined, false);
 	}
+
+	async function runCellAndMoveToNext(){
+		console.log('IPython run selection and next...');
+		runCell(true);
+	}
+
 	// -- Register Command to Extension
 	context.subscriptions.push(vscode.commands.registerCommand('ipython.createTerminal', createTerminal));
 	context.subscriptions.push(vscode.commands.registerCommand('ipython.runFile', runFile));
 	context.subscriptions.push(vscode.commands.registerCommand('ipython.runSelections', runSelections));
 	context.subscriptions.push(vscode.commands.registerCommand('ipython.runCell', runCell));
+	context.subscriptions.push(vscode.commands.registerCommand('ipython.runCellAndMoveToNext', runCellAndMoveToNext));
 }
 
 // this method is called when your extension is deactivated

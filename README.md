@@ -7,10 +7,8 @@ Simple hooks to enable direct execution of `python` code from editor to an IPyth
 
 Key features tagged with `IPython`:
 - Configurations to control the startup of an IPython console
-- On an active IPython console, added commands to:
-    - Run a file
-    - Run selection(s) of code
-    - Run a cell block defined by standard (`# %%`) tag
+- On an active IPython console, added commands to run Python code interactively
+    - E.g. Run a file, selection(s) of code, cell block, etc.
 
 ![feature X](md_img/vscode-ipython.png)
 
@@ -18,14 +16,6 @@ Key features tagged with `IPython`:
 
 [Microsoft Python Extension](https://marketplace.visualstudio.com/items?itemName=ms-python.python)
 - Can also be found in Extension tab
-
-## Extension Settings
-
-`ipython` automatically activated when editor language is `Python`.
-
-Contributes the following settings:
-* `ipython.launchArgs`: create a IPython terminal using the arguments provided.
-* `ipython.startupCommands`: execute the set of commands automatically after IPython terminal is created.
 
 ## Known Issues
 
@@ -36,8 +26,22 @@ Contributes the following settings:
 
 ## Release Notes
 
-### 2021.09.26
+### 2021.09.1
 
-Hot of the press
+**Features**:
+- Added keybinds (overwrite base interactive python and Jupyter)
+  - Recommend rebind as needed
+- Added run cell and go to next (`ipython.runCellAndMoveToNext`)
+- Added customizable cell block tag option
+- Other minor QoL
+
+**Fixes:**
+- Fixed versioning number
+- Default settings
+- Various small bugs
+
+### 2021.09.0
+
+Hot of the press!
 
 **Enjoy!**

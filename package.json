@@ -8,24 +8,34 @@
 	"engines": {
 		"vscode": "^1.60.0"
 	},
+	"keywords": [
+		"python",
+		"IPython"
+	],
 	"categories": [
-		"Data Science"
+		"Programming Languages",
+		"Other",
+		"Data Science",
+		"Notebooks"
 	],
 	"activationEvents": [
 		"onLanguage:python",
 		"onCommand:ipython.createTerminal",
 		"onCommand:ipython.runFile",
-		"ipython.runSelections",
-		"ipython.runCell"
+		"onCommand:ipython.runSelections",
+		"onCommand:ipython.runCell"
 	],
 	"main": "./out/extension.js",
+	"capabilities": {
+		"virtualWorkspaces": true
+	},
 	"contributes": {
 		"configuration": {
 			"title": "IPython",
 			"properties": {
 				"ipython.launchArgs": {
 					"type": "string",
-					"default": null,
+					"default": "",
 					"description": "Input command to ipython call on launch (e.g. --matplotlib=qt5)"
 				},
 				"ipython.startupCommands": {
@@ -35,6 +45,11 @@
 						"%autoreload 2"
 					],
 					"description": "Lists of command to execute line-by-line after launching IPython terminal (e.g. '%autoreload 2') "
+				},
+				"ipython.cellTag": {
+					"type": "string",
+					"default": "# %%",
+					"description": "Tag indicating a cell block"
 				}
 			}
 		},
@@ -42,32 +57,75 @@
 			{
 				"category": "IPython",
 				"command": "ipython.createTerminal",
-				"key": "",
-				"when": "editorLangId == python",
 				"title": "Create a Terminal"
 			},
 			{
 				"category": "IPython",
 				"command": "ipython.runFile",
-				"key": "",
-				"when": "editorLangId == python",
 				"title": "Run File in an IPython Terminal"
 			},
 			{
 				"category": "IPython",
 				"command": "ipython.runSelections",
-				"key": "",
-				"when": "editorLangId == python",
-				"title": "Run each Selected Code in a IPython Terminal"
+				"title": "Run Code Selection(s)"
 			},
 			{
 				"category": "IPython",
 				"command": "ipython.runCell",
+				"title": "Run Cell Block of Code"
+			},
+			{
+				"category": "IPython",
+				"command": "ipython.runCellAndMoveToNext",
+				"title": "Run Cell and Move to Next Cell"
+			}
+		],
+		"keybindings": [
+			{
+				"command": "ipython.createTerminal",
 				"key": "",
-				"when": "editorLangId == python",
-				"title": "Run a Cell Block Identified by '# %%'"
+				"when": "editorLangId == python"
+			},
+			{
+				"command": "ipython.runFile",
+				"key": "ctrl+alt+x",
+				"when": "editorTextFocus && editorLangId == python"
+			},
+			{
+				"command": "ipython.runSelections",
+				"key": "shift+enter",
+				"when": "editorTextFocus && editorLangId == python && !findInputFocussed && !replaceInputFocussed"
+			},
+			{
+				"command": "ipython.runCell",
+				"key": "ctrl+enter",
+				"when": "editorTextFocus && editorLangId == python"
+			},
+			{
+				"command": "ipython.runCellAndMoveToNext",
+				"key": "ctrl+alt+enter",
+				"when": "editorTextFocus && !notebookEditorFocused"
+			},
+
+			{
+				"DEV COMMENT": "--- Disable known overrided keybinds below!!",
+
+				"command": "python.execSelectionInTerminal",
+				"key": "",
+				"when": ""
+			},
+			{
+				"command": "jupyter.runcurrentcelladvance",
+				"key": "",
+				"when": ""
+			},
+			{
+				"command": "jupyter.runcurrentcell",
+				"key": "",
+				"when": ""
 			}
 		]
+
 	},
 	"scripts": {
 		"vscode:prepublish": "npm run compile",
