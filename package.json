@@ -2,6 +2,7 @@
 	"name": "ipython",
 	"displayName": "ipython",
 	"description": "IPython integration supporting direct interactive usage and commands.",
+	"icon": "md_img/icon.png",
 	"version": "2021.10.1",
 	"publisher": "HoangKimLai",
 	"repository": "https://github.com/hoangKnLai/vscode-ipython",
@@ -17,6 +18,9 @@
 		"Other",
 		"Data Science",
 		"Notebooks"
+	],
+	"extensionDependencies":[
+		"ms-python.python"
 	],
 	"activationEvents": [
 		"onLanguage:python",
