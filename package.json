@@ -35,7 +35,7 @@
 			"properties": {
 				"ipython.launchArgs": {
 					"type": "string",
-					"default": "",
+					"default": "--no-autoindent",
 					"description": "Input command to ipython call on launch (e.g. --matplotlib=qt5)"
 				},
 				"ipython.startupCommands": {
@@ -83,44 +83,28 @@
 		"keybindings": [
 			{
 				"command": "ipython.createTerminal",
-				"key": "",
+				"key": "ctrl+shift+i c",
 				"when": "editorLangId == python"
 			},
 			{
 				"command": "ipython.runFile",
-				"key": "ctrl+alt+x",
-				"when": "editorTextFocus && editorLangId == python"
+				"key": "f5",
+				"when": "ipython.isUse && !inDebugMode && editorTextFocus && editorLangId == python"
 			},
 			{
 				"command": "ipython.runSelections",
-				"key": "shift+enter",
-				"when": "editorTextFocus && editorLangId == python && !findInputFocussed && !replaceInputFocussed"
+				"key": "f9",
+				"when": "ipython.isUse && !inDebugMode && editorTextFocus && editorLangId == python && !findInputFocussed && !replaceInputFocussed"
 			},
 			{
 				"command": "ipython.runCell",
-				"key": "ctrl+enter",
-				"when": "editorTextFocus && editorLangId == python"
+				"key": "alt+enter",
+				"when": "ipython.isUse && !inDebugMode && editorTextFocus && editorLangId == python"
 			},
 			{
 				"command": "ipython.runCellAndMoveToNext",
-				"key": "ctrl+alt+enter",
-				"when": "editorTextFocus && !notebookEditorFocused"
-			},
-			{
-				"DEV COMMENT": "--- Disable known overrided keybinds below!!",
-				"command": "python.execSelectionInTerminal",
-				"key": "",
-				"when": ""
-			},
-			{
-				"command": "jupyter.runcurrentcelladvance",
-				"key": "",
-				"when": ""
-			},
-			{
-				"command": "jupyter.runcurrentcell",
-				"key": "",
-				"when": ""
+				"key": "shift+alt+enter",
+				"when": "ipython.isUse && !inDebugMode && editorTextFocus && !notebookEditorFocused"
 			}
 		]
 	},
