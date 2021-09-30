@@ -27,7 +27,9 @@
 		"onCommand:ipython.createTerminal",
 		"onCommand:ipython.runFile",
 		"onCommand:ipython.runSelections",
-		"onCommand:ipython.runCell"
+		"onCommand:ipython.runCell",
+		"onCommand:ipython.runToLine",
+		"onCommand:ipython.runFromLine"
 	],
 	"main": "./out/extension.js",
 	"capabilities": {
@@ -40,7 +42,7 @@
 				"ipython.launchArgs": {
 					"type": "string",
 					"default": "--no-autoindent",
-					"description": "Input command to ipython call on launch (e.g. --matplotlib=qt5)"
+					"description": "Input command to ipython call on launch (e.g. --matplotlib=qt5). Strongly recommend using --no-autoindent for proper code loading to IPython."
 				},
 				"ipython.startupCommands": {
 					"type": "array",
@@ -48,7 +50,7 @@
 						"%load_ext autoreload",
 						"%autoreload 2"
 					],
-					"description": "Lists of command to execute line-by-line after launching IPython terminal (e.g. '%autoreload 2') "
+					"description": "Lists of command to execute line-by-line after launching IPython terminal (e.g.['%load_ext autoreload', '%autoreload 2']) "
 				},
 				"ipython.cellTag": {
 					"type": "string",
@@ -82,6 +84,16 @@
 				"category": "IPython",
 				"command": "ipython.runCellAndMoveToNext",
 				"title": "Run Cell and Move to Next Cell"
+			},
+			{
+				"category": "IPython",
+				"command": "ipython.runToLine",
+				"title": "Run From Line 1 to Current Line"
+			},
+			{
+				"category": "IPython",
+				"command": "ipython.runFromLine",
+				"title": "Run From Current Line to Last Line"
 			}
 		],
 		"keybindings": [
@@ -98,7 +110,7 @@
 			{
 				"command": "ipython.runSelections",
 				"key": "f9",
-				"when": "ipython.isUse && !inDebugMode && editorTextFocus && editorLangId == python && !findInputFocussed && !replaceInputFocussed"
+				"when": "ipython.isUse && !inDebugMode && editorTextFocus && !findInputFocussed && !replaceInputFocussed && editorLangId == python"
 			},
 			{
 				"command": "ipython.runCell",
@@ -108,7 +120,17 @@
 			{
 				"command": "ipython.runCellAndMoveToNext",
 				"key": "shift+alt+enter",
-				"when": "ipython.isUse && !inDebugMode && editorTextFocus && !notebookEditorFocused"
+				"when": "ipython.isUse && !inDebugMode && editorTextFocus && !notebookEditorFocused && editorLangId == python"
+			},
+			{
+				"command": "ipython.runToLine",
+				"key": "ctrl+shift+i l",
+				"when": "ipython.isUse && !inDebugMode && editorTextFocus && !notebookEditorFocused && editorLangId == python"
+			},
+			{
+				"command": "ipython.runFromLine",
+				"key": "ctrl+shift+i shift+l",
+				"when": "ipython.isUse && !inDebugMode && editorTextFocus && !notebookEditorFocused && editorLangId == python"
 			}
 		]
 	},

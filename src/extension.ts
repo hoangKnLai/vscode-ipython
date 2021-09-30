@@ -24,12 +24,42 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 	}
 
+	// ------------ HELPERS ----------------
+	function moveAndRevealCursor(line: number, editor: vscode.TextEditor){
+		let position = editor.selection.start.with(line, 0);
+		let cursor = new vscode.Selection(position, position);
+		editor.selection = cursor;
+		editor.revealRange(cursor.with(), vscode.TextEditorRevealType.InCenterIfOutsideViewport);
+	}
+
+	function getIpythonCommand(document: vscode.TextDocument, selection: vscode.Selection | undefined){
+		if (selection === undefined){
+			// REF: https://ipython.readthedocs.io/en/stable/interactive/magics.html#magic-run
+			return `%run ${document.fileName} ${endOfLine}`;
+		} else if (selection !== undefined){
+			let cmd:string;
+			if(selection.isSingleLine){
+				let text = document.getText(selection.with());
+				cmd = `${text}${endOfLine}`;
+			}else{
+				let startLine = selection.start.line;
+				let stopLine = selection.end.line;
+
+				// REF: https://ipython.readthedocs.io/en/stable/interactive/magics.html?highlight=%25load%20magic%20command#magic-load
+				// NOTE: appears to need to 3 newlines: 1x to execute %load and 2x to execute loaded code
+				cmd = `%load -r ${startLine + 1}-${stopLine + 1} ${document.fileName} ${endOfLine}${endOfLine}`;
+				// cmd = `%load -r ${startLine + 1}-${stopLine + 1} ${document.fileName} ${endOfLine}${endOfLine}${endOfLine}`;
+			}
+			return cmd;
+		}
+
+	}
+
 	async function execute(terminal:vscode.Terminal, cmd:string){
 		terminal.show(true);  // preserve focus
 		terminal.sendText(cmd);
 		await vscode.commands.executeCommand('workbench.action.terminal.scrollToBottom');
 	}
-
 
 	async function createTerminal(){
 		console.log('Creating IPython Terminal...');
@@ -56,8 +86,10 @@ export function activate(context: vscode.ExtensionContext) {
 
 		// Startup options
 		let cmds = config.get('startupCommands') as any[];
-		for (let cmd of cmds){
-			await execute(terminal, cmd);
+		if (cmds !== undefined){
+			for (let cmd of cmds){
+				await execute(terminal, cmd);
+			}
 		}
 		return terminal;
 	}
@@ -85,8 +117,7 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 	}
 
-	// -- Run File using %run <path/to/file.py>
-	// REF: https://ipython.readthedocs.io/en/stable/interactive/magics.html#magic-run
+	// ------------ COMMANDS ----------------
 	async function runFile(){
 		console.log('IPython run file...');
 		let editor = vscode.window.activeTextEditor;
@@ -99,17 +130,19 @@ export function activate(context: vscode.ExtensionContext) {
 			return;
 		}
 
-		let fileName = editor.document.fileName;
-
-		let cmd = '%run ' + fileName;
-		console.log('IPython Run File Command: ' + cmd);
-		let terminal = await getTerminal();
-		if (terminal !== undefined){
-			await execute(terminal, cmd);
+		let cmd = getIpythonCommand(editor.document, undefined);
+		if (cmd !== undefined){
+			console.log('IPython Run File Command: ' + cmd);
+			let terminal = await getTerminal();
+			if (terminal !== undefined){
+				await execute(terminal, cmd);
+			}
+		} else{
+			console.error('Unable to get IPython command');
 		}
 	};
 
-	// -- Run a Selected Group of Text
+	// -- Run a Selected Group of Text or Lines
 	async function runSelections(){
 		console.log('IPython run selection...');
 		let editor = vscode.window.activeTextEditor;
@@ -125,21 +158,27 @@ export function activate(context: vscode.ExtensionContext) {
 		let terminal = await getTerminal();
 		if (terminal !== undefined){
 			for (let select of editor.selections){
-				let range = select.with();  // current select range
-				let text = editor.document.getText(range);
-				if (text.length > 0){
-					console.log('IPython Run Selection: ' + text);
-					terminal.show(true);
-					terminal.sendText(text);
+				let cmd = getIpythonCommand(editor.document, select);
+				if (cmd !== undefined){
+					console.log('IPython Run Line Selection(s): ' + cmd);
+					await execute(terminal, cmd);
+					if (!select.isSingleLine){
+						// Multi-line selection don't always include endOfLine
+						// needed to execute code after %load
+						terminal.sendText('');
+					}
+				}else{
+					console.error('Failed to run selection');
+					return;
 				}
 			}
 		} else{
 			console.error('Unable to get an IPython Terminal');
+			return;
 		}
 	}
 
-	//-- Run a Cell using %load
-	// REF: https://ipython.readthedocs.io/en/stable/interactive/magics.html#magic-load
+	//-- Run a Cell
 	async function runCell(isNext: boolean){
 		console.log('IPython run cell...');
 		let editor = vscode.window.activeTextEditor;
@@ -154,9 +193,6 @@ export function activate(context: vscode.ExtensionContext) {
 
 		let startLine = editor.selection.start.line;
 		let file = editor.document.getText();
-		let fileName = editor.document.fileName;
-
-		// let eol = editor.document.eol.toString();  // NOTE: not sure why it is '2'
 		let lines = file.split(endOfLine);
 
 		// Cell start/stop lines
@@ -167,17 +203,18 @@ export function activate(context: vscode.ExtensionContext) {
 				break;
 			}
 		}
-		let cellStop = lines.length;
+		let nextCell = lines.length;
 		for (let i = startLine + 1; i < lines.length; i++){
 			if (lines[i].trim().match(cellPattern)){
-				cellStop = i;
+				nextCell = i;
 				break;
 			}
 		}
 
-		let nLine = cellStop - cellStart;
-		if (nLine === 0 || nLine === lines.length){
+		let nLine = nextCell - cellStart;
+		if (nLine === 1 || nLine === lines.length){
 			console.log('Found and skip empty cell or no cell file');
+			moveAndRevealCursor(nextCell, editor);
 			return;
 		}
 
@@ -187,23 +224,27 @@ export function activate(context: vscode.ExtensionContext) {
 			console.error('Unable to get an IPython Terminal');
 			return;
 		}
-		// See IPython %load -r start:stop
-		// https://ipython.readthedocs.io/en/stable/interactive/magics.html?highlight=%25load%20magic%20command#magic-load
-		cellStart += 1;
-		let endOfFile = cellStop === lines.length;
-		// if (endOfFile){
-		// 	cellStop -= 1;
-		// }
-		let cmd = `%load -r ${cellStart.toString()}:${cellStop.toString()} ${fileName}`;
-		console.log('IPython Run Cell: ' + cmd);
-		await execute(terminal, cmd);
-		terminal.sendText('\n');   // extra newline to execute %load lines
+
+		let endOfFile = nextCell === lines.length;
+		let cellStop = nextCell;
+		if (!endOfFile){
+			cellStop -= 1;
+		}
+		let startPosition = new vscode.Position(cellStart, 0);
+		let stopPosition = new vscode.Position(cellStop, 0);
+		let selection = new vscode.Selection(startPosition, stopPosition);
+		let cmd = getIpythonCommand(editor.document, selection);
+
+		if (cmd !== undefined){
+			console.log('IPython Run Cell: ' + cmd);
+			await execute(terminal, cmd);
+		} else{
+			console.error('Unable to execute cell command: ' + cmd);
+			return;
+		}
 
 		if (isNext && !endOfFile){
-			let position = editor.selection.start.with(cellStop, 0);  // 0 : start of next cell
-			let cursor = new vscode.Selection(position, position);
-			editor.selection = cursor;
-			editor.revealRange(cursor.with(), vscode.TextEditorRevealType.InCenterIfOutsideViewport);
+			moveAndRevealCursor(nextCell, editor);
 		}
 	}
 
@@ -212,14 +253,62 @@ export function activate(context: vscode.ExtensionContext) {
 		runCell(true);
 	}
 
+	async function runCursor(toFrom: string){
+		let editor = vscode.window.activeTextEditor;
+		if (editor === undefined){
+			console.error('Failed to get activeTextEditor');
+			return;
+		}
+		let startPosition: vscode.Position;
+		let stopPosition: vscode.Position;
+		if (toFrom === 'top'){
+			startPosition = new vscode.Position(0, 0);
+			stopPosition = editor.selection.start;
+		}else if (toFrom === 'bottom'){
+			startPosition = editor.selection.start;
+			stopPosition = new vscode.Position(editor.document.lineCount, 0);
+		}else{
+			console.error(`Invalid option "toFrom": ${toFrom}`);
+			return;
+		}
+
+		let selection = new vscode.Selection(startPosition, stopPosition);
+
+		let cmd = getIpythonCommand(editor.document, selection);
+		if (cmd === undefined){
+			console.error('Failed to get command');
+			return;
+		}
+
+		let terminal = await getTerminal();
+		if (terminal !== undefined){
+			await execute(terminal, cmd);
+		}else {
+			console.error('Failed to get terminal');
+			return;
+		}
+	}
+
+	async function runToLine(){
+		console.log('IPython: Run from Top to Line...');
+		await runCursor('top');
+	}
+
+	async function runFromLine(){
+		console.log('IPython: Run from Top to Line...');
+		await runCursor('bottom');
+	}
+
 	// -- Register Command to Extension
 	context.subscriptions.push(vscode.commands.registerCommand('ipython.createTerminal', createTerminal));
 	context.subscriptions.push(vscode.commands.registerCommand('ipython.runFile', runFile));
 	context.subscriptions.push(vscode.commands.registerCommand('ipython.runSelections', runSelections));
 	context.subscriptions.push(vscode.commands.registerCommand('ipython.runCell', runCell));
 	context.subscriptions.push(vscode.commands.registerCommand('ipython.runCellAndMoveToNext', runCellAndMoveToNext));
+	context.subscriptions.push(vscode.commands.registerCommand('ipython.runToLine', runToLine));
+	context.subscriptions.push(vscode.commands.registerCommand('ipython.runFromLine', runFromLine));
 
-	// -- `when clause` for keybinding
+	// -- Keybinding `when clause`
 	vscode.commands.executeCommand('setContext', 'ipython.isUse', true);
 }
 
