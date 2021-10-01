@@ -15,16 +15,27 @@ export function activate(context: vscode.ExtensionContext) {
 	let cellPattern = new RegExp(`^(?:${cellFlag})`);
 	console.log('Cell Flag: ' + cellFlag);
 
-	let endOfLine:string = '\n';  // default to eol === 1
+	let newLine:string = '\n';  // default to eol === 1
 	let editor = vscode.window.activeTextEditor;
 	if (editor !== undefined){
 		let eol = editor.document.eol;
 		if (eol === 2){
-			endOfLine = '\r\n';
+			newLine = '\r\n';
 		}
 	}
 
 	// ------------ HELPERS ----------------
+	function checkEncodingTag(document: vscode.TextDocument){
+		// REF: https://docs.python.org/3/reference/lexical_analysis.html#encoding-declarations
+		let range = new vscode.Range(
+			new vscode.Position(0, 0),  // first line
+			new vscode.Position(1, 0)   // second line
+		);
+		let topTwoLines = document.getText(range);
+		return topTwoLines.match(new RegExp('coding[=:]\s*([-\w.]+)'));
+	}
+
+
 	function moveAndRevealCursor(line: number, editor: vscode.TextEditor){
 		let position = editor.selection.start.with(line, 0);
 		let cursor = new vscode.Selection(position, position);
@@ -32,23 +43,57 @@ export function activate(context: vscode.ExtensionContext) {
 		editor.revealRange(cursor.with(), vscode.TextEditorRevealType.InCenterIfOutsideViewport);
 	}
 
-	function getIpythonCommand(document: vscode.TextDocument, selection: vscode.Selection | undefined){
+
+	async function getIpythonCommand(document: vscode.TextDocument, selection: vscode.Selection | undefined){
+		// FIXME: temporary measure until a full on integration with IPython API instead
+		await document.save();  // force saving to properly use IPython %load
 		if (selection === undefined){
 			// REF: https://ipython.readthedocs.io/en/stable/interactive/magics.html#magic-run
-			return `%run ${document.fileName} ${endOfLine}`;
+			return `%run ${document.fileName} ${newLine}`;
 		} else if (selection !== undefined){
+			let text = document.getText(selection.with());
 			let cmd:string;
-			if(selection.isSingleLine){
-				let text = document.getText(selection.with());
-				cmd = `${text}${endOfLine}`;
-			}else{
-				let startLine = selection.start.line;
-				let stopLine = selection.end.line;
+			if (selection.isSingleLine){
+				cmd = `${text}`;
+			} else{
+				// Find and only execute non-empty lines
+				let textLines = text.split(newLine);
+				let begin = 0;
+				for (let i = 0; i < textLines.length; i++){
+					if (textLines[i].trim().length > 0){
+						break;
+					} else{
+						begin += 1;
+					}
+				}
 
-				// REF: https://ipython.readthedocs.io/en/stable/interactive/magics.html?highlight=%25load%20magic%20command#magic-load
-				// NOTE: appears to need to 3 newlines: 1x to execute %load and 2x to execute loaded code
-				cmd = `%load -r ${startLine + 1}-${stopLine + 1} ${document.fileName} ${endOfLine}${endOfLine}`;
-				// cmd = `%load -r ${startLine + 1}-${stopLine + 1} ${document.fileName} ${endOfLine}${endOfLine}${endOfLine}`;
+				let startLine = selection.start.line + begin;
+
+				let end = 0;
+				for (let i = textLines.length - 1; i >= 0; i--){
+					if (textLines[i].trim().length > 0){
+						break;
+					} else{
+						end += 1;
+					}
+				}
+				let stopLine = selection.end.line - end;
+
+				let isSingleLine = startLine === stopLine;
+				if(isSingleLine){
+					cmd = `${textLines[begin]}`;
+				}else{
+					// REF: https://ipython.readthedocs.io/en/stable/interactive/magics.html?highlight=%25load%20magic%20command#magic-load
+					let match = checkEncodingTag(document);
+					if (match === null){
+						// IPython %load is 1-index
+						startLine += 1;
+						stopLine += 1;
+						// else don't need to +1 since %load ignores `# encoding` line
+					}
+					// NOTE: need extra newlines to execute loaded code (also expect an extra newline from sendText())
+					cmd = `%load -r ${startLine}-${stopLine} ${document.fileName} ${newLine}${newLine}`;
+				}
 			}
 			return cmd;
 		}
@@ -130,7 +175,7 @@ export function activate(context: vscode.ExtensionContext) {
 			return;
 		}
 
-		let cmd = getIpythonCommand(editor.document, undefined);
+		let cmd = await getIpythonCommand(editor.document, undefined);
 		if (cmd !== undefined){
 			console.log('IPython Run File Command: ' + cmd);
 			let terminal = await getTerminal();
@@ -158,7 +203,7 @@ export function activate(context: vscode.ExtensionContext) {
 		let terminal = await getTerminal();
 		if (terminal !== undefined){
 			for (let select of editor.selections){
-				let cmd = getIpythonCommand(editor.document, select);
+				let cmd = await getIpythonCommand(editor.document, select);
 				if (cmd !== undefined){
 					console.log('IPython Run Line Selection(s): ' + cmd);
 					await execute(terminal, cmd);
@@ -193,7 +238,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 		let startLine = editor.selection.start.line;
 		let file = editor.document.getText();
-		let lines = file.split(endOfLine);
+		let lines = file.split(newLine);
 
 		// Cell start/stop lines
 		let cellStart = 0;
@@ -233,7 +278,7 @@ export function activate(context: vscode.ExtensionContext) {
 		let startPosition = new vscode.Position(cellStart, 0);
 		let stopPosition = new vscode.Position(cellStop, 0);
 		let selection = new vscode.Selection(startPosition, stopPosition);
-		let cmd = getIpythonCommand(editor.document, selection);
+		let cmd = await getIpythonCommand(editor.document, selection);
 
 		if (cmd !== undefined){
 			console.log('IPython Run Cell: ' + cmd);
@@ -274,17 +319,17 @@ export function activate(context: vscode.ExtensionContext) {
 
 		let selection = new vscode.Selection(startPosition, stopPosition);
 
-		let cmd = getIpythonCommand(editor.document, selection);
-		if (cmd === undefined){
+		let cmd = await getIpythonCommand(editor.document, selection);
+		if (cmd !== undefined){
+			let terminal = await getTerminal();
+			if (terminal !== undefined){
+				await execute(terminal, cmd);
+			}else {
+				console.error('Failed to get terminal');
+				return;
+			}
+		} else{
 			console.error('Failed to get command');
-			return;
-		}
-
-		let terminal = await getTerminal();
-		if (terminal !== undefined){
-			await execute(terminal, cmd);
-		}else {
-			console.error('Failed to get terminal');
 			return;
 		}
 	}

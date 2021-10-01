@@ -50,7 +50,7 @@
 						"%load_ext autoreload",
 						"%autoreload 2"
 					],
-					"description": "Lists of command to execute line-by-line after launching IPython terminal (e.g.['%load_ext autoreload', '%autoreload 2']) "
+					"description": "List of commands to execute line-by-line after launching IPython terminal (e.g.['%load_ext autoreload', '%autoreload 2']) "
 				},
 				"ipython.cellTag": {
 					"type": "string",
