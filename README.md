@@ -7,24 +7,42 @@ Simple hooks to enable direct execution of `python` code from editor to an IPyth
 
 Key features tagged with `IPython`:
 - Configurations to control the startup of an IPython console
-- On an active IPython console, added commands to run Python code interactively
-    - E.g. Run a file, selection(s) of code, cell block, etc.
+  - Console launch argument (e.g. `--matplotlib=qt5`)
+  - Console start up command (e.g. `["%load_ext autoreload", %autoreload 2]`)
+  - Unique cell block tag (e.g. `# %%`)
+- Added commands to run `python` code interactively
+  - E.g. Run a file, selection(s) of code, cell block, run to line, run from line, ...
 
 ![feature X](md_img/vscode-ipython.png)
+
+See `ipython: Feature Contribution` tab in VSCode Extension (Ctrl + Shift + X) panel for latest features and details.
 
 ## Requirements
 
 [Microsoft Python Extension](https://marketplace.visualstudio.com/items?itemName=ms-python.python)
-- Can also be found in Extension tab
+
+**Strongly recommend setting `Git Bash` as default terminal on Window to properly launch and IPython terminal.**
 
 ## Known Issues
 
+- Not a direct hook to the IPython API
 - Cannot resolve recently used IPython terminal when it is not the currently active terminal
     - Currently will select most recently created terminal when an IPython terminal is not the current active terminal.
-- Missing keyboard shortcut
 - This README.md and other *.md can use improvement
 
 ## Release Notes
+
+### 2021.10.3
+
+**Features**:
+- Handling of encoding `# -*- coding: <encoding-name> -*-` automatically when parsing code to send to IPython console
+- Added runToLine and runFromLine
+- Improved keybindings
+
+**Fixes:**
+- Keybindings
+- Default settings
+- Various small bugs
 
 ### 2021.09.1
 

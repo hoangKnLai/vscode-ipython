@@ -13,6 +13,7 @@ export function activate(context: vscode.ExtensionContext) {
 	let config = vscode.workspace.getConfiguration('ipython');
 	let cellFlag = config.get('cellTag') as string;
 	let cellPattern = new RegExp(`^(?:${cellFlag})`);
+	let encodePattern = new RegExp('coding[=:]\\s*([-\\w.]+)');
 	console.log('Cell Flag: ' + cellFlag);
 
 	let newLine:string = '\n';  // default to eol === 1
@@ -27,12 +28,19 @@ export function activate(context: vscode.ExtensionContext) {
 	// ------------ HELPERS ----------------
 	function checkEncodingTag(document: vscode.TextDocument){
 		// REF: https://docs.python.org/3/reference/lexical_analysis.html#encoding-declarations
-		let range = new vscode.Range(
-			new vscode.Position(0, 0),  // first line
-			new vscode.Position(1, 0)   // second line
-		);
-		let topTwoLines = document.getText(range);
-		return topTwoLines.match(new RegExp('coding[=:]\s*([-\w.]+)'));
+		let match = false;
+		for (let i = 0; i < 2; i++){
+			let textLine = document.lineAt(i);
+			match = encodePattern.test(textLine.text);
+			if (match){
+				return match;
+			}
+			// match = textLine.text.match(encodePattern);
+			// if (match !== null){
+			// 	break;
+			// }
+		}
+		return match;
 	}
 
 
@@ -85,7 +93,7 @@ export function activate(context: vscode.ExtensionContext) {
 				}else{
 					// REF: https://ipython.readthedocs.io/en/stable/interactive/magics.html?highlight=%25load%20magic%20command#magic-load
 					let match = checkEncodingTag(document);
-					if (match === null){
+					if (!match){
 						// IPython %load is 1-index
 						startLine += 1;
 						stopLine += 1;
