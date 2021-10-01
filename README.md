@@ -36,8 +36,7 @@ See `ipython: Feature Contribution` tab in VSCode Extension (Ctrl + Shift + X) p
 
 **Features**:
 - Handling of encoding `# -*- coding: <encoding-name> -*-` automatically when parsing code to send to IPython console
-- Added runToLine and runFromLine
-- Improved keybindings
+- Added ipython.runToLine and ipython.runFromLine
 
 **Fixes:**
 - Keybindings
@@ -63,3 +62,5 @@ See `ipython: Feature Contribution` tab in VSCode Extension (Ctrl + Shift + X) p
 Hot of the press!
 
 **Enjoy!**
+
+Please leave a comment and/or suggestion!!
