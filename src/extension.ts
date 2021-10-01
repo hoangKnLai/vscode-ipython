@@ -35,10 +35,6 @@ export function activate(context: vscode.ExtensionContext) {
 			if (match){
 				return match;
 			}
-			// match = textLine.text.match(encodePattern);
-			// if (match !== null){
-			// 	break;
-			// }
 		}
 		return match;
 	}
@@ -60,12 +56,18 @@ export function activate(context: vscode.ExtensionContext) {
 			return `%run ${document.fileName} ${newLine}`;
 		} else if (selection !== undefined){
 			let text = document.getText(selection.with());
-			let cmd:string;
+			let cmd = undefined;
 			if (selection.isSingleLine){
-				cmd = `${text}`;
+				cmd = `${text.trimEnd()}${newLine}`;
 			} else{
-				// Find and only execute non-empty lines
+				// Check to empty selection
 				let textLines = text.split(newLine);
+				const isEmpty = (aString:string) => aString.length === 0;
+				if (textLines.every(isEmpty)){
+					return undefined;
+				}
+
+				// Trim empty lines around a code block
 				let begin = 0;
 				for (let i = 0; i < textLines.length; i++){
 					if (textLines[i].trim().length > 0){
@@ -89,7 +91,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 				let isSingleLine = startLine === stopLine;
 				if(isSingleLine){
-					cmd = `${textLines[begin]}`;
+					cmd = `${textLines[begin].trimEnd()}${newLine}`;
 				}else{
 					// REF: https://ipython.readthedocs.io/en/stable/interactive/magics.html?highlight=%25load%20magic%20command#magic-load
 					let match = checkEncodingTag(document);
@@ -99,8 +101,16 @@ export function activate(context: vscode.ExtensionContext) {
 						stopLine += 1;
 						// else don't need to +1 since %load ignores `# encoding` line
 					}
-					// NOTE: need extra newlines to execute loaded code (also expect an extra newline from sendText())
-					cmd = `%load -r ${startLine}-${stopLine} ${document.fileName} ${newLine}${newLine}`;
+					if (startLine === 0){
+						startLine += 1;
+					}
+					// NOTE: need extra newlines to execute loaded code (expect no newline from sendText())
+					//   - Number of extra newlines depends on the code
+					//      - If last loaded line is not in a loop-like, then execution requires 2x newlines
+					//      - Else, requires 3x newlines
+					//	    >> No real way around this so 3x newlines to ensure execution. This adds an extra
+					//		   input number. A bit unsightly but it does not impede usage.
+					cmd = `%load -r ${startLine}-${stopLine} ${document.fileName} ${newLine}${newLine}${newLine}`;
 				}
 			}
 			return cmd;
@@ -109,9 +119,11 @@ export function activate(context: vscode.ExtensionContext) {
 	}
 
 	async function execute(terminal:vscode.Terminal, cmd:string){
-		terminal.show(true);  // preserve focus
-		terminal.sendText(cmd);
-		await vscode.commands.executeCommand('workbench.action.terminal.scrollToBottom');
+		if (cmd.length > 0){
+			terminal.show(true);  // preserve focus
+			terminal.sendText(cmd, false);
+			await vscode.commands.executeCommand('workbench.action.terminal.scrollToBottom');
+		}
 	}
 
 	async function createTerminal(){
@@ -190,8 +202,6 @@ export function activate(context: vscode.ExtensionContext) {
 			if (terminal !== undefined){
 				await execute(terminal, cmd);
 			}
-		} else{
-			console.error('Unable to get IPython command');
 		}
 	};
 
@@ -215,14 +225,6 @@ export function activate(context: vscode.ExtensionContext) {
 				if (cmd !== undefined){
 					console.log('IPython Run Line Selection(s): ' + cmd);
 					await execute(terminal, cmd);
-					if (!select.isSingleLine){
-						// Multi-line selection don't always include endOfLine
-						// needed to execute code after %load
-						terminal.sendText('');
-					}
-				}else{
-					console.error('Failed to run selection');
-					return;
 				}
 			}
 		} else{
@@ -291,9 +293,6 @@ export function activate(context: vscode.ExtensionContext) {
 		if (cmd !== undefined){
 			console.log('IPython Run Cell: ' + cmd);
 			await execute(terminal, cmd);
-		} else{
-			console.error('Unable to execute cell command: ' + cmd);
-			return;
 		}
 
 		if (isNext && !endOfFile){
@@ -336,9 +335,6 @@ export function activate(context: vscode.ExtensionContext) {
 				console.error('Failed to get terminal');
 				return;
 			}
-		} else{
-			console.error('Failed to get command');
-			return;
 		}
 	}
 
@@ -348,7 +344,7 @@ export function activate(context: vscode.ExtensionContext) {
 	}
 
 	async function runFromLine(){
-		console.log('IPython: Run from Top to Line...');
+		console.log('IPython: Run from Line to Bottom...');
 		await runCursor('bottom');
 	}
 

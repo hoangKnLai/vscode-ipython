@@ -3,7 +3,7 @@
 	"displayName": "ipython",
 	"description": "IPython integration supporting direct interactive usage and commands.",
 	"icon": "md_img/icon.png",
-	"version": "2021.10.2",
+	"version": "2021.10.3",
 	"publisher": "HoangKimLai",
 	"repository": "https://github.com/hoangKnLai/vscode-ipython",
 	"engines": {
