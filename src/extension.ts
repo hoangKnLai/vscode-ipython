@@ -153,7 +153,7 @@ export function activate(context: vscode.ExtensionContext) {
 		let cmds = config.get('startupCommands') as any[];
 		if (cmds !== undefined){
 			for (let cmd of cmds){
-				await execute(terminal, cmd);
+				terminal.sendText(cmd);
 			}
 		}
 		return terminal;

@@ -21,7 +21,7 @@ See `ipython: Feature Contribution` tab in VSCode Extension (Ctrl + Shift + X) p
 
 [Microsoft Python Extension](https://marketplace.visualstudio.com/items?itemName=ms-python.python)
 
-**Strongly recommend setting `Git Bash` as default terminal on Window to properly launch and IPython terminal.**
+**Strongly recommend setting `Git Bash` as default terminal on Window to properly launch an IPython terminal.**
 
 ## Known Issues
 
@@ -31,6 +31,11 @@ See `ipython: Feature Contribution` tab in VSCode Extension (Ctrl + Shift + X) p
 - This README.md and other *.md can use improvement
 
 ## Release Notes
+
+### 2021.10.3
+
+**Fixes:**
+- ipython.createTerminal not executing startup commands correctly
 
 ### 2021.10.3
 
