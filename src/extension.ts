@@ -142,20 +142,24 @@ export function activate(context: vscode.ExtensionContext) {
 		let terminal = vscode.window.activeTerminal as vscode.Terminal;
 
 		// Launch options
+		let cmd = 'ipython ';
 		let launchArgs = config.get('launchArgs');
 		if (launchArgs !== undefined){
-			terminal.sendText('ipython ' + launchArgs);
-		}else{
-			terminal.sendText('ipython');
+			cmd += launchArgs;
 		}
 
 		// Startup options
+		// REF: https://ipython.readthedocs.io/en/stable/config/intro.html#command-line-arguments
 		let cmds = config.get('startupCommands') as any[];
+		let startupCmd = '';
 		if (cmds !== undefined){
-			for (let cmd of cmds){
-				terminal.sendText(cmd);
+			startupCmd = " --InteractiveShellApp.exec_lines=";
+			for (let c of cmds){
+				startupCmd += " --InteractiveShellApp.exec_lines=" + `'${c}'`;
 			}
 		}
+		console.log('Startup Command: ', startupCmd);
+		terminal.sendText(cmd + startupCmd);
 		return terminal;
 	}
 
