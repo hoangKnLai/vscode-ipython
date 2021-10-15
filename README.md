@@ -32,6 +32,11 @@ See `ipython: Feature Contribution` tab in VSCode Extension (Ctrl + Shift + X) p
 
 ## Release Notes
 
+### 2021.10.15
+
+**Fixes:**
+- ipython.createTerminal startup commands and launch commands race condition
+
 ### 2021.10.3
 
 **Fixes:**
