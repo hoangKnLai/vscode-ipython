@@ -32,6 +32,9 @@ See `ipython: Feature Contribution` tab in VSCode Extension (Ctrl + Shift + X) p
 
 ## Release Notes
 
+### 2021.10.17
+- Added an 100ms between every command execution to alleviate sendText race condition
+
 ### 2021.10.15
 
 **Fixes:**

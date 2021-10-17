@@ -1,5 +1,6 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
+import { exec } from 'child_process';
 import * as vscode from 'vscode';
 // import { Event, Terminal, TerminalOptions, window } from 'vscode';
 
@@ -11,6 +12,7 @@ export function activate(context: vscode.ExtensionContext) {
 	let terminalName = 'IPython';  //TODO: consider making configurable?!
 
 	let config = vscode.workspace.getConfiguration('ipython');
+	let execLagMilliSec = 100;
 	let cellFlag = config.get('cellTag') as string;
 	let cellPattern = new RegExp(`^(?:${cellFlag})`);
 	let encodePattern = new RegExp('coding[=:]\\s*([-\\w.]+)');
@@ -124,6 +126,9 @@ export function activate(context: vscode.ExtensionContext) {
 			terminal.sendText(cmd, false);
 			await vscode.commands.executeCommand('workbench.action.terminal.scrollToBottom');
 		}
+		// Add a small async delay between each execution to alleviate async race condition
+		//  NOTE: a temporary fix until better terminal / console API if it becomes available
+		return new Promise(resolve => setTimeout(resolve, execLagMilliSec));
 	}
 
 	async function createTerminal(){
@@ -157,9 +162,10 @@ export function activate(context: vscode.ExtensionContext) {
 			for (let c of cmds){
 				startupCmd += " --InteractiveShellApp.exec_lines=" + `'${c}'`;
 			}
+			cmd += startupCmd;
 		}
 		console.log('Startup Command: ', startupCmd);
-		terminal.sendText(cmd + startupCmd);
+		await execute(terminal, cmd + newLine);
 		return terminal;
 	}
 
