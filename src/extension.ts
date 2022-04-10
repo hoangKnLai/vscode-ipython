@@ -1,69 +1,100 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
-import { exec } from 'child_process';
+// import { exec } from 'child_process';
 import * as vscode from 'vscode';
 // import { Event, Terminal, TerminalOptions, window } from 'vscode';
 
-// this method is called when your extension is activated
-// your extension is activated the very first time the command is executed
-export function activate(context: vscode.ExtensionContext) {
-	// Use the console to output diagnostic information (console.log) and errors (console.error)
-	// This line of code will only be executed once when your extension is activated
-	let terminalName = 'IPython';  //TODO: consider making configurable?!
+// === EXPERIMENTAL ===
+//  - Python spawn
+import * as cproc from 'child_process';
 
+// === CONSTANTS ===
+// \x0A is hex code for `Enter` key which likely is better than \n
+let enterKey:string = '\x0A';
+
+let newLine:string = '\n';  // default to eol === 1
+let editor = vscode.window.activeTextEditor;
+if (editor !== undefined){
+	let eol = editor.document.eol;
+	if (eol === 2){
+		newLine = '\r\n';
+	}
+}
+
+let terminalName = 'IPython';  //TODO: consider making configurable?!
+let execLagMilliSec = 100;
+let encodePattern = new RegExp('coding[=:]\\s*([-\\w.]+)');
+let python:cproc.ChildProcessWithoutNullStreams;
+
+// === FUNCTIONS ===
+async function activatePython(){
+	let pyExtension = vscode.extensions.getExtension('ms-python.python');
+	if (pyExtension === undefined){
+		console.error('Failed to get MS-Python Extension');
+		return;
+	}
+	await pyExtension.activate();
+}
+
+
+function checkEncodingTag(document: vscode.TextDocument){
+	// REF: https://docs.python.org/3/reference/lexical_analysis.html#encoding-declarations
+	let match = false;
+	for (let i = 0; i < 2; i++){
+		let textLine = document.lineAt(i);
+		match = encodePattern.test(textLine.text);
+		if (match){
+			return match;
+		}
+	}
+	return match;
+}
+
+
+function moveAndRevealCursor(line: number, editor: vscode.TextEditor){
+	let position = editor.selection.start.with(line, 0);
+	let cursor = new vscode.Selection(position, position);
+	editor.selection = cursor;
+	editor.revealRange(cursor.with(), vscode.TextEditorRevealType.InCenterIfOutsideViewport);
+}
+
+
+// === MAIN ===
+export function activate(context: vscode.ExtensionContext) {
+	// Activation of this extension
+	// Use the console to output diagnostic information (console.log) and errors (console.error)
+	// These line of code will only be executed once when extension is activated
+
+	// Always make sure Python is available for use FIRST
+	activatePython();
+
+
+	// Configuration handling
 	let config = vscode.workspace.getConfiguration('ipython');
-	let execLagMilliSec = 100;
 	let cellFlag = config.get('cellTag') as string;
 	let cellPattern = new RegExp(`^(?:${cellFlag})`);
-	let encodePattern = new RegExp('coding[=:]\\s*([-\\w.]+)');
 	console.log('Cell Flag: ' + cellFlag);
 
-	let newLine:string = '\n';  // default to eol === 1
-	let editor = vscode.window.activeTextEditor;
-	if (editor !== undefined){
-		let eol = editor.document.eol;
-		if (eol === 2){
-			newLine = '\r\n';
-		}
-	}
-
-	// ------------ HELPERS ----------------
-	function checkEncodingTag(document: vscode.TextDocument){
-		// REF: https://docs.python.org/3/reference/lexical_analysis.html#encoding-declarations
-		let match = false;
-		for (let i = 0; i < 2; i++){
-			let textLine = document.lineAt(i);
-			match = encodePattern.test(textLine.text);
-			if (match){
-				return match;
-			}
-		}
-		return match;
-	}
 
 
-	function moveAndRevealCursor(line: number, editor: vscode.TextEditor){
-		let position = editor.selection.start.with(line, 0);
-		let cursor = new vscode.Selection(position, position);
-		editor.selection = cursor;
-		editor.revealRange(cursor.with(), vscode.TextEditorRevealType.InCenterIfOutsideViewport);
-	}
-
-
+	// === LOCAL HELPERS ===
 	async function getIpythonCommand(document: vscode.TextDocument, selection: vscode.Selection | undefined){
 		// FIXME: temporary measure until a full on integration with IPython API instead
+		// NOTE: found full integration with IPython API is not simple with
+		//  VSCode extension. Better for MS Python team handle.
 		await document.save();  // force saving to properly use IPython %load
 		if (selection === undefined){
 			// REF: https://ipython.readthedocs.io/en/stable/interactive/magics.html#magic-run
-			return `%run ${document.fileName} ${newLine}`;
+			 // use escape backslash seem to help. From suggestion in issue.
+			return `%run ${document.fileName} \\ ${enterKey}`;
 		} else if (selection !== undefined){
 			let text = document.getText(selection.with());
 			let cmd = undefined;
 			if (selection.isSingleLine){
-				cmd = `${text.trimEnd()}${newLine}`;
+				cmd = `${text.trimEnd()}${enterKey}`;
 			} else{
-				// Check to empty selection
-				let textLines = text.split(newLine);
+				// Check empty selection
+				let textLines = text.split(enterKey);
 				const isEmpty = (aString:string) => aString.length === 0;
 				if (textLines.every(isEmpty)){
 					return undefined;
@@ -93,7 +124,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 				let isSingleLine = startLine === stopLine;
 				if(isSingleLine){
-					cmd = `${textLines[begin].trimEnd()}${newLine}`;
+					cmd = `${textLines[begin].trimEnd()}${enterKey}`;
 				}else{
 					// REF: https://ipython.readthedocs.io/en/stable/interactive/magics.html?highlight=%25load%20magic%20command#magic-load
 					let match = checkEncodingTag(document);
@@ -106,13 +137,12 @@ export function activate(context: vscode.ExtensionContext) {
 					if (startLine === 0){
 						startLine += 1;
 					}
-					// NOTE: need extra newlines to execute loaded code (expect no newline from sendText())
-					//   - Number of extra newlines depends on the code
-					//      - If last loaded line is not in a loop-like, then execution requires 2x newlines
-					//      - Else, requires 3x newlines
-					//	    >> No real way around this so 3x newlines to ensure execution. This adds an extra
-					//		   input number. A bit unsightly but it does not impede usage.
-					cmd = `%load -r ${startLine}-${stopLine} ${document.fileName} ${newLine}${newLine}${newLine}`;
+					// NOTE: expect no newline from sendText(),
+					// Multiple enterKey's:
+					//  - 1 for load,
+					// 	- 1 to finish (extra needed in a code block like if/else)
+					//  - 1 to exec
+					cmd = `%load -r ${startLine}-${stopLine} ${document.fileName}${enterKey}${enterKey}${enterKey}`;
 				}
 			}
 			return cmd;
@@ -133,13 +163,6 @@ export function activate(context: vscode.ExtensionContext) {
 
 	async function createTerminal(){
 		console.log('Creating IPython Terminal...');
-		let pyExtension = vscode.extensions.getExtension('ms-python.python');
-		if (pyExtension === undefined){
-			console.error('Failed to get MS-Python Extension');
-			return;
-		}
-
-		await pyExtension.activate();
 
 		// -- Create and Tag IPython Terminal
 		await vscode.commands.executeCommand('python.createTerminal');
@@ -165,14 +188,15 @@ export function activate(context: vscode.ExtensionContext) {
 			cmd += startupCmd;
 		}
 		console.log('Startup Command: ', startupCmd);
-		await execute(terminal, cmd + newLine);
+		await execute(terminal, cmd + enterKey);
 		return terminal;
 	}
 
 	async function getTerminal() {
 		let terminal = vscode.window.activeTerminal;
+		// FIXME: use RegExp for terminalName
 		if (terminal !== undefined){
-			if (terminal.name === 'IPython') {
+			if (terminal.name === terminalName) {
 				return terminal;
 			}
 		}
@@ -192,8 +216,8 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 	}
 
-	// ------------ COMMANDS ----------------
-	async function runFile(){
+	// === COMMANDS ===
+	async function runFile(isReset:Boolean=false){
 		console.log('IPython run file...');
 		let editor = vscode.window.activeTextEditor;
 		if (editor === undefined){
@@ -210,10 +234,18 @@ export function activate(context: vscode.ExtensionContext) {
 			console.log('IPython Run File Command: ' + cmd);
 			let terminal = await getTerminal();
 			if (terminal !== undefined){
+				if (isReset){
+					await execute(terminal, `%reset -f ${enterKey}`);
+				}
 				await execute(terminal, cmd);
 			}
 		}
-	};
+	}
+
+	async function resetAndRunFile(){
+		console.log('IPython reset and run file...');
+		runFile(true);
+	}
 
 	// -- Run a Selected Group of Text or Lines
 	async function runSelections(){
@@ -361,15 +393,18 @@ export function activate(context: vscode.ExtensionContext) {
 	// -- Register Command to Extension
 	context.subscriptions.push(vscode.commands.registerCommand('ipython.createTerminal', createTerminal));
 	context.subscriptions.push(vscode.commands.registerCommand('ipython.runFile', runFile));
+	context.subscriptions.push(vscode.commands.registerCommand('ipython.resetAndRunFile', resetAndRunFile));
 	context.subscriptions.push(vscode.commands.registerCommand('ipython.runSelections', runSelections));
 	context.subscriptions.push(vscode.commands.registerCommand('ipython.runCell', runCell));
 	context.subscriptions.push(vscode.commands.registerCommand('ipython.runCellAndMoveToNext', runCellAndMoveToNext));
 	context.subscriptions.push(vscode.commands.registerCommand('ipython.runToLine', runToLine));
 	context.subscriptions.push(vscode.commands.registerCommand('ipython.runFromLine', runFromLine));
 
-	// -- Keybinding `when clause`
+	// -- FIXME: Keybinding `when clause`
 	vscode.commands.executeCommand('setContext', 'ipython.isUse', true);
 }
 
 // this method is called when your extension is deactivated
-export function deactivate() {}
+export function deactivate() {
+	python.kill();
+}

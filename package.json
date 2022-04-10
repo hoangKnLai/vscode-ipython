@@ -26,6 +26,7 @@
 		"onLanguage:python",
 		"onCommand:ipython.createTerminal",
 		"onCommand:ipython.runFile",
+		"onCommand:ipython.resetAndRunFile",
 		"onCommand:ipython.runSelections",
 		"onCommand:ipython.runCell",
 		"onCommand:ipython.runToLine",
@@ -72,6 +73,11 @@
 			},
 			{
 				"category": "IPython",
+				"command": "ipython.resetAndRunFile",
+				"title": "Reset Workspace and Run File in an IPython Terminal"
+			},
+			{
+				"category": "IPython",
 				"command": "ipython.runSelections",
 				"title": "Run Code Selection(s)"
 			},
@@ -105,6 +111,11 @@
 			{
 				"command": "ipython.runFile",
 				"key": "f5",
+				"when": "ipython.isUse && !inDebugMode && editorTextFocus && editorLangId == python"
+			},
+			{
+				"command": "ipython.resetAndRunFile",
+				"key": "ctrl+shift+i f5",
 				"when": "ipython.isUse && !inDebugMode && editorTextFocus && editorLangId == python"
 			},
 			{
@@ -154,5 +165,8 @@
 		"mocha": "^9.1.1",
 		"typescript": "^4.4.3",
 		"@vscode/test-electron": "^1.6.2"
+	},
+	"dependencies": {
+		"python": "0.0.4"
 	}
 }
