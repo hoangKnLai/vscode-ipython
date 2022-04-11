@@ -22,7 +22,7 @@ if (editor !== undefined){
 }
 
 let terminalName = 'IPython';  //TODO: consider making configurable?!
-let execLagMilliSec = 100;
+let execLagMilliSec = 256;
 let encodePattern = new RegExp('coding[=:]\\s*([-\\w.]+)');
 let python:cproc.ChildProcessWithoutNullStreams;
 
@@ -85,8 +85,7 @@ export function activate(context: vscode.ExtensionContext) {
 		await document.save();  // force saving to properly use IPython %load
 		if (selection === undefined){
 			// REF: https://ipython.readthedocs.io/en/stable/interactive/magics.html#magic-run
-			 // use escape backslash seem to help. From suggestion in issue.
-			return `%run ${document.fileName} \\ ${enterKey}`;
+			return `%run ${document.fileName}${enterKey}`;
 		} else if (selection !== undefined){
 			let text = document.getText(selection.with());
 			let cmd = undefined;
@@ -137,10 +136,9 @@ export function activate(context: vscode.ExtensionContext) {
 					if (startLine === 0){
 						startLine += 1;
 					}
-					// NOTE: expect no newline from sendText(),
 					// Multiple enterKey's:
-					//  - 1 for load,
-					// 	- 1 to finish (extra needed in a code block like if/else)
+					//  - 1 for %load,
+					// 	- 1 to finish potential end of a code block
 					//  - 1 to exec
 					cmd = `%load -r ${startLine}-${stopLine} ${document.fileName}${enterKey}${enterKey}${enterKey}`;
 				}
@@ -153,7 +151,8 @@ export function activate(context: vscode.ExtensionContext) {
 	async function execute(terminal:vscode.Terminal, cmd:string){
 		if (cmd.length > 0){
 			terminal.show(true);  // preserve focus
-			terminal.sendText(cmd, false);
+			// terminal.sendText(cmd, false);
+			terminal.sendText(cmd, true);  // true: add newLine at end
 			await vscode.commands.executeCommand('workbench.action.terminal.scrollToBottom');
 		}
 		// Add a small async delay between each execution to alleviate async race condition
@@ -235,7 +234,7 @@ export function activate(context: vscode.ExtensionContext) {
 			let terminal = await getTerminal();
 			if (terminal !== undefined){
 				if (isReset){
-					await execute(terminal, `%reset -f ${enterKey}`);
+					await execute(terminal, `%reset -f` + `${enterKey}`);
 				}
 				await execute(terminal, cmd);
 			}
