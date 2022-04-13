@@ -1,12 +1,6 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
-// import { exec } from 'child_process';
 import * as vscode from 'vscode';
-// import { Event, Terminal, TerminalOptions, window } from 'vscode';
-
-// === EXPERIMENTAL ===
-//  - Python spawn
-import * as cproc from 'child_process';
 
 // === CONSTANTS ===
 // \x0A is hex code for `Enter` key which likely is better than \n
@@ -22,9 +16,8 @@ if (editor !== undefined){
 }
 
 let terminalName = 'IPython';  //TODO: consider making configurable?!
-let execLagMilliSec = 256;
+// let execLagMilliSec = 32;
 let encodePattern = new RegExp('coding[=:]\\s*([-\\w.]+)');
-let python:cproc.ChildProcessWithoutNullStreams;
 
 // === FUNCTIONS ===
 async function activatePython(){
@@ -59,6 +52,11 @@ function moveAndRevealCursor(line: number, editor: vscode.TextEditor){
 }
 
 
+function wait(msec:number) {
+	return new Promise(resolve => setTimeout(resolve, msec));
+}
+
+
 // === MAIN ===
 export function activate(context: vscode.ExtensionContext) {
 	// Activation of this extension
@@ -73,91 +71,112 @@ export function activate(context: vscode.ExtensionContext) {
 	let config = vscode.workspace.getConfiguration('ipython');
 	let cellFlag = config.get('cellTag') as string;
 	let cellPattern = new RegExp(`^(?:${cellFlag})`);
+	let execLagMilliSec = config.get('execLagMilliSec') as number;
 	console.log('Cell Flag: ' + cellFlag);
 
-
-
 	// === LOCAL HELPERS ===
-	async function getIpythonCommand(document: vscode.TextDocument, selection: vscode.Selection | undefined){
+	function getIpythonCommand(
+		document: vscode.TextDocument,
+		selection: vscode.Selection | undefined){
 		// FIXME: temporary measure until a full on integration with IPython API instead
 		// NOTE: found full integration with IPython API is not simple with
 		//  VSCode extension. Better for MS Python team handle.
-		await document.save();  // force saving to properly use IPython %load
+		let nExec = 0;  // Number of execution needed on IPython console
+		let cmd = '';
+		document.save();  // force saving to properly use IPython %load
 		if (selection === undefined){
 			// REF: https://ipython.readthedocs.io/en/stable/interactive/magics.html#magic-run
-			return `%run ${document.fileName}${enterKey}`;
-		} else if (selection !== undefined){
+			cmd = `%run ${document.fileName}`;
+			nExec = 1;
+			return {cmd, nExec};
+		}else{
 			let text = document.getText(selection.with());
-			let cmd = undefined;
 			if (selection.isSingleLine){
-				cmd = `${text.trimEnd()}${enterKey}`;
-			} else{
-				// Check empty selection
-				let textLines = text.split(enterKey);
-				const isEmpty = (aString:string) => aString.length === 0;
-				if (textLines.every(isEmpty)){
-					return undefined;
-				}
+				cmd = `${text.trimEnd()}`;
+				nExec = 1;
+				return {cmd, nExec};
+			}
+			// Check empty selection
+			let textLines = text.split(enterKey);
+			const isEmpty = (aString:string) => aString.length === 0;
+			if (textLines.every(isEmpty)){
+				cmd = '';
+				nExec = 0;
+				return {cmd, nExec};
+			}
 
-				// Trim empty lines around a code block
-				let begin = 0;
-				for (let i = 0; i < textLines.length; i++){
-					if (textLines[i].trim().length > 0){
-						break;
-					} else{
-						begin += 1;
-					}
-				}
-
-				let startLine = selection.start.line + begin;
-
-				let end = 0;
-				for (let i = textLines.length - 1; i >= 0; i--){
-					if (textLines[i].trim().length > 0){
-						break;
-					} else{
-						end += 1;
-					}
-				}
-				let stopLine = selection.end.line - end;
-
-				let isSingleLine = startLine === stopLine;
-				if(isSingleLine){
-					cmd = `${textLines[begin].trimEnd()}${enterKey}`;
-				}else{
-					// REF: https://ipython.readthedocs.io/en/stable/interactive/magics.html?highlight=%25load%20magic%20command#magic-load
-					let match = checkEncodingTag(document);
-					if (!match){
-						// IPython %load is 1-index
-						startLine += 1;
-						stopLine += 1;
-						// else don't need to +1 since %load ignores `# encoding` line
-					}
-					if (startLine === 0){
-						startLine += 1;
-					}
-					// Multiple enterKey's:
-					//  - 1 for %load,
-					// 	- 1 to finish potential end of a code block
-					//  - 1 to exec
-					cmd = `%load -r ${startLine}-${stopLine} ${document.fileName}${enterKey}${enterKey}${enterKey}`;
+			// Trim empty lines around a code block
+			let begin = 0;
+			for (let i = 0; i < textLines.length; i++){
+				if (textLines[i].trim().length > 0){
+					break;
+				} else{
+					begin += 1;
 				}
 			}
-			return cmd;
-		}
 
+			let startLine = selection.start.line + begin;
+
+			let end = 0;
+			for (let i = textLines.length - 1; i >= 0; i--){
+				if (textLines[i].trim().length > 0){
+					break;
+				} else{
+					end += 1;
+				}
+			}
+			let stopLine = selection.end.line - end;
+
+			let isSingleLine = startLine === stopLine;
+			if(isSingleLine){
+				cmd = `${textLines[begin].trimEnd()}`;
+				nExec = 1;
+			}else{
+				// REF: https://ipython.readthedocs.io/en/stable/interactive/magics.html?highlight=%25load%20magic%20command#magic-load
+				let match = checkEncodingTag(document);
+				if (!match){
+					// IPython %load is 1-index
+					startLine += 1;
+					stopLine += 1;
+					// else don't need to +1 since %load ignores `# encoding` line
+				}
+				if (startLine === 0){
+					startLine += 1;
+				}
+				// Multiple enterKey's:
+				//  - 1 for %load,
+				// 	- 1 to finish potential end of a trailing code block
+				//  - 1 to exec
+				nExec = 3;
+				cmd = `%load -r ${startLine}-${stopLine} ${document.fileName}`;
+
+			}
+			return {cmd, nExec};
+		}
 	}
 
-	async function execute(terminal:vscode.Terminal, cmd:string){
+	async function execute(
+		terminal:vscode.Terminal,
+		cmd:string,
+		nExec:number=1){
 		if (cmd.length > 0){
 			terminal.show(true);  // preserve focus
-			// terminal.sendText(cmd, false);
-			terminal.sendText(cmd, true);  // true: add newLine at end
-			await vscode.commands.executeCommand('workbench.action.terminal.scrollToBottom');
+
+			// No newLine to execute since IPython is trippy with when/how to
+			// execute a code line, block, multi-lines/blocks, etc.
+			terminal.sendText(cmd, false);
+			console.log(`Command sent to terminal`);
+
+			// Wait for IPython to register command before execution
+			// in case it got stuck between each enterKey sent
+			console.log(`+ Number of Execution: ${nExec}`);
+			for (let i = 0; i < nExec; i++) {
+				await wait(execLagMilliSec);
+				console.log(`- Waited ${execLagMilliSec} msec`);
+				terminal.sendText(`${enterKey}`);
+				console.log(`- Execute ID ${i}`);
+			}
 		}
-		// Add a small async delay between each execution to alleviate async race condition
-		//  NOTE: a temporary fix until better terminal / console API if it becomes available
-		return new Promise(resolve => setTimeout(resolve, execLagMilliSec));
 	}
 
 	async function createTerminal(){
@@ -188,6 +207,7 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 		console.log('Startup Command: ', startupCmd);
 		await execute(terminal, cmd + enterKey);
+		await vscode.commands.executeCommand('workbench.action.terminal.scrollToBottom');
 		return terminal;
 	}
 
@@ -228,16 +248,19 @@ export function activate(context: vscode.ExtensionContext) {
 			return;
 		}
 
-		let cmd = await getIpythonCommand(editor.document, undefined);
-		if (cmd !== undefined){
-			console.log('IPython Run File Command: ' + cmd);
+		let {cmd, nExec} = getIpythonCommand(editor.document, undefined);
+		if (cmd !== ''){
+
 			let terminal = await getTerminal();
 			if (terminal !== undefined){
 				if (isReset){
-					await execute(terminal, `%reset -f` + `${enterKey}`);
+					console.log('Reset workspace');
+					await execute(terminal, `%reset -f`, 1);
 				}
-				await execute(terminal, cmd);
+				console.log('IPython Run File Command: ' + cmd);
+				await execute(terminal, cmd, nExec);
 			}
+			await vscode.commands.executeCommand('workbench.action.terminal.scrollToBottom');
 		}
 	}
 
@@ -262,12 +285,13 @@ export function activate(context: vscode.ExtensionContext) {
 		let terminal = await getTerminal();
 		if (terminal !== undefined){
 			for (let select of editor.selections){
-				let cmd = await getIpythonCommand(editor.document, select);
-				if (cmd !== undefined){
+				let {cmd, nExec} = getIpythonCommand(editor.document, select);
+				if (cmd !== ''){
 					console.log('IPython Run Line Selection(s): ' + cmd);
-					await execute(terminal, cmd);
+					await execute(terminal, cmd, nExec);
 				}
 			}
+			await vscode.commands.executeCommand('workbench.action.terminal.scrollToBottom');
 		} else{
 			console.error('Unable to get an IPython Terminal');
 			return;
@@ -331,11 +355,12 @@ export function activate(context: vscode.ExtensionContext) {
 		let startPosition = new vscode.Position(cellStart, 0);
 		let stopPosition = new vscode.Position(cellStop, 0);
 		let selection = new vscode.Selection(startPosition, stopPosition);
-		let cmd = await getIpythonCommand(editor.document, selection);
+		let {cmd, nExec} = getIpythonCommand(editor.document, selection);
 
-		if (cmd !== undefined){
+		if (cmd !== ''){
 			console.log('IPython Run Cell: ' + cmd);
-			await execute(terminal, cmd);
+			await execute(terminal, cmd, nExec);
+			await vscode.commands.executeCommand('workbench.action.terminal.scrollToBottom');
 		}
 
 		if (isNext && !endOfFile){
@@ -369,11 +394,12 @@ export function activate(context: vscode.ExtensionContext) {
 
 		let selection = new vscode.Selection(startPosition, stopPosition);
 
-		let cmd = await getIpythonCommand(editor.document, selection);
-		if (cmd !== undefined){
+		let {cmd, nExec} = getIpythonCommand(editor.document, selection);
+		if (cmd !== ''){
 			let terminal = await getTerminal();
 			if (terminal !== undefined){
-				await execute(terminal, cmd);
+				await execute(terminal, cmd, nExec);
+				await vscode.commands.executeCommand('workbench.action.terminal.scrollToBottom');
 			}else {
 				console.error('Failed to get terminal');
 				return;
@@ -406,6 +432,4 @@ export function activate(context: vscode.ExtensionContext) {
 }
 
 // this method is called when your extension is deactivated
-export function deactivate() {
-	python.kill();
-}
+export function deactivate() {}

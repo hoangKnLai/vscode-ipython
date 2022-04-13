@@ -43,7 +43,7 @@
 				"ipython.launchArgs": {
 					"type": "string",
 					"default": "--no-autoindent",
-					"description": "Input command to ipython call on launch (e.g. --matplotlib=qt5). Strongly recommend using --no-autoindent for proper code loading to IPython."
+					"description": "Input command to ipython call on launch (e.g. --matplotlib=qt5). Strongly recommend using `--no-autoindent` for proper code loading to IPython."
 				},
 				"ipython.startupCommands": {
 					"type": "array",
@@ -51,12 +51,17 @@
 						"%load_ext autoreload",
 						"%autoreload 2"
 					],
-					"description": "List of commands to execute line-by-line after launching IPython terminal (e.g.['%load_ext autoreload', '%autoreload 2']) "
+					"description": "List of commands to execute line-by-line after launching IPython terminal (e.g., `['%load_ext autoreload', '%autoreload 2']`)."
 				},
 				"ipython.cellTag": {
 					"type": "string",
 					"default": "# %%",
 					"description": "Tag indicating a cell block"
+				},
+				"ipython.execLagMilliSec": {
+					"type": "number",
+					"default": 32,
+					"description": "Millisecond delay between each code execution. Helps with race condition when sending text to IPython stdin shell."
 				}
 			}
 		},

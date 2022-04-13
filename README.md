@@ -1,15 +1,16 @@
 # ipython
 
-Simple hooks to enable direct execution of `python` code from editor to an IPython console.
+Simple hooks to enable direct execution of `python` code from editor to an
+IPython terminal.
 
-
+**Enjoy** and please leave a comment and/or suggestion!!
 ## Features
 
 Key features tagged with `IPython`:
 - Configurations to control the startup of an IPython console
-  - Console launch argument (e.g. `--matplotlib=qt5`)
-  - Console start up command (e.g. `["%load_ext autoreload", %autoreload 2]`)
-  - Unique cell block tag (e.g. `# %%`)
+  - Console launch argument (e.g., `--matplotlib=qt5`)
+  - Console start up command (e.g., `["%load_ext autoreload", %autoreload 2]`)
+  - Configurable cell block tag (e.g. `# %%`)
 - Added commands to run `python` code interactively
   - E.g. Run a file, selection(s) of code, cell block, run to line, run from line, ...
 
@@ -26,18 +27,25 @@ See `ipython: Feature Contribution` tab in VSCode Extension (Ctrl + Shift + X) p
 ## Known Issues
 
 - Not a direct hook to the IPython API
-- Cannot resolve recently used IPython terminal when it is not the currently active terminal
-    - Currently will select most recently created terminal when an IPython terminal is not the current active terminal.
+  - Might not be possible. It appears that IPython API requires spawning and
+  communicating with a sub `python` process.
+- Cannot resolve recently used IPython terminal when it is not the current
+active terminal
+  - Always use most recently created terminal
 - This README.md and other *.md can use improvement
 
 ## Release Notes
 
 ### 2022.4.x
-- Added `reset and run` option
-- Up 256ms between every command execution to alleviate sendText race condition
+- Changed `execute()` of `python` code ensuring an `ExecLagMilliSec` between
+every major `enterKey` pressed to `IPython` terminal.
+  - User should adjust `ExecLagMilliSec` fitting their computer performance
+- Added `ExecLagMilliSec` configuration to help with sendText race condition
+- Added `reset and run` command
 
 ### 2021.10.17
-- Added an 100ms between every command execution to alleviate sendText race condition
+- Added an 100ms between every command execution to alleviate sendText
+race condition
 
 ### 2021.10.15
 
@@ -52,7 +60,8 @@ See `ipython: Feature Contribution` tab in VSCode Extension (Ctrl + Shift + X) p
 ### 2021.10.3
 
 **Features**:
-- Handling of encoding `# -*- coding: <encoding-name> -*-` automatically when parsing code to send to IPython console
+- Handling of encoding `# -*- coding: <encoding-name> -*-` automatically when
+parsing code to send to IPython console
 - Added ipython.runToLine and ipython.runFromLine
 
 **Fixes:**
@@ -75,9 +84,5 @@ See `ipython: Feature Contribution` tab in VSCode Extension (Ctrl + Shift + X) p
 - Various small bugs
 
 ### 2021.09.0
-
 Hot of the press!
 
-**Enjoy!**
-
-Please leave a comment and/or suggestion!!
