@@ -80,6 +80,7 @@ export function activate(context: vscode.ExtensionContext) {
 				terminal.sendText('', true);
 				console.log(`Second newline sent to terminal due to indentation`);
 			}
+			await vscode.commands.executeCommand('workbench.action.terminal.scrollToBottom');
 		}
 	}
 
@@ -109,7 +110,6 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 		console.log('Startup Command: ', startupCmd);
 		await execute(terminal, cmd + newLine);
-		await vscode.commands.executeCommand('workbench.action.terminal.scrollToBottom');
 		return terminal;
 	}
 
@@ -151,7 +151,6 @@ export function activate(context: vscode.ExtensionContext) {
 			await execute(terminal, `%reset -f`);
 		}
 		await execute(terminal, `%run ${editor.document.fileName}`);
-		await vscode.commands.executeCommand('workbench.action.terminal.scrollToBottom');
 	}
 
 	async function resetAndRunFile(){
@@ -170,7 +169,6 @@ export function activate(context: vscode.ExtensionContext) {
 			cmd += editor.document.getText(selection.with());
 		}
 		await execute(terminal, cmd);
-		await vscode.commands.executeCommand('workbench.action.terminal.scrollToBottom');
 	}
 
 	//-- Run a Cell
