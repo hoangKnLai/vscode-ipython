@@ -66,11 +66,20 @@ export function activate(context: vscode.ExtensionContext) {
 
 
 	// Configuration handling
-	let config = vscode.workspace.getConfiguration('ipython');
-	let cellFlag = config.get('cellTag') as string;
-	let cellPattern = new RegExp(`^(?:${cellFlag})`);
-	let execLagMilliSec = config.get('execLagMilliSec') as number;
-	console.log('Cell Flag: ' + cellFlag);
+	let cellPattern: RegExp;
+	let execLagMilliSec: number;
+	let launchArgs: string;
+	let startupCmds: string[];
+	function updateConfig() {
+		console.log('Updating configuration...');
+		let config = vscode.workspace.getConfiguration('ipython');
+		let cellFlag = config.get('cellTag') as string;
+		cellPattern = new RegExp(`^(?:${cellFlag})`);
+		execLagMilliSec = config.get('execLagMilliSec') as number;
+		console.log('Cell Flag: ' + cellFlag);
+		launchArgs = config.get('launchArgs') as string;
+		startupCmds = config.get('startupCommands') as string[];
+	}
 
 	// === LOCAL HELPERS ===
 	function getIpythonCommand(
@@ -187,18 +196,16 @@ export function activate(context: vscode.ExtensionContext) {
 
 		// Launch options
 		let cmd = 'ipython ';
-		let launchArgs = config.get('launchArgs');
 		if (launchArgs !== undefined){
 			cmd += launchArgs;
 		}
 
 		// Startup options
 		// REF: https://ipython.readthedocs.io/en/stable/config/intro.html#command-line-arguments
-		let cmds = config.get('startupCommands') as any[];
 		let startupCmd = '';
-		if (cmds !== undefined){
+		if (startupCmds !== undefined){
 			startupCmd = " --InteractiveShellApp.exec_lines=";
-			for (let c of cmds){
+			for (let c of startupCmds){
 				startupCmd += " --InteractiveShellApp.exec_lines=" + `'${c}'`;
 			}
 			cmd += startupCmd;
@@ -235,6 +242,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 	// === COMMANDS ===
 	async function runFile(isReset:Boolean=false){
+		updateConfig();
 		console.log('IPython run file...');
 		let editor = vscode.window.activeTextEditor;
 		if (editor === undefined){
@@ -269,6 +277,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 	// -- Run a Selected Group of Text or Lines
 	async function runSelections(){
+		updateConfig();
 		console.log('IPython run selection...');
 		let editor = vscode.window.activeTextEditor;
 		if (editor === undefined){
@@ -298,6 +307,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 	//-- Run a Cell
 	async function runCell(isNext: boolean){
+		updateConfig();
 		console.log('IPython run cell...');
 		let editor = vscode.window.activeTextEditor;
 		if (editor === undefined){
@@ -364,6 +374,7 @@ export function activate(context: vscode.ExtensionContext) {
 	}
 
 	async function runCursor(toFrom: string){
+		updateConfig();
 		let editor = vscode.window.activeTextEditor;
 		if (editor === undefined){
 			console.error('Failed to get activeTextEditor');
