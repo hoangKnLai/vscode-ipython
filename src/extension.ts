@@ -265,7 +265,7 @@ export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(vscode.commands.registerCommand('ipython.runFromLine', runFromLine));
 
 	// -- FIXME: Keybinding `when clause`
-	vscode.commands.executeCommand('setContext', 'ipython.isUse', true);
+	vscode.commands.executeCommand('setContext', 'ipython.extensionActive', true);
 }
 
 // this method is called when your extension is deactivated

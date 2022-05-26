@@ -120,37 +120,37 @@
 			{
 				"command": "ipython.runFile",
 				"key": "f5",
-				"when": "ipython.isUse && !inDebugMode && editorTextFocus && editorLangId == python"
+				"when": "ipython.extensionActive && !inDebugMode && editorTextFocus && editorLangId == python"
 			},
 			{
 				"command": "ipython.resetAndRunFile",
 				"key": "ctrl+shift+i f5",
-				"when": "ipython.isUse && !inDebugMode && editorTextFocus && editorLangId == python"
+				"when": "ipython.extensionActive && !inDebugMode && editorTextFocus && editorLangId == python"
 			},
 			{
 				"command": "ipython.runSelections",
 				"key": "f9",
-				"when": "ipython.isUse && !inDebugMode && editorTextFocus && !findInputFocussed && !replaceInputFocussed && editorLangId == python"
+				"when": "ipython.extensionActive && !inDebugMode && editorTextFocus && !findInputFocussed && !replaceInputFocussed && editorLangId == python"
 			},
 			{
 				"command": "ipython.runCell",
 				"key": "alt+enter",
-				"when": "ipython.isUse && !inDebugMode && editorTextFocus && editorLangId == python"
+				"when": "ipython.extensionActive && !inDebugMode && editorTextFocus && editorLangId == python"
 			},
 			{
 				"command": "ipython.runCellAndMoveToNext",
 				"key": "shift+alt+enter",
-				"when": "ipython.isUse && !inDebugMode && editorTextFocus && !notebookEditorFocused && editorLangId == python"
+				"when": "ipython.extensionActive && !inDebugMode && editorTextFocus && !notebookEditorFocused && editorLangId == python"
 			},
 			{
 				"command": "ipython.runToLine",
 				"key": "ctrl+shift+i l",
-				"when": "ipython.isUse && !inDebugMode && editorTextFocus && !notebookEditorFocused && editorLangId == python"
+				"when": "ipython.extensionActive && !inDebugMode && editorTextFocus && !notebookEditorFocused && editorLangId == python"
 			},
 			{
 				"command": "ipython.runFromLine",
 				"key": "ctrl+shift+i shift+l",
-				"when": "ipython.isUse && !inDebugMode && editorTextFocus && !notebookEditorFocused && editorLangId == python"
+				"when": "ipython.extensionActive && !inDebugMode && editorTextFocus && !notebookEditorFocused && editorLangId == python"
 			}
 		]
 	},
