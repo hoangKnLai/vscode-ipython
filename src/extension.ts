@@ -237,19 +237,22 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 	}
 
+	function getEditor(): vscode.TextEditor {
+		let editor = vscode.window.activeTextEditor;
+		if (editor === undefined){
+			throw new Error('Unable to access Active Text Editor');
+		}
+		if (editor.document.languageId !== 'python'){
+			throw new Error(`Editor file is ${editor.document.languageId}; expected Python.`);
+		}
+		return editor;
+	}
+
 	// === COMMANDS ===
 	async function runFile(isReset:Boolean=false){
 		updateConfig();
 		console.log('IPython run file...');
-		let editor = vscode.window.activeTextEditor;
-		if (editor === undefined){
-			console.error('Unable to access Active Text Editor');
-			return;
-		}
-		if (editor.document.languageId !== 'python'){
-			console.error('Command only support "python" .py file');
-			return;
-		}
+		let editor = getEditor();
 
 		let {cmd, nExec} = getIpythonCommand(editor.document, undefined);
 		if (cmd !== ''){
@@ -276,15 +279,7 @@ export function activate(context: vscode.ExtensionContext) {
 	async function runSelections(){
 		updateConfig();
 		console.log('IPython run selection...');
-		let editor = vscode.window.activeTextEditor;
-		if (editor === undefined){
-			console.error('Unable to access Active Text Editor');
-			return;
-		}
-		if (editor.document.languageId !== 'python'){
-			console.error('Command only support "python" .py file');
-			return;
-		}
+		let editor = getEditor();
 
 		let terminal = await getTerminal(editor.document.fileName);
 		if (terminal !== undefined){
@@ -306,15 +301,7 @@ export function activate(context: vscode.ExtensionContext) {
 	async function runCell(isNext: boolean){
 		updateConfig();
 		console.log('IPython run cell...');
-		let editor = vscode.window.activeTextEditor;
-		if (editor === undefined){
-			console.error('Unable to access Active Text Editor');
-			return;
-		}
-		if (editor.document.languageId !== 'python'){
-			console.error('Command only support "python" .py file');
-			return;
-		}
+		let editor = getEditor();
 
 		let startLine = editor.selection.start.line;
 		let file = editor.document.getText();
@@ -372,11 +359,8 @@ export function activate(context: vscode.ExtensionContext) {
 
 	async function runCursor(toFrom: string){
 		updateConfig();
-		let editor = vscode.window.activeTextEditor;
-		if (editor === undefined){
-			console.error('Failed to get activeTextEditor');
-			return;
-		}
+		let editor = getEditor();
+
 		let startPosition: vscode.Position;
 		let stopPosition: vscode.Position;
 		if (toFrom === 'top'){
