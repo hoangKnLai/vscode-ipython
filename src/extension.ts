@@ -74,7 +74,7 @@ export function activate(context: vscode.ExtensionContext) {
 		console.log('Updating configuration...');
 		let config = vscode.workspace.getConfiguration('ipython');
 		let cellFlag = config.get('cellTag') as string;
-		cellPattern = new RegExp(`^(?:${cellFlag})`);
+		cellPattern = new RegExp(`^(?:${cellFlag.replace(' ', '\\s*')})`);
 		execLagMilliSec = config.get('execLagMilliSec') as number;
 		console.log('Cell Flag: ' + cellFlag);
 		launchArgs = config.get('launchArgs') as string;
