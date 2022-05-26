@@ -331,14 +331,6 @@ export function activate(context: vscode.ExtensionContext) {
 			}
 		}
 
-		let nLine = nextCell - cellStart;
-
-		// FIXME: handle a file without any cells or just one cell
-		if (nLine === 1 || nLine === lines.length){
-			console.log('Found and skip empty cell or no cell file');
-			moveAndRevealCursor(nextCell, editor);
-			return;
-		}
 
 		// Terminal
 		let terminal = await getTerminal();
