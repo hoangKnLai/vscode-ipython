@@ -3,7 +3,7 @@
 	"displayName": "ipython",
 	"description": "IPython integration supporting direct interactive usage and commands.",
 	"icon": "md_img/icon.png",
-	"version": "2022.05.26",
+	"version": "2022.5.26",
 	"publisher": "shaperilio",
 	"repository": "https://github.com/shaperilio/vscode-ipython",
 	"engines": {
