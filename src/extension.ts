@@ -32,7 +32,7 @@ function moveAndRevealCursor(line: number, editor: vscode.TextEditor){
 	editor.revealRange(cursor.with(), vscode.TextEditorRevealType.InCenterIfOutsideViewport);
 }
 
-function wait(msec:number) {
+function wait(msec: number) {
 	return new Promise(resolve => setTimeout(resolve, msec));
 }
 
@@ -49,6 +49,7 @@ export function activate(context: vscode.ExtensionContext) {
 	// Configuration handling
 	let cellPattern: RegExp;
 	let execLagMilliSec: number;
+	let ipythonLagMillisec: number;
 	let launchArgs: string;
 	let startupCmds: string[];
 	function updateConfig() {
@@ -101,15 +102,18 @@ export function activate(context: vscode.ExtensionContext) {
 		// Startup options
 		// REF: https://ipython.readthedocs.io/en/stable/config/intro.html#command-line-arguments
 		let startupCmd = '';
-		if (startupCmds !== undefined){
+		if (startupCmds.length > 0){
 			startupCmd = " --InteractiveShellApp.exec_lines=";
 			for (let c of startupCmds){
 				startupCmd += " --InteractiveShellApp.exec_lines=" + `'${c}'`;
 			}
 			cmd += startupCmd;
 		}
-		console.log('Startup Command: ', startupCmd);
-		await execute(terminal, cmd + newLine);
+		console.log('Startup Command: ', cmd);
+		await execute(terminal, cmd);
+		// TODO: need to wait some time until IPtyhon is running; don't know how
+		// I can actually check stdout for that.
+		await wait(ipythonLagMillisec);
 		return terminal;
 	}
 
