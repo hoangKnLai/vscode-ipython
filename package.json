@@ -48,8 +48,7 @@
 				"ipython.startupCommands": {
 					"type": "array",
 					"default": [
-						"%load_ext autoreload",
-						"%autoreload 2"
+						"# from matplotlib import pyplot as plt; plt.ion()"
 					],
 					"description": "List of commands to execute line-by-line after launching IPython terminal (e.g., `['%load_ext autoreload', '%autoreload 2']`)."
 				},
@@ -60,8 +59,9 @@
 				},
 				"ipython.execLagMilliSec": {
 					"type": "number",
-					"default": 32,
-					"description": "Millisecond delay between each code execution. Helps with race condition when sending text to IPython stdin shell."
+					"default": 100,
+					"description": "Millisecond delay between sending code to the terminal and executing it."
+				},
 				}
 			}
 		},
