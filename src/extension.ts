@@ -13,7 +13,7 @@ if (editor !== undefined){
 	}
 }
 
-let terminalName = 'IPython';  //TODO: consider making configurable?!
+let terminalPrefix = 'IPython';  // for the name of the terminal window.
 // let execLagMilliSec = 32;
 let encodePattern = new RegExp('coding[=:]\\s*([-\\w.]+)');
 
@@ -186,7 +186,7 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 	}
 
-	async function createTerminal(){
+	async function createTerminal(terminalName: string = terminalPrefix): Promise<vscode.Terminal> {
 		console.log('Creating IPython Terminal...');
 
 		// -- Create and Tag IPython Terminal
@@ -216,24 +216,21 @@ export function activate(context: vscode.ExtensionContext) {
 		return terminal;
 	}
 
-	async function getTerminal() {
-		let terminal = vscode.window.activeTerminal;
-		// FIXME: use RegExp for terminalName
-		if (terminal !== undefined){
-			if (terminal.name === terminalName) {
-				return terminal;
-			}
-		}
+	function makeTerminalName(terminalName: string): string {
+		return `${terminalPrefix} - ${terminalName}`;
+	}
 
+	async function getTerminal(terminalName: string) {
+		let name = makeTerminalName(terminalName);
 		let terminals = vscode.window.terminals;
 		if (terminals.length > 1) {
 			for (let i = terminals.length - 1; i >= 0; i--) {
-				if (terminals[i].name === terminalName){
+				if (terminals[i].name === name){
 					return terminals[i];
 				}
 			}
 		} else {
-			let terminal = await createTerminal();
+			let terminal = await createTerminal(name);
 			if (terminal !== undefined){
 				return terminal;
 			}
@@ -257,7 +254,7 @@ export function activate(context: vscode.ExtensionContext) {
 		let {cmd, nExec} = getIpythonCommand(editor.document, undefined);
 		if (cmd !== ''){
 
-			let terminal = await getTerminal();
+			let terminal = await getTerminal(editor.document.fileName);
 			if (terminal !== undefined){
 				if (isReset){
 					console.log('Reset workspace');
@@ -289,7 +286,7 @@ export function activate(context: vscode.ExtensionContext) {
 			return;
 		}
 
-		let terminal = await getTerminal();
+		let terminal = await getTerminal(editor.document.fileName);
 		if (terminal !== undefined){
 			for (let select of editor.selections){
 				let {cmd, nExec} = getIpythonCommand(editor.document, select);
@@ -341,7 +338,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 
 		// Terminal
-		let terminal = await getTerminal();
+		let terminal = await getTerminal(editor.document.fileName);
 		if (terminal === undefined){
 			console.error('Unable to get an IPython Terminal');
 			return;
@@ -397,7 +394,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 		let {cmd, nExec} = getIpythonCommand(editor.document, selection);
 		if (cmd !== ''){
-			let terminal = await getTerminal();
+			let terminal = await getTerminal(editor.document.fileName);
 			if (terminal !== undefined){
 				await execute(terminal, cmd, nExec);
 				await vscode.commands.executeCommand('workbench.action.terminal.scrollToBottom');
