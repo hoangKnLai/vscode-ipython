@@ -14,8 +14,6 @@ if (editor !== undefined){
 }
 
 let terminalPrefix = 'IPython';  // for the name of the terminal window.
-// let execLagMilliSec = 32;
-let encodePattern = new RegExp('coding[=:]\\s*([-\\w.]+)');
 
 // === FUNCTIONS ===
 async function activatePython(){
@@ -27,21 +25,6 @@ async function activatePython(){
 	await pyExtension.activate();
 }
 
-
-function checkEncodingTag(document: vscode.TextDocument){
-	// REF: https://docs.python.org/3/reference/lexical_analysis.html#encoding-declarations
-	let match = false;
-	for (let i = 0; i < 2; i++){
-		let textLine = document.lineAt(i);
-		match = encodePattern.test(textLine.text);
-		if (match){
-			return match;
-		}
-	}
-	return match;
-}
-
-
 function moveAndRevealCursor(line: number, editor: vscode.TextEditor){
 	let position = editor.selection.start.with(line, 0);
 	let cursor = new vscode.Selection(position, position);
@@ -49,11 +32,9 @@ function moveAndRevealCursor(line: number, editor: vscode.TextEditor){
 	editor.revealRange(cursor.with(), vscode.TextEditorRevealType.InCenterIfOutsideViewport);
 }
 
-
 function wait(msec:number) {
 	return new Promise(resolve => setTimeout(resolve, msec));
 }
-
 
 // === MAIN ===
 export function activate(context: vscode.ExtensionContext) {
