@@ -3,8 +3,6 @@
 import * as vscode from 'vscode';
 
 // === CONSTANTS ===
-// \x0A is hex code for `Enter` key which likely is better than \n
-let enterKey:string = '\x0A';
 
 let newLine:string = '\n';  // default to eol === 1
 let editor = vscode.window.activeTextEditor;
@@ -97,7 +95,7 @@ export function activate(context: vscode.ExtensionContext) {
 				return {cmd, nExec};
 			}
 			// Check empty selection
-			let textLines = text.split(enterKey);
+			let textLines = text.split(newLine);
 			const isEmpty = (aString:string) => aString.length === 0;
 			if (textLines.every(isEmpty)){
 				cmd = '';
@@ -173,7 +171,7 @@ export function activate(context: vscode.ExtensionContext) {
 			for (let i = 0; i < nExec; i++) {
 				await wait(execLagMilliSec);
 				console.log(`- Waited ${execLagMilliSec} msec`);
-				terminal.sendText(`${enterKey}`);
+				terminal.sendText(`${newLine}`);
 				console.log(`- Execute ID ${i}`);
 			}
 		}
@@ -206,7 +204,7 @@ export function activate(context: vscode.ExtensionContext) {
 			cmd += startupCmd;
 		}
 		console.log('Startup Command: ', startupCmd);
-		await execute(terminal, cmd + enterKey);
+		await execute(terminal, cmd + newLine);
 		await vscode.commands.executeCommand('workbench.action.terminal.scrollToBottom');
 		return terminal;
 	}
