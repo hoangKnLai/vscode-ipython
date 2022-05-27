@@ -42,8 +42,8 @@
 			"properties": {
 				"ipython.launchArgs": {
 					"type": "string",
-					"default": "--no-autoindent",
-					"description": "Input command to ipython call on launch (e.g. --matplotlib=qt5). Strongly recommend using `--no-autoindent` for proper code loading to IPython."
+					"default": "",
+					"description": "Input command to ipython call on launch (e.g. --matplotlib=qt5)"
 				},
 				"ipython.startupCommands": {
 					"type": "array",
