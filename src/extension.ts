@@ -67,20 +67,22 @@ export function activate(context: vscode.ExtensionContext) {
 	async function execute(terminal: vscode.Terminal, cmd: string){
 		if (cmd.length > 0){
 			terminal.show(true);  // preserve focus
-
+			// FIXME: This returns immediately, before the terminal has updated,
+			// so no amount of `execLagMilliSec` will be correct if `cmd` varies
+			// in length. This is probably why the original code used the `%run`
+			// magic command instead.
 			terminal.sendText(cmd, false);
 			console.log(`Command sent to terminal`);
-			await wait(execLagMilliSec);
-			terminal.sendText('', true);
-			console.log(`Newline sent to terminal`);
 			let lines = cmd.split(newLine);
 			let lastLine = lines[lines.length - 1];
 			// Attempt to detect if the last line was indented.
 			if(lastLine.startsWith(' ') || lastLine.startsWith('\t')) {
-				await wait(execLagMilliSec);
 				terminal.sendText('', true);
-				console.log(`Second newline sent to terminal due to indentation`);
+				console.log(`Newline sent to terminal due to indentation`);
 			}
+			await wait(execLagMilliSec);
+			terminal.sendText('', true);
+			console.log(`Newline sent to terminal to execute`);
 			await vscode.commands.executeCommand('workbench.action.terminal.scrollToBottom');
 		}
 	}
