@@ -50,6 +50,7 @@ export function activate(context: vscode.ExtensionContext) {
 	let cellPattern: RegExp;
 	let execLagMilliSec: number;
 	let ipythonLagMillisec: number;
+	let execLagPerLineMilliseconds: number;
 	let launchArgs: string;
 	let startupCmds: string[];
 	function updateConfig() {
@@ -59,6 +60,7 @@ export function activate(context: vscode.ExtensionContext) {
 		cellPattern = new RegExp(`^(?:${cellFlag.replace(' ', '\\s*')})`);
 		execLagMilliSec = config.get('execLagMilliSec') as number;
 		ipythonLagMillisec = config.get('ipythonLagMillisec') as number;
+		execLagPerLineMilliseconds = config.get('ipythonLagPerLineMilliseconds') as number;
 		console.log('Cell Flag: ' + cellFlag);
 		launchArgs = config.get('launchArgs') as string;
 		startupCmds = config.get('startupCommands') as string[];
@@ -81,7 +83,10 @@ export function activate(context: vscode.ExtensionContext) {
 				terminal.sendText('', true);
 				console.log(`Newline sent to terminal due to indentation`);
 			}
-			await wait(execLagMilliSec);
+			let nLines = lines.length;
+			let delayMillisec = nLines * execLagPerLineMilliseconds + execLagMilliSec; // Wait 1.5 msec per line plus the configurable lag.
+			console.log(`Waiting ${delayMillisec} milliseconds to send execution newline for ${nLines} lines...`);
+			await wait(delayMillisec);
 			terminal.sendText('', true);
 			console.log(`Newline sent to terminal to execute`);
 			await vscode.commands.executeCommand('workbench.action.terminal.scrollToBottom');
