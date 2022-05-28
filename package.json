@@ -57,20 +57,25 @@
 					"default": "# %%",
 					"description": "Tag indicating a cell block"
 				},
-				"ipython.execLagMilliSec": {
+				"ipython.terminalLagMilliseconds": {
 					"type": "number",
-					"default": 100,
-					"description": "Millisecond delay between sending code to the terminal and executing it."
+					"default": 1000,
+					"description": "Millisecond delay after launching the terminal and before executing IPython. Depends on e.g. if VSCode is activating an environment."
 				},
-				"ipython.ipythonLagMillisec": {
+				"ipython.ipythonLagMilliseconds": {
 					"type": "number",
 					"default": 1500,
-					"description": "Millisecond delay after launching IPython when first creating the terminal."
+					"description": "Millisecond delay after launching IPython before sending any commands."
 				},
 				"ipython.execLagPerLineMilliseconds": {
 					"type": "number",
 					"default": 1.25,
-					"description": "Millisecond delay added per line until code is executed. Total delay is this plus `execLagMilliSec`."
+					"description": "Millisecond delay added per line until code is executed. Total delay is this plus `execLagMilliSecondsonds`."
+				},
+				"ipython.execLagMilliSeconds": {
+					"type": "number",
+					"default": 100,
+					"description": "Minimum delay between sending code to the terminal and executing it."
 				}
 			}
 		},
