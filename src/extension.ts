@@ -115,6 +115,7 @@ export function activate(context: vscode.ExtensionContext) {
 		await execute(terminal, cmd);
 		// TODO: need to wait some time until IPtyhon is running; don't know how
 		// I can actually check stdout for that.
+		console.log(`Waiting ${ipythonLagMillisec} milliseconds for IPython startup...`)
 		await wait(ipythonLagMillisec);
 		return terminal;
 	}
