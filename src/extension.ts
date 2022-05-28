@@ -127,7 +127,7 @@ export function activate(context: vscode.ExtensionContext) {
 	async function getTerminal(terminalName: string): Promise<vscode.Terminal> {
 		let name = makeTerminalName(terminalName);
 		let terminals = vscode.window.terminals;
-		if (terminals.length > 1) {
+		if (terminals.length > 0) {
 			for (let i = terminals.length - 1; i >= 0; i--) {
 				if (terminals[i].name === name){
 					return terminals[i];
