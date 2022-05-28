@@ -106,7 +106,6 @@ export function activate(context: vscode.ExtensionContext) {
 		// REF: https://ipython.readthedocs.io/en/stable/config/intro.html#command-line-arguments
 		let startupCmd = '';
 		if (startupCmds.length > 0){
-			startupCmd = " --InteractiveShellApp.exec_lines=";
 			for (let c of startupCmds){
 				startupCmd += " --InteractiveShellApp.exec_lines=" + `'${c}'`;
 			}
