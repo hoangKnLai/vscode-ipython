@@ -97,7 +97,7 @@ export function activate(context: vscode.ExtensionContext) {
 		console.log('Creating IPython Terminal...');
 
 		// -- Create and Tag IPython Terminal
-		await vscode.commands.executeCommand('python.createTerminal');
+		await vscode.commands.executeCommand('workbench.action.createTerminalEditor');
 		await vscode.commands.executeCommand('workbench.action.terminal.renameWithArg', {name : terminalName});
 		let terminal = vscode.window.activeTerminal as vscode.Terminal;
 
