@@ -60,7 +60,7 @@ export function activate(context: vscode.ExtensionContext) {
 		cellPattern = new RegExp(`^(?:${cellFlag.replace(' ', '\\s*')})`);
 		execLagMilliSec = config.get('execLagMilliSec') as number;
 		ipythonLagMillisec = config.get('ipythonLagMillisec') as number;
-		execLagPerLineMilliseconds = config.get('ipythonLagPerLineMilliseconds') as number;
+		execLagPerLineMilliseconds = config.get('execLagPerLineMilliseconds') as number;
 		console.log('Cell Flag: ' + cellFlag);
 		launchArgs = config.get('launchArgs') as string;
 		startupCmds = config.get('startupCommands') as string[];

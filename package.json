@@ -66,6 +66,11 @@
 					"type": "number",
 					"default": 1500,
 					"description": "Millisecond delay after launching IPython when first creating the terminal."
+				},
+				"ipython.execLagPerLineMilliseconds": {
+					"type": "number",
+					"default": 1.25,
+					"description": "Millisecond delay added per line until code is executed. Total delay is this plus `execLagMilliSec`."
 				}
 			}
 		},
