@@ -129,17 +129,17 @@
 			},
 			{
 				"command": "ipython.runFile",
-				"key": "f5",
-				"when": "ipython.extensionActive && !inDebugMode && editorTextFocus && editorLangId == python"
-			},
-			{
-				"command": "ipython.resetAndRunFile",
 				"key": "ctrl+shift+i f5",
 				"when": "ipython.extensionActive && !inDebugMode && editorTextFocus && editorLangId == python"
 			},
 			{
+				"command": "ipython.resetAndRunFile",
+				"key": "ctrl+shift+i f6",
+				"when": "ipython.extensionActive && !inDebugMode && editorTextFocus && editorLangId == python"
+			},
+			{
 				"command": "ipython.runSelections",
-				"key": "f9",
+				"key": "ctrl+shift+i f9",
 				"when": "ipython.extensionActive && !inDebugMode && editorTextFocus && !findInputFocussed && !replaceInputFocussed && editorLangId == python"
 			},
 			{
