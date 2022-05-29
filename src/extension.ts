@@ -99,6 +99,11 @@ export function activate(context: vscode.ExtensionContext) {
 				terminal.sendText('', true);
 				console.log(`Newline sent to terminal due to indentation`);
 			}
+			// NOTE: In IPython, ESC, Enter executes the buffer. However, we
+			// cannot send this combination via standard input. See
+			// https://github.com/prompt-toolkit/python-prompt-toolkit/issues/1637
+			// let executeBuffer: string = '\x1B\x0D'; // ESC, Enter
+			// terminal.sendText(executeBuffer, false);
 			let n100Chars = cmd.length / 100;
 			let delay = n100Chars * execDelayPer100CharsMsec + minExecDelayMsec;
 			console.log(`Waiting ${delay} milliseconds to send execution newline for ${cmd.length} characters...`);
