@@ -6,9 +6,9 @@ import * as vscode from 'vscode';
 
 let newLine:string = '\n';  // default to eol === 1
 let editor = vscode.window.activeTextEditor;
-if (editor !== undefined){
+if (editor !== undefined) {
 	let eol = editor.document.eol;
-	if (eol === 2){
+	if (eol === 2) {
 		newLine = '\r\n';
 	}
 }
@@ -16,16 +16,16 @@ if (editor !== undefined){
 let terminalPrefix = 'IPython';  // for the name of the terminal window.
 
 // === FUNCTIONS ===
-async function activatePython(){
+async function activatePython() {
 	let pyExtension = vscode.extensions.getExtension('ms-python.python');
-	if (pyExtension === undefined){
+	if (pyExtension === undefined) {
 		console.error('Failed to get MS-Python Extension');
 		return;
 	}
 	await pyExtension.activate();
 }
 
-function moveAndRevealCursor(line: number, editor: vscode.TextEditor){
+function moveAndRevealCursor(line: number, editor: vscode.TextEditor) {
 	let position = editor.selection.start.with(line, 0);
 	let cursor = new vscode.Selection(position, position);
 	editor.selection = cursor;
@@ -70,7 +70,7 @@ export function activate(context: vscode.ExtensionContext) {
 	}
 
 	// === LOCAL HELPERS ===
-	async function execute(terminal: vscode.Terminal, cmd: string){
+	async function execute(terminal: vscode.Terminal, cmd: string) {
 		// There is a fundamental issue here.
 		// `terminal.sendText` returns immediately, and it takes quite a bit for
 		// the terminal to actually process standard input.
@@ -85,7 +85,7 @@ export function activate(context: vscode.ExtensionContext) {
 		// users will have to tweak the delay parameters until things behave in
 		// their systems. This is probably why the original code used the `%run`
 		// magic command instead.
-		if (cmd.length > 0){
+		if (cmd.length > 0) {
 			terminal.show(true);  // preserve focus
 			// FIXME: This returns immediately, before the terminal has updated,
 			// so no amount of `minimumExecutionDelayMilliseconds` will be
@@ -121,15 +121,15 @@ export function activate(context: vscode.ExtensionContext) {
 
 		// Launch options
 		let cmd = 'ipython ';
-		if (launchArgs !== undefined){
+		if (launchArgs !== undefined) {
 			cmd += launchArgs;
 		}
 
 		// Startup options
 		// REF: https://ipython.readthedocs.io/en/stable/config/intro.html#command-line-arguments
 		let startupCmd = '';
-		if (startupCmds.length > 0){
-			for (let c of startupCmds){
+		if (startupCmds.length > 0) {
+			for (let c of startupCmds) {
 				startupCmd += " --InteractiveShellApp.exec_lines=" + `'${c}'`;
 			}
 			cmd += startupCmd;
@@ -154,7 +154,7 @@ export function activate(context: vscode.ExtensionContext) {
 		let terminals = vscode.window.terminals;
 		if (terminals.length > 0) {
 			for (let i = terminals.length - 1; i >= 0; i--) {
-				if (terminals[i].name === name){
+				if (terminals[i].name === name) {
 					return terminals[i];
 				}
 			}
@@ -164,17 +164,17 @@ export function activate(context: vscode.ExtensionContext) {
 
 	function getEditor(): vscode.TextEditor {
 		let editor = vscode.window.activeTextEditor;
-		if (editor === undefined){
+		if (editor === undefined) {
 			throw new Error('Unable to access Active Text Editor');
 		}
-		if (editor.document.languageId !== 'python'){
+		if (editor.document.languageId !== 'python') {
 			throw new Error(`Editor file is ${editor.document.languageId}; expected Python.`);
 		}
 		return editor;
 	}
 
 	// === COMMANDS ===
-	async function cmdRunFile(resetFirst: boolean = false){
+	async function cmdRunFile(resetFirst: boolean = false) {
 		updateConfig();
 		console.log('IPython run file...');
 		let editor = getEditor();
@@ -185,13 +185,13 @@ export function activate(context: vscode.ExtensionContext) {
 		await execute(terminal, `%run ${editor.document.fileName}`);
 	}
 
-	async function cmdResetAndRunFile(){
+	async function cmdResetAndRunFile() {
 		console.log('IPython reset and run file...');
 		cmdRunFile(true);
 	}
 
 	// -- Run a Selected Group of Text or Lines
-	async function cmdRunSelections(){
+	async function cmdRunSelections() {
 		updateConfig();
 		console.log('IPython run selection...');
 		let editor = getEditor();
@@ -204,7 +204,7 @@ export function activate(context: vscode.ExtensionContext) {
 	}
 
 	//-- Run a Cell
-	async function cmdRunCell(goToNextCell: boolean){
+	async function cmdRunCell(goToNextCell: boolean) {
 		updateConfig();
 		console.log('IPython run cell...');
 		let editor = getEditor();
@@ -214,8 +214,8 @@ export function activate(context: vscode.ExtensionContext) {
 
 		// Search up from the cursor line for a cell marker.
 		let cellStart = 0;
-		for (let i = startLine; i >= 0; i--){
-			if (lines[i].trim().match(cellPattern)){
+		for (let i = startLine; i >= 0; i--) {
+			if (lines[i].trim().match(cellPattern)) {
 				cellStart = i + 1; // code starts on line below marker
 				break;
 			}
@@ -223,8 +223,8 @@ export function activate(context: vscode.ExtensionContext) {
 
 		// Search down for the next cell marker
 		let nextCell = lines.length;
-		for (let i = startLine + 1; i < lines.length; i++){
-			if (lines[i].trim().match(cellPattern)){
+		for (let i = startLine + 1; i < lines.length; i++) {
+			if (lines[i].trim().match(cellPattern)) {
 				nextCell = i;
 				break;
 			}
@@ -239,26 +239,26 @@ export function activate(context: vscode.ExtensionContext) {
 		let cmd = editor.document.getText(selection.with());
 		await execute(terminal, cmd);
 
-		if (goToNextCell && !endOfFile){
+		if (goToNextCell && !endOfFile) {
 			moveAndRevealCursor(nextCell, editor);
 		}
 	}
 
-	async function cmdRunCellAndMoveToNext(){
+	async function cmdRunCellAndMoveToNext() {
 		console.log('IPython run selection and next...');
 		cmdRunCell(true);
 	}
 
-	async function runCursor(toFrom: string){
+	async function runCursor(toFrom: string) {
 		updateConfig();
 		let editor = getEditor();
 
 		let startPosition: vscode.Position;
 		let stopPosition: vscode.Position;
-		if (toFrom === 'top'){
+		if (toFrom === 'top') {
 			startPosition = new vscode.Position(0, 0);
 			stopPosition = new vscode.Position(editor.selection.start.line + 1, 0);
-		}else if (toFrom === 'bottom'){
+		}else if (toFrom === 'bottom') {
 			startPosition = new vscode.Position(editor.selection.start.line, 0);
 			stopPosition = new vscode.Position(editor.document.lineCount, 0);
 		}else{
@@ -272,17 +272,17 @@ export function activate(context: vscode.ExtensionContext) {
 		await execute(terminal, cmd);
 	}
 
-	async function cmdRunToLine(){
+	async function cmdRunToLine() {
 		console.log('IPython: Run from Top to Line...');
 		await runCursor('top');
 	}
 
-	async function cmdRunFromLine(){
+	async function cmdRunFromLine() {
 		console.log('IPython: Run from Line to Bottom...');
 		await runCursor('bottom');
 	}
 
-	async function cmdCreateTerminal(){
+	async function cmdCreateTerminal() {
 		console.log('IPython: Creating terminal...');
 		updateConfig();
 		await createTerminal(terminalPrefix);
