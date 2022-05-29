@@ -4,7 +4,7 @@ import * as vscode from 'vscode';
 
 // === CONSTANTS ===
 
-let newLine:string = '\n';  // default to eol === 1
+let newLine: string = '\n';  // default to eol === 1
 let editor = vscode.window.activeTextEditor;
 if (editor !== undefined) {
 	let eol = editor.document.eol;
