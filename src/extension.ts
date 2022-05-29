@@ -107,7 +107,7 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 	}
 
-	async function createTerminal(terminalName: string = terminalPrefix): Promise<vscode.Terminal> {
+	async function createTerminal(terminalName: string): Promise<vscode.Terminal> {
 		console.log('Creating IPython Terminal...');
 
 		// -- Create and Tag IPython Terminal
@@ -169,7 +169,7 @@ export function activate(context: vscode.ExtensionContext) {
 	}
 
 	// === COMMANDS ===
-	async function runFile(resetFirst: boolean = false){
+	async function cmdRunFile(resetFirst: boolean = false){
 		updateConfig();
 		console.log('IPython run file...');
 		let editor = getEditor();
@@ -180,13 +180,13 @@ export function activate(context: vscode.ExtensionContext) {
 		await execute(terminal, `%run ${editor.document.fileName}`);
 	}
 
-	async function resetAndRunFile(){
+	async function cmdResetAndRunFile(){
 		console.log('IPython reset and run file...');
-		runFile(true);
+		cmdRunFile(true);
 	}
 
 	// -- Run a Selected Group of Text or Lines
-	async function runSelections(){
+	async function cmdRunSelections(){
 		updateConfig();
 		console.log('IPython run selection...');
 		let editor = getEditor();
@@ -199,7 +199,7 @@ export function activate(context: vscode.ExtensionContext) {
 	}
 
 	//-- Run a Cell
-	async function runCell(goToNextCell: boolean){
+	async function cmdRunCell(goToNextCell: boolean){
 		updateConfig();
 		console.log('IPython run cell...');
 		let editor = getEditor();
@@ -239,9 +239,9 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 	}
 
-	async function runCellAndMoveToNext(){
+	async function cmdRunCellAndMoveToNext(){
 		console.log('IPython run selection and next...');
-		runCell(true);
+		cmdRunCell(true);
 	}
 
 	async function runCursor(toFrom: string){
@@ -267,25 +267,31 @@ export function activate(context: vscode.ExtensionContext) {
 		await execute(terminal, cmd);
 	}
 
-	async function runToLine(){
+	async function cmdRunToLine(){
 		console.log('IPython: Run from Top to Line...');
 		await runCursor('top');
 	}
 
-	async function runFromLine(){
+	async function cmdRunFromLine(){
 		console.log('IPython: Run from Line to Bottom...');
 		await runCursor('bottom');
 	}
 
+	async function cmdCreateTerminal(){
+		console.log('IPython: Creating terminal...');
+		updateConfig();
+		await createTerminal(terminalPrefix);
+	}
+
 	// -- Register Command to Extension
-	context.subscriptions.push(vscode.commands.registerCommand('ipython.createTerminal', createTerminal));
-	context.subscriptions.push(vscode.commands.registerCommand('ipython.runFile', runFile));
-	context.subscriptions.push(vscode.commands.registerCommand('ipython.resetAndRunFile', resetAndRunFile));
-	context.subscriptions.push(vscode.commands.registerCommand('ipython.runSelections', runSelections));
-	context.subscriptions.push(vscode.commands.registerCommand('ipython.runCell', runCell));
-	context.subscriptions.push(vscode.commands.registerCommand('ipython.runCellAndMoveToNext', runCellAndMoveToNext));
-	context.subscriptions.push(vscode.commands.registerCommand('ipython.runToLine', runToLine));
-	context.subscriptions.push(vscode.commands.registerCommand('ipython.runFromLine', runFromLine));
+	context.subscriptions.push(vscode.commands.registerCommand('ipython.createTerminal', cmdCreateTerminal));
+	context.subscriptions.push(vscode.commands.registerCommand('ipython.runFile', cmdRunFile));
+	context.subscriptions.push(vscode.commands.registerCommand('ipython.resetAndRunFile', cmdResetAndRunFile));
+	context.subscriptions.push(vscode.commands.registerCommand('ipython.runSelections', cmdRunSelections));
+	context.subscriptions.push(vscode.commands.registerCommand('ipython.runCell', cmdRunCell));
+	context.subscriptions.push(vscode.commands.registerCommand('ipython.runCellAndMoveToNext', cmdRunCellAndMoveToNext));
+	context.subscriptions.push(vscode.commands.registerCommand('ipython.runToLine', cmdRunToLine));
+	context.subscriptions.push(vscode.commands.registerCommand('ipython.runFromLine', cmdRunFromLine));
 
 	// -- FIXME: Keybinding `when clause`
 	vscode.commands.executeCommand('setContext', 'ipython.extensionActive', true);
