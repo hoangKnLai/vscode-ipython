@@ -40,42 +40,42 @@
 		"configuration": {
 			"title": "IPython",
 			"properties": {
-				"ipython.launchArgs": {
+				"ipython.launchArguments": {
 					"type": "string",
 					"default": "",
-					"description": "Input command to ipython call on launch (e.g. --matplotlib=qt5)"
+					"markdownDescription": "Input command to ipython call on launch (e.g. `--matplotlib=qt5`)"
 				},
 				"ipython.startupCommands": {
 					"type": "array",
 					"default": [
 						"# from matplotlib import pyplot as plt; plt.ion()"
 					],
-					"description": "List of commands to execute line-by-line after launching IPython terminal (e.g., `['%load_ext autoreload', '%autoreload 2']`)."
+					"markdownDescription": "List of commands to execute line-by-line after launching IPython terminal (e.g., `['%load_ext autoreload', '%autoreload 2']`)."
 				},
 				"ipython.cellTag": {
 					"type": "string",
 					"default": "# %%",
-					"description": "Tag indicating a cell block"
+					"markdownDescription": "Tag indicating a cell block"
 				},
-				"ipython.terminalLagMilliseconds": {
+				"ipython.delays.terminalDelayMilliseconds": {
 					"type": "number",
 					"default": 1000,
-					"description": "Millisecond delay after launching the terminal and before executing IPython. Depends on e.g. if VSCode is activating an environment."
+					"markdownDescription": "Millisecond delay after launching the terminal and before executing IPython. Depends on e.g. if VSCode is activating an environment."
 				},
-				"ipython.ipythonLagMilliseconds": {
+				"ipython.delays.ipythonDelayMilliseconds": {
 					"type": "number",
 					"default": 1500,
-					"description": "Millisecond delay after launching IPython before sending any commands."
+					"markdownDescription": "Millisecond delay after launching IPython before sending any commands."
 				},
-				"ipython.execLagPerLineMilliseconds": {
+				"ipython.delays.executionDelayPer100CharactersMilliseconds": {
 					"type": "number",
-					"default": 1.25,
-					"description": "Millisecond delay added per line until code is executed. Total delay is this plus `execLagMilliSecondsonds`."
+					"default": 25,
+					"markdownDescription": "Millisecond delay added per 100 characters until code is executed. Total delay is this plus `#ipython.delays.minimumExecutionDelayMilliseconds#`."
 				},
-				"ipython.execLagMilliSeconds": {
+				"ipython.delays.minimumExecutionDelayMilliseconds": {
 					"type": "number",
 					"default": 100,
-					"description": "Minimum delay between sending code to the terminal and executing it."
+					"markdownDescription": "Minimum delay between sending code to the terminal and executing it."
 				}
 			}
 		},

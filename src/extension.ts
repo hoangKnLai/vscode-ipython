@@ -48,10 +48,10 @@ export function activate(context: vscode.ExtensionContext) {
 
 	// Configuration handling
 	let cellPattern: RegExp;
-	let terminalLagMilliseconds: number;
-	let ipythonLagMilliseconds: number;
-	let execLagPerLineMilliseconds: number;
-	let execLagMilliSeconds: number;
+	let terminalDelayMsec: number;
+	let ipythonDelayMsec: number;
+	let execDelayPer100CharsMsec: number;
+	let minExecDelayMsec: number;
 	let launchArgs: string;
 	let startupCmds: string[];
 	function updateConfig() {
@@ -59,12 +59,11 @@ export function activate(context: vscode.ExtensionContext) {
 		let config = vscode.workspace.getConfiguration('ipython');
 		let cellFlag = config.get('cellTag') as string;
 		cellPattern = new RegExp(`^(?:${cellFlag.replace(' ', '\\s*')})`);
-		terminalLagMilliseconds = config.get('terminalLagMilliseconds') as number;
-		ipythonLagMilliseconds = config.get('ipythonLagMilliseconds') as number;
-		execLagPerLineMilliseconds = config.get('execLagPerLineMilliseconds') as number;
-		execLagMilliSeconds = config.get('execLagMilliSeconds') as number;
-		console.log('Cell Flag: ' + cellFlag);
-		launchArgs = config.get('launchArgs') as string;
+		terminalDelayMsec = config.get('delays.terminalDelayMilliseconds') as number;
+		ipythonDelayMsec = config.get('delays.ipythonDelayMilliseconds') as number;
+		execDelayPer100CharsMsec = config.get('delays.executionDelayPer100CharactersMilliseconds') as number;
+		minExecDelayMsec = config.get('delays.minimumExecutionDelayMilliseconds') as number;
+		launchArgs = config.get('launchArguments') as string;
 		startupCmds = config.get('startupCommands') as string[];
 	}
 
@@ -98,9 +97,9 @@ export function activate(context: vscode.ExtensionContext) {
 				terminal.sendText('', true);
 				console.log(`Newline sent to terminal due to indentation`);
 			}
-			let nLines = lines.length;
-			let delay = nLines * execLagPerLineMilliseconds + execLagMilliSeconds; // Wait 1.5 msec per line plus the configurable lag.
-			console.log(`Waiting ${delay} milliseconds to send execution newline for ${nLines} lines...`);
+			let n100Chars = cmd.length / 100;
+			let delay = n100Chars * execDelayPer100CharsMsec + minExecDelayMsec;
+			console.log(`Waiting ${delay} milliseconds to send execution newline for ${cmd.length} characters...`);
 			await wait(delay);
 			terminal.sendText('', true);
 			console.log(`Newline sent to terminal to execute`);
@@ -114,8 +113,8 @@ export function activate(context: vscode.ExtensionContext) {
 		// -- Create and Tag IPython Terminal
 		await vscode.commands.executeCommand('workbench.action.createTerminalEditor');
 		await vscode.commands.executeCommand('workbench.action.terminal.renameWithArg', {name : terminalName});
-		console.log(`Waiting ${terminalLagMilliseconds} before executing IPython`);
-		await wait(terminalLagMilliseconds);
+		console.log(`Waiting ${terminalDelayMsec} before executing IPython`);
+		await wait(terminalDelayMsec);
 		let terminal = vscode.window.activeTerminal as vscode.Terminal;
 
 		// Launch options
@@ -136,6 +135,8 @@ export function activate(context: vscode.ExtensionContext) {
 		console.log('Startup Command: ', cmd);
 		await execute(terminal, cmd);
 		// See notes in `execute` regarding delays.
+		console.log(`Waiting ${ipythonDelayMsec} milliseconds after IPython launch...`);
+		await wait(ipythonDelayMsec);
 		return terminal;
 	}
 
