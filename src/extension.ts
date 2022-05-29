@@ -48,6 +48,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 	// Configuration handling
 	let cellPattern: RegExp;
+	let uniqueTerminals: boolean;
 	let terminalDelayMsec: number;
 	let ipythonDelayMsec: number;
 	let execDelayPer100CharsMsec: number;
@@ -59,6 +60,7 @@ export function activate(context: vscode.ExtensionContext) {
 		let config = vscode.workspace.getConfiguration('ipython');
 		let cellFlag = config.get('cellTag') as string;
 		cellPattern = new RegExp(`^(?:${cellFlag.replace(' ', '\\s*')})`);
+		uniqueTerminals = config.get('oneTerminalPerFile') as boolean;
 		terminalDelayMsec = config.get('delays.terminalDelayMilliseconds') as number;
 		ipythonDelayMsec = config.get('delays.ipythonDelayMilliseconds') as number;
 		execDelayPer100CharsMsec = config.get('delays.executionDelayPer100CharactersMilliseconds') as number;
@@ -141,7 +143,10 @@ export function activate(context: vscode.ExtensionContext) {
 	}
 
 	function makeTerminalName(terminalName: string): string {
-		return `${terminalPrefix} - ${terminalName}`;
+		if (uniqueTerminals) {
+			return `${terminalPrefix} - ${terminalName}`;
+		}
+		return terminalPrefix;
 	}
 
 	async function getTerminal(terminalName: string): Promise<vscode.Terminal> {

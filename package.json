@@ -57,6 +57,11 @@
 					"default": "# %%",
 					"markdownDescription": "Tag indicating a cell block"
 				},
+				"ipython.oneTerminalPerFile": {
+					"type": "boolean",
+					"default": true,
+					"markdownDescription": "Check this box to create on terminal per file when executing lines / cells; uncheck it to run all code in the same IPython terminal."
+				},
 				"ipython.delays.terminalDelayMilliseconds": {
 					"type": "number",
 					"default": 1000,
