@@ -1,6 +1,5 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
-import { watch } from 'fs';
 import * as vscode from 'vscode';
 
 // === CONSTANTS ===
@@ -76,7 +75,7 @@ export function activate(context: vscode.ExtensionContext) {
 	console.log('Cell Flag: ' + cellFlag);
 
 	// === LOCAL HELPERS ===
-	function getIpythonCommand(
+	function getIpyCommand(
 		document: vscode.TextDocument,
 		selection: vscode.Selection | undefined){
 
@@ -220,7 +219,7 @@ export function activate(context: vscode.ExtensionContext) {
 			return;
 		}
 
-		let {cmd, nExec} = getIpythonCommand(editor.document, undefined);
+		let {cmd, nExec} = getIpyCommand(editor.document, undefined);
 		if (cmd !== ''){
 			let terminal = await getTerminal();
 			if (terminal !== undefined){
@@ -255,12 +254,17 @@ export function activate(context: vscode.ExtensionContext) {
 
 		let terminal = await getTerminal();
 		if (terminal !== undefined){
+			let stackCmd = '';
+			let nExec = 1;
 			for (let select of editor.selections){
-				let {cmd, nExec} = getIpythonCommand(editor.document, select);
+				let {cmd, nExec} = getIpyCommand(editor.document, select);
 				if (cmd !== ''){
-					console.log(`IPython Run Line Selection(s):${cmd}`);
-					await execute(terminal, cmd, nExec);
+					stackCmd = stackCmd + newLine + cmd;
 				}
+			}
+			if (stackCmd !== ''){
+				console.log(`IPython Run Line Selection(s):${stackCmd}`);
+				await execute(terminal, stackCmd, nExec);
 			}
 			await vscode.commands.executeCommand('workbench.action.terminal.scrollToBottom');
 		} else{
@@ -326,7 +330,7 @@ export function activate(context: vscode.ExtensionContext) {
 		let startPosition = new vscode.Position(cellStart, 0);
 		let stopPosition = new vscode.Position(cellStop, 0);
 		let selection = new vscode.Selection(startPosition, stopPosition);
-		let {cmd, nExec} = getIpythonCommand(editor.document, selection);
+		let {cmd, nExec} = getIpyCommand(editor.document, selection);
 
 		if (cmd !== ''){
 			console.log('IPython Run Cell: ' + cmd);
@@ -365,7 +369,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 		let selection = new vscode.Selection(startPosition, stopPosition);
 
-		let {cmd, nExec} = getIpythonCommand(editor.document, selection);
+		let {cmd, nExec} = getIpyCommand(editor.document, selection);
 		if (cmd !== ''){
 			let terminal = await getTerminal();
 			if (terminal !== undefined){
