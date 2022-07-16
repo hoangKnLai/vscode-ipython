@@ -3,9 +3,6 @@
 import * as vscode from 'vscode';
 
 // === CONSTANTS ===
-// \x0A is hex code for `Enter` key which likely is better than \n
-let enterKey:string = '\x0A';
-
 let newLine:string = '\n';  // default to eol === 1
 let editor = vscode.window.activeTextEditor;
 if (editor !== undefined){
@@ -14,6 +11,9 @@ if (editor !== undefined){
 		newLine = '\r\n';
 	}
 }
+// \x0A is hex code for `Enter` key which likely is better than \n
+let enterKey:string = '\x0A';
+// let enterKey:string = newLine;
 
 let terminalName = 'IPython';  //TODO: consider making configurable?!
 // let execLagMilliSec = 32;
@@ -86,7 +86,7 @@ export function activate(context: vscode.ExtensionContext) {
 		document.save();  // force saving to properly use IPython %load
 		if (selection === undefined){
 			// REF: https://ipython.readthedocs.io/en/stable/interactive/magics.html#magic-run
-			cmd = `%run ${document.fileName}`;
+			cmd = `%run "${document.fileName}"`;
 			nExec = 1;
 			return {cmd, nExec};
 		}else{
@@ -144,12 +144,11 @@ export function activate(context: vscode.ExtensionContext) {
 					startLine += 1;
 				}
 				// Multiple enterKey's:
-				//  - 1 for %load,
-				// 	- 1 to finish potential end of a trailing code block
-				//  - 1 to exec
+				//  + 1 for %load,
+				// 	+ 1 to finish potential end of a trailing code block
+				//  + 1 to exec
 				nExec = 3;
 				cmd = `%load -r ${startLine}-${stopLine} ${document.fileName}`;
-
 			}
 			return {cmd, nExec};
 		}
@@ -164,17 +163,19 @@ export function activate(context: vscode.ExtensionContext) {
 
 			// No newLine to execute since IPython is trippy with when/how to
 			// execute a code line, block, multi-lines/blocks, etc.
-			terminal.sendText(cmd, false);
+			terminal.sendText(cmd);
 			console.log(`Command sent to terminal`);
 
 			// Wait for IPython to register command before execution
 			// in case it got stuck between each enterKey sent
-			console.log(`+ Number of Execution: ${nExec}`);
-			for (let i = 0; i < nExec; i++) {
-				await wait(execLagMilliSec);
-				console.log(`- Waited ${execLagMilliSec} msec`);
-				terminal.sendText(`${enterKey}`);
-				console.log(`- Execute ID ${i}`);
+			if (nExec > 0){
+				console.log(`+ Number of Execution: ${nExec}`);
+				for (let i = 0; i < nExec; i++) {
+					console.log(`- Waited ${execLagMilliSec} msec`);
+					await wait(execLagMilliSec);
+					terminal.sendText(`${enterKey}`);
+					console.log(`- Execute ID ${i}`);
+				}
 			}
 		}
 	}
@@ -199,14 +200,15 @@ export function activate(context: vscode.ExtensionContext) {
 		let cmds = config.get('startupCommands') as any[];
 		let startupCmd = '';
 		if (cmds !== undefined){
-			startupCmd = " --InteractiveShellApp.exec_lines=";
+			startupCmd = ' --InteractiveShellApp.exec_lines=';
 			for (let c of cmds){
-				startupCmd += " --InteractiveShellApp.exec_lines=" + `'${c}'`;
+				startupCmd += ' --InteractiveShellApp.exec_lines=' + `'${c}'`;
 			}
 			cmd += startupCmd;
 		}
 		console.log('Startup Command: ', startupCmd);
-		await execute(terminal, cmd + enterKey);
+		let nExec = 0;
+		await execute(terminal, cmd, nExec);
 		await vscode.commands.executeCommand('workbench.action.terminal.scrollToBottom');
 		return terminal;
 	}
@@ -250,7 +252,6 @@ export function activate(context: vscode.ExtensionContext) {
 
 		let {cmd, nExec} = getIpythonCommand(editor.document, undefined);
 		if (cmd !== ''){
-
 			let terminal = await getTerminal();
 			if (terminal !== undefined){
 				if (isReset){
