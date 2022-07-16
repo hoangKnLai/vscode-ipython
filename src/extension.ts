@@ -1,5 +1,6 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
+import { watch } from 'fs';
 import * as vscode from 'vscode';
 
 // === CONSTANTS ===
@@ -90,7 +91,14 @@ export function activate(context: vscode.ExtensionContext) {
 			nExec = 1;
 			return {cmd, nExec};
 		}else{
-			let text = document.getText(selection.with());
+			let text:string = '';
+
+			if (selection.isEmpty){  // support: run line at cursor when empty selection
+				text = document.lineAt(selection.start.line).text;
+			} else {
+				text = document.getText(selection.with());
+			}
+
 			if (selection.isSingleLine){
 				cmd = `${text.trimEnd()}`;
 				nExec = 1;
@@ -148,7 +156,7 @@ export function activate(context: vscode.ExtensionContext) {
 				// 	+ 1 to finish potential end of a trailing code block
 				//  + 1 to exec
 				nExec = 3;
-				cmd = `%load -r ${startLine}-${stopLine} ${document.fileName}`;
+				cmd = `%load -r ${startLine}-${stopLine} "${document.fileName}"`;
 			}
 			return {cmd, nExec};
 		}
@@ -163,7 +171,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 			// No newLine to execute since IPython is trippy with when/how to
 			// execute a code line, block, multi-lines/blocks, etc.
-			terminal.sendText(cmd);
+			terminal.sendText(cmd, false);  // false: no append `newline`
 			console.log(`Command sent to terminal`);
 
 			// Wait for IPython to register command before execution
@@ -172,8 +180,8 @@ export function activate(context: vscode.ExtensionContext) {
 				console.log(`+ Number of Execution: ${nExec}`);
 				for (let i = 0; i < nExec; i++) {
 					console.log(`- Waited ${execLagMilliSec} msec`);
-					await wait(execLagMilliSec);
 					terminal.sendText(`${enterKey}`);
+					await wait(execLagMilliSec);
 					console.log(`- Execute ID ${i}`);
 				}
 			}
@@ -207,8 +215,8 @@ export function activate(context: vscode.ExtensionContext) {
 			cmd += startupCmd;
 		}
 		console.log('Startup Command: ', startupCmd);
-		let nExec = 0;
-		await execute(terminal, cmd, nExec);
+		await execute(terminal, cmd);
+		await wait(256);  // IPython takes awhile to load
 		await vscode.commands.executeCommand('workbench.action.terminal.scrollToBottom');
 		return terminal;
 	}
