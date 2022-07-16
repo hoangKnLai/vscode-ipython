@@ -79,85 +79,47 @@ export function activate(context: vscode.ExtensionContext) {
 	function getIpythonCommand(
 		document: vscode.TextDocument,
 		selection: vscode.Selection | undefined){
-		// FIXME: temporary measure until a full on integration with IPython API instead
-		// NOTE: found full integration with IPython API is not simple with
-		//  VSCode extension. Better for MS Python team handle.
+
 		let nExec = 0;  // Number of execution needed on IPython console
 		let cmd = '';
 		document.save();  // force saving to properly use IPython %load
 		if (selection === undefined){
+			// -- Whole File
 			// REF: https://ipython.readthedocs.io/en/stable/interactive/magics.html#magic-run
 			cmd = `%run "${document.fileName}"`;
 			nExec = 1;
 			return {cmd, nExec};
 		}else{
-			let text:string = '';
-
-			if (selection.isEmpty){  // support: run line at cursor when empty selection
-				text = document.lineAt(selection.start.line).text;
-			} else {
-				text = document.getText(selection.with());
-			}
-
+			// -- Single line
 			if (selection.isSingleLine){
-				cmd = `${text.trimEnd()}`;
+				let text:string = '';
+				if (selection.isEmpty){  // support: run line at cursor when empty selection
+					text = document.lineAt(selection.start.line).text;
+				} else {
+					text = document.getText(selection.with());
+				}
+				cmd = `${text.trim()}`;
 				nExec = 1;
 				return {cmd, nExec};
 			}
-			// Check empty selection
-			let textLines = text.split(enterKey);
-			const isEmpty = (aString:string) => aString.length === 0;
+
+			// -- Check and ignore empty multi-line selection
+			let textLines = document.getText(selection.with()).split(newLine);
+			const isEmpty = (elem:string) => elem.length === 0;
 			if (textLines.every(isEmpty)){
 				cmd = '';
 				nExec = 0;
 				return {cmd, nExec};
 			}
 
-			// Trim empty lines around a code block
-			let begin = 0;
-			for (let i = 0; i < textLines.length; i++){
-				if (textLines[i].trim().length > 0){
-					break;
-				} else{
-					begin += 1;
-				}
-			}
-
-			let startLine = selection.start.line + begin;
-
-			let end = 0;
-			for (let i = textLines.length - 1; i >= 0; i--){
-				if (textLines[i].trim().length > 0){
-					break;
-				} else{
-					end += 1;
-				}
-			}
-			let stopLine = selection.end.line - end;
-
-			let isSingleLine = startLine === stopLine;
-			if(isSingleLine){
-				cmd = `${textLines[begin].trimEnd()}`;
-				nExec = 1;
-			}else{
-				// REF: https://ipython.readthedocs.io/en/stable/interactive/magics.html?highlight=%25load%20magic%20command#magic-load
-				let match = checkEncodingTag(document);
-				if (!match){
-					// IPython %load is 1-index
-					startLine += 1;
-					stopLine += 1;
-					// else don't need to +1 since %load ignores `# encoding` line
-				}
-				if (startLine === 0){
-					startLine += 1;
-				}
-				// Multiple enterKey's:
-				//  + 1 for %load,
-				// 	+ 1 to finish potential end of a trailing code block
-				//  + 1 to exec
-				nExec = 3;
-				cmd = `%load -r ${startLine}-${stopLine} "${document.fileName}"`;
-			}
+			// -- Stack multiple consecutive lines
+			let start = selection.start.with(selection.start.line, 0);
+			let range = selection.with(start);
+			textLines = document.getText(range).split(newLine);
+			const isNotEmpty = (elem:string) => elem.length > 0;
+			textLines = textLines.filter(isNotEmpty);
+			cmd = textLines.join(newLine);
+			nExec = 1;
 			return {cmd, nExec};
 		}
 	}
@@ -179,9 +141,9 @@ export function activate(context: vscode.ExtensionContext) {
 			if (nExec > 0){
 				console.log(`+ Number of Execution: ${nExec}`);
 				for (let i = 0; i < nExec; i++) {
+					await wait(execLagMilliSec);
 					console.log(`- Waited ${execLagMilliSec} msec`);
 					terminal.sendText(`${enterKey}`);
-					await wait(execLagMilliSec);
 					console.log(`- Execute ID ${i}`);
 				}
 			}
@@ -296,7 +258,7 @@ export function activate(context: vscode.ExtensionContext) {
 			for (let select of editor.selections){
 				let {cmd, nExec} = getIpythonCommand(editor.document, select);
 				if (cmd !== ''){
-					console.log('IPython Run Line Selection(s): ' + cmd);
+					console.log(`IPython Run Line Selection(s):${cmd}`);
 					await execute(terminal, cmd, nExec);
 				}
 			}
