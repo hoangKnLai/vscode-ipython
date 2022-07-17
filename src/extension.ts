@@ -16,8 +16,7 @@ let enterKey:string = '\x0A';
 // let enterKey:string = newLine;
 
 let terminalName = 'IPython';  //TODO: consider making configurable?!
-// let execLagMilliSec = 32;
-let encodePattern = new RegExp('coding[=:]\\s*([-\\w.]+)');
+
 
 // === FUNCTIONS ===
 async function activatePython(){
@@ -30,18 +29,19 @@ async function activatePython(){
 }
 
 
-function checkEncodingTag(document: vscode.TextDocument){
-	// REF: https://docs.python.org/3/reference/lexical_analysis.html#encoding-declarations
-	let match = false;
-	for (let i = 0; i < 2; i++){
-		let textLine = document.lineAt(i);
-		match = encodePattern.test(textLine.text);
-		if (match){
-			return match;
-		}
-	}
-	return match;
-}
+// function checkEncodingTag(document: vscode.TextDocument){
+// 	// REF: https://docs.python.org/3/reference/lexical_analysis.html#encoding-declarations
+//  let encodePattern = new RegExp('coding[=:]\\s*([-\\w.]+)');
+// 	let match = false;
+// 	for (let i = 0; i < 2; i++){
+// 		let textLine = document.lineAt(i);
+// 		match = encodePattern.test(textLine.text);
+// 		if (match){
+// 			return match;
+// 		}
+// 	}
+// 	return match;
+// }
 
 
 function moveAndRevealCursor(line: number, editor: vscode.TextEditor){
@@ -52,20 +52,46 @@ function moveAndRevealCursor(line: number, editor: vscode.TextEditor){
 }
 
 
-function wait(msec:number) {
+function wait(msec:number){
 	return new Promise(resolve => setTimeout(resolve, msec));
 }
 
 
+function leftAdjustTrim(lines:string[]){
+	// Remove empty lines and left trim greatest common spaces
+	lines = lines.filter((item) => item.trim().length > 0);
+
+	let start = 0;
+	let isFirst = true;
+	let isNewBlock = true;
+	let trimLines:string[] = new Array();
+	for (let line of lines){
+		// Ensure tab are handled
+		line = line.replace(/\t/gy, ' '.repeat(4));
+		let begin = line.search(/\S|$/);  // index of first non-whitespace
+		isNewBlock = begin < start;
+		if (isFirst){  // first line has hanging spaces
+			start = begin;
+			isFirst = false;
+		}
+		if(isNewBlock  && !isFirst){
+			start = begin;
+		}
+
+		trimLines.push(line.substring(start));
+	}
+	return trimLines;
+}
+
 // === MAIN ===
 export function activate(context: vscode.ExtensionContext) {
 	// Activation of this extension
-	// Use the console to output diagnostic information (console.log) and errors (console.error)
+	// Use the console to output diagnostic information (console.log)
+	// and errors (console.error)
 	// These line of code will only be executed once when extension is activated
 
-	// Always make sure Python is available for use FIRST
+	// Always make sure Python is available FIRST
 	activatePython();
-
 
 	// Configuration handling
 	let config = vscode.workspace.getConfiguration('ipython');
@@ -102,25 +128,41 @@ export function activate(context: vscode.ExtensionContext) {
 				return {cmd, nExec};
 			}
 
-			// -- Check and ignore empty multi-line selection
+			// -- Stack multiple consecutive lines
 			let textLines = document.getText(selection.with()).split(newLine);
-			const isEmpty = (elem:string) => elem.length === 0;
-			if (textLines.every(isEmpty)){
+			const isNotEmpty = (item:string) => item.trim().length > 0;
+			let startLine = selection.start.line;
+			let startIndex = textLines.findIndex(isNotEmpty);
+			if (startIndex !== -1){
+				startLine += startIndex;
+			} else {  // all lines and partial lines are whitespaces
 				cmd = '';
 				nExec = 0;
 				return {cmd, nExec};
 			}
-
-			// -- Stack multiple consecutive lines
-			let start = selection.start.with(selection.start.line, 0);
+			// NOTE: will use first non-empty line and include the whole line
+			// even if it is partially selected
+			let start = selection.start.with(startLine, 0);
 			let range = selection.with(start);
+
 			textLines = document.getText(range).split(newLine);
-			const isNotEmpty = (elem:string) => elem.length > 0;
-			textLines = textLines.filter(isNotEmpty);
-			cmd = textLines.join(newLine);
-			nExec = 1;
-			return {cmd, nExec};
+
+			// textLines = textLines.filter(isNotEmpty);
+			textLines = leftAdjustTrim(textLines);
+			if (textLines.length > 0){
+				cmd = textLines.join(newLine);
+				nExec = 1;  // extra exec to handle hanging block like `else:`
+
+				let lastIndex = textLines.length - 1;
+				let firstChar = textLines[lastIndex].search(/\S|$/);
+				if (firstChar > 0){  // last line is part of a block
+					nExec = 2;
+				}
+
+				return {cmd, nExec};
+			}
 		}
+		return {cmd, nExec};
 	}
 
 	async function execute(
@@ -177,7 +219,7 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 		console.log('Startup Command: ', startupCmd);
 		await execute(terminal, cmd);
-		await wait(256);  // IPython takes awhile to load
+		await wait(1000);  // IPython takes awhile to load
 		await vscode.commands.executeCommand('workbench.action.terminal.scrollToBottom');
 		return terminal;
 	}
@@ -222,6 +264,7 @@ export function activate(context: vscode.ExtensionContext) {
 		let {cmd, nExec} = getIpyCommand(editor.document, undefined);
 		if (cmd !== ''){
 			let terminal = await getTerminal();
+
 			if (terminal !== undefined){
 				if (isReset){
 					console.log('Reset workspace');
@@ -255,16 +298,18 @@ export function activate(context: vscode.ExtensionContext) {
 		let terminal = await getTerminal();
 		if (terminal !== undefined){
 			let stackCmd = '';
-			let nExec = 1;
+			let stackExec = 1;
 			for (let select of editor.selections){
 				let {cmd, nExec} = getIpyCommand(editor.document, select);
+				stackExec = nExec;  // NOTE: only need last
 				if (cmd !== ''){
-					stackCmd = stackCmd + newLine + cmd;
+					stackCmd += newLine + cmd;
 				}
 			}
+
 			if (stackCmd !== ''){
 				console.log(`IPython Run Line Selection(s):${stackCmd}`);
-				await execute(terminal, stackCmd, nExec);
+				await execute(terminal, stackCmd.trim(), stackExec);
 			}
 			await vscode.commands.executeCommand('workbench.action.terminal.scrollToBottom');
 		} else{
@@ -287,58 +332,46 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 
 		let startLine = editor.selection.start.line;
-		let file = editor.document.getText();
-		let lines = file.split(newLine);
-
-		// Cell start/stop lines
-		let cellStart = 0;
-		for (let i = startLine; i > 0; i--){
-			if (lines[i].trim().match(cellPattern)){
-				cellStart = i;
-				break;
-			}
-		}
-		let nextCell = lines.length;
-		for (let i = startLine + 1; i < lines.length; i++){
-			if (lines[i].trim().match(cellPattern)){
-				nextCell = i;
+		let cellStart = 0;  // beginning of file
+		for (let iLine = startLine; iLine > 0; iLine--){
+			let line = editor.document.lineAt(iLine).text;
+			if (line.trim().match(cellPattern)){
+				cellStart = iLine;
 				break;
 			}
 		}
 
-		let nLine = nextCell - cellStart;
-
-		// FIXME: handle a file without any cells or just one cell
-		if (nLine === 1 || nLine === lines.length){
-			console.log('Found and skip empty cell or no cell file');
-			moveAndRevealCursor(nextCell, editor);
-			return;
+		let lineCount = editor.document.lineCount;
+		let cellStop = lineCount - 1;  // end of file
+		for (let iLine = startLine + 1; iLine < lineCount; iLine++){
+			let line = editor.document.lineAt(iLine).text;
+			if (line.trim().match(cellPattern)){
+				cellStop = iLine - 1;
+				break;
+			}
 		}
 
-		// Terminal
-		let terminal = await getTerminal();
-		if (terminal === undefined){
-			console.error('Unable to get an IPython Terminal');
-			return;
-		}
-
-		let endOfFile = nextCell === lines.length;
-		let cellStop = nextCell;
-		if (!endOfFile){
-			cellStop -= 1;
-		}
-		let startPosition = new vscode.Position(cellStart, 0);
-		let stopPosition = new vscode.Position(cellStop, 0);
-		let selection = new vscode.Selection(startPosition, stopPosition);
+		let start = new vscode.Position(cellStart, 0);
+		let stop = new vscode.Position(cellStop, 0);
+		let selection = new vscode.Selection(start, stop);
 		let {cmd, nExec} = getIpyCommand(editor.document, selection);
 
 		if (cmd !== ''){
-			console.log('IPython Run Cell: ' + cmd);
+			// Terminal
+			let terminal = await getTerminal();
+			if (terminal === undefined){
+				console.error('Unable to get an IPython Terminal');
+				return;
+			}
+
+			console.log('IPython Run Cell: \n' + cmd);
 			await execute(terminal, cmd, nExec);
 			await vscode.commands.executeCommand('workbench.action.terminal.scrollToBottom');
 		}
 
-		if (isNext && !endOfFile){
+		let isNotLast = (cellStop + 1) < lineCount;
+		if (isNext && isNotLast){
+			let nextCell = cellStop + 1;
 			moveAndRevealCursor(nextCell, editor);
 		}
 	}
@@ -354,20 +387,22 @@ export function activate(context: vscode.ExtensionContext) {
 			console.error('Failed to get activeTextEditor');
 			return;
 		}
-		let startPosition: vscode.Position;
-		let stopPosition: vscode.Position;
+		let anchor: vscode.Position;
+		let active: vscode.Position;
+		let line = editor.selection.start.line;
 		if (toFrom === 'top'){
-			startPosition = new vscode.Position(0, 0);
-			stopPosition = editor.selection.start;
+			anchor = new vscode.Position(0, 0);
+
+			active = editor.selection.start.with(line, 0);
 		}else if (toFrom === 'bottom'){
-			startPosition = editor.selection.start;
-			stopPosition = new vscode.Position(editor.document.lineCount, 0);
+			anchor = editor.selection.start.with(line, 0);
+			active = new vscode.Position(editor.document.lineCount, 0);
 		}else{
 			console.error(`Invalid option "toFrom": ${toFrom}`);
 			return;
 		}
 
-		let selection = new vscode.Selection(startPosition, stopPosition);
+		let selection = new vscode.Selection(anchor, active);
 
 		let {cmd, nExec} = getIpyCommand(editor.document, selection);
 		if (cmd !== ''){
