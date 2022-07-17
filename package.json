@@ -84,7 +84,7 @@
 			{
 				"category": "IPython",
 				"command": "ipython.runSelections",
-				"title": "Run Code Selection(s)"
+				"title": "Run Code Selection(s) or Line at Cursor"
 			},
 			{
 				"category": "IPython",
