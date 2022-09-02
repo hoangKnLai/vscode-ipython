@@ -1,177 +1,222 @@
 {
-	"name": "ipython",
-	"displayName": "ipython",
-	"description": "IPython integration supporting direct interactive usage and commands.",
-	"icon": "md_img/icon.png",
-	"version": "2022.7.0",
-	"publisher": "HoangKimLai",
-	"repository": "https://github.com/hoangKnLai/vscode-ipython",
-	"engines": {
-		"vscode": "^1.60.0"
-	},
-	"keywords": [
-		"python",
-		"IPython"
-	],
-	"categories": [
-		"Programming Languages",
-		"Other",
-		"Data Science",
-		"Notebooks"
-	],
-	"extensionDependencies": [
-		"ms-python.python"
-	],
-	"activationEvents": [
-		"onLanguage:python",
-		"onCommand:ipython.createTerminal",
-		"onCommand:ipython.runFile",
-		"onCommand:ipython.resetAndRunFile",
-		"onCommand:ipython.runSelections",
-		"onCommand:ipython.runCell",
-		"onCommand:ipython.runToLine",
-		"onCommand:ipython.runFromLine"
-	],
-	"main": "./out/extension.js",
-	"capabilities": {
-		"virtualWorkspaces": true
-	},
-	"contributes": {
-		"configuration": {
-			"title": "IPython",
-			"properties": {
-				"ipython.launchArgs": {
-					"type": "string",
-					"default": "--no-autoindent",
-					"description": "Input command to ipython call on launch (e.g. --matplotlib=qt5). Strongly recommend using `--no-autoindent` for proper code loading to IPython."
-				},
-				"ipython.startupCommands": {
-					"type": "array",
-					"default": [
-						"%load_ext autoreload",
-						"%autoreload 2"
-					],
-					"description": "List of commands to execute line-by-line after launching IPython terminal (e.g., `['%load_ext autoreload', '%autoreload 2']`)."
-				},
-				"ipython.cellTag": {
-					"type": "string",
-					"default": "# %%",
-					"description": "Tag indicating a cell block"
-				},
-				"ipython.execLagMilliSec": {
-					"type": "number",
-					"default": 32,
-					"description": "Millisecond delay between each code execution. Helps with race condition when sending text to IPython stdin shell."
-				}
-			}
-		},
-		"commands": [
-			{
-				"category": "IPython",
-				"command": "ipython.createTerminal",
-				"title": "Create a Terminal"
-			},
-			{
-				"category": "IPython",
-				"command": "ipython.runFile",
-				"title": "Run File in an IPython Terminal"
-			},
-			{
-				"category": "IPython",
-				"command": "ipython.resetAndRunFile",
-				"title": "Reset Workspace and Run File in an IPython Terminal"
-			},
-			{
-				"category": "IPython",
-				"command": "ipython.runSelections",
-				"title": "Run Code Selection(s) or Line at Cursor"
-			},
-			{
-				"category": "IPython",
-				"command": "ipython.runCell",
-				"title": "Run Cell Block of Code"
-			},
-			{
-				"category": "IPython",
-				"command": "ipython.runCellAndMoveToNext",
-				"title": "Run Cell and Move to Next Cell"
-			},
-			{
-				"category": "IPython",
-				"command": "ipython.runToLine",
-				"title": "Run From Line 1 to Current Line"
-			},
-			{
-				"category": "IPython",
-				"command": "ipython.runFromLine",
-				"title": "Run From Current Line to Last Line"
-			}
-		],
-		"keybindings": [
-			{
-				"command": "ipython.createTerminal",
-				"key": "ctrl+shift+i c",
-				"when": "editorLangId == python"
-			},
-			{
-				"command": "ipython.runFile",
-				"key": "f5",
-				"when": "ipython.isUse && !inDebugMode && editorTextFocus && editorLangId == python"
-			},
-			{
-				"command": "ipython.resetAndRunFile",
-				"key": "ctrl+shift+i f5",
-				"when": "ipython.isUse && !inDebugMode && editorTextFocus && editorLangId == python"
-			},
-			{
-				"command": "ipython.runSelections",
-				"key": "f9",
-				"when": "ipython.isUse && !inDebugMode && editorTextFocus && !findInputFocussed && !replaceInputFocussed && editorLangId == python"
-			},
-			{
-				"command": "ipython.runCell",
-				"key": "alt+enter",
-				"when": "ipython.isUse && !inDebugMode && editorTextFocus && editorLangId == python"
-			},
-			{
-				"command": "ipython.runCellAndMoveToNext",
-				"key": "shift+alt+enter",
-				"when": "ipython.isUse && !inDebugMode && editorTextFocus && !notebookEditorFocused && editorLangId == python"
-			},
-			{
-				"command": "ipython.runToLine",
-				"key": "ctrl+shift+i l",
-				"when": "ipython.isUse && !inDebugMode && editorTextFocus && !notebookEditorFocused && editorLangId == python"
-			},
-			{
-				"command": "ipython.runFromLine",
-				"key": "ctrl+shift+i shift+l",
-				"when": "ipython.isUse && !inDebugMode && editorTextFocus && !notebookEditorFocused && editorLangId == python"
-			}
-		]
-	},
-	"scripts": {
-		"vscode:prepublish": "npm run compile",
-		"compile": "tsc -p ./",
-		"watch": "tsc -watch -p ./",
-		"pretest": "npm run compile && npm run lint",
-		"lint": "eslint src --ext ts",
-		"test": "node ./out/test/runTest.js"
-	},
-	"devDependencies": {
-		"@types/vscode": "^1.60.0",
-		"@types/glob": "^7.1.4",
-		"@types/mocha": "^9.0.0",
-		"@types/node": "14.x",
-		"@typescript-eslint/eslint-plugin": "^4.31.1",
-		"@typescript-eslint/parser": "^4.31.1",
-		"eslint": "^7.32.0",
-		"glob": "^7.1.7",
-		"mocha": "^9.1.1",
-		"typescript": "^4.4.3",
-		"@vscode/test-electron": "^1.6.2"
-	},
-	"dependencies": {
-		"python": "0.0.4"
-	}
+    "name": "ipython",
+    "displayName": "ipython",
+    "description": "IPython integration supporting direct interactive usage and commands.",
+    "icon": "md_img/icon.png",
+    "version": "2022.7.0",
+    "publisher": "HoangKimLai",
+    "repository": "https://github.com/hoangKnLai/vscode-ipython",
+    "engines": {
+        "vscode": "^1.60.0"
+    },
+    "keywords": [
+        "python",
+        "IPython"
+    ],
+    "categories": [
+        "Programming Languages",
+        "Other",
+        "Data Science",
+        "Notebooks"
+    ],
+    "extensionDependencies": [
+        "ms-python.python"
+    ],
+    "activationEvents": [
+        "onLanguage:python",
+        "onCommand:ipython.createTerminal"
+    ],
+    "main": "./out/extension.js",
+    "capabilities": {
+        "virtualWorkspaces": true
+    },
+    "contributes": {
+        "configuration": {
+            "title": "IPython",
+            "properties": {
+                "ipython.LaunchArguments": {
+                    "type": "string",
+                    "default": "--no-autoindent",
+                    "markdownDescription": "Input command to `ipython` call on launch (e.g. `--matplotlib=qt5`). Strongly recommend using `--no-autoindent` for proper code loading to IPython."
+                },
+                "ipython.StartupCommands": {
+                    "type": "array",
+                    "default": [
+                        "%load_ext autoreload",
+                        "%autoreload 2"
+                    ],
+                    "markdownDescription": "List of commands to execute line-by-line after launching IPython terminal (e.g., `['%load_ext autoreload', '%autoreload 2']`)."
+                },
+                "ipython.CellTag": {
+                    "type": "string",
+                    "default": "# %%",
+                    "markdownDescription": "Tag indicating a cell block"
+                },
+                "ipython.ExecutionLagMilliSec": {
+                    "type": "number",
+                    "default": 32,
+                    "markdownDescription": "Millisecond delay between each code execution. Helps with race condition when sending text to IPython `stdin` shell."
+                },
+                "ipython.RunArguments": {
+                    "type": "string",
+                    "default": "-t",
+                    "markdownDescription": "Run argument list equivalent to `%run run-args file.py`. More detail in [`%run` documentation](https://ipython.readthedocs.io/en/stable/interactive/magics.html#magic-run)"
+                },
+                "ipython.CommandLineArguments": {
+                    "type": "string",
+                    "default": "",
+                    "markdownDescription": "Command line input (CLI) argument list equivalent to `python file.py cli-args`"
+                }
+            }
+        },
+        "commands": [
+            {
+                "category": "IPython",
+                "command": "ipython.createTerminal",
+                "title": "Create an IPython Terminal"
+            },
+
+
+            {
+                "category": "IPython",
+                "command": "ipython.runFile",
+                "title": "Run File in an IPython Terminal"
+            },
+            {
+                "category": "IPython",
+                "command": "ipython.runFileWithArgs",
+                "title": "Run File with Run Arguments"
+            },
+            {
+                "category": "IPython",
+                "command": "ipython.runFileWithCli",
+                "title": "Run File with Command Line Arguments"
+            },
+            {
+                "category": "IPython",
+                "command": "ipython.runFileWithArgsCli",
+                "title": "Run File with Run and Command Line Arguments"
+            },
+
+
+            {
+                "category": "IPython",
+                "command": "ipython.resetAndRunFile",
+                "title": "Reset then Run File"
+            },
+            {
+                "category": "IPython",
+                "command": "ipython.resetAndRunFileWithArgs",
+                "title": "Reset then Run File with Run Arguments"
+            },
+            {
+                "category": "IPython",
+                "command": "ipython.resetAndRunFileWithCli",
+                "title": "Reset then Run File with Command Line Arguments"
+            },
+            {
+                "category": "IPython",
+                "command": "ipython.resetAndRunFileWithArgsCli",
+                "title": "Reset then Run File with Run and Command Line Arguments"
+            },
+
+
+            {
+                "category": "IPython",
+                "command": "ipython.runSelections",
+                "title": "Run Code Selection(s) or Line at each Cursor"
+            },
+            {
+                "category": "IPython",
+                "command": "ipython.runCell",
+                "title": "Run Cell Block of Code"
+            },
+            {
+                "category": "IPython",
+                "command": "ipython.runCellAndMoveToNext",
+                "title": "Run Cell and Move to Next Cell"
+            },
+            {
+                "category": "IPython",
+                "command": "ipython.runToLine",
+                "title": "Run From Line 1 to Current Line"
+            },
+            {
+                "category": "IPython",
+                "command": "ipython.runFromLine",
+                "title": "Run From Current Line to Last Line"
+            }
+        ],
+        "keybindings": [
+            {
+                "command": "ipython.createTerminal",
+                "key": "ctrl+shift+i c",
+                "when": ""
+            },
+            {
+                "command": "ipython.runFileWithCli",
+                "key": "f5",
+                "when": "ipython.isUse && !inDebugMode && editorTextFocus && editorLangId == python"
+            },
+            {
+                "command": "ipython.runFileWithArgsCli",
+                "key": "shift+f5",
+                "when": "ipython.isUse && !inDebugMode && editorTextFocus && editorLangId == python"
+            },
+            {
+                "command": "ipython.resetAndRunFile",
+                "key": "ctrl+shift+i f5",
+                "when": "ipython.isUse && !inDebugMode && editorTextFocus && editorLangId == python"
+            },
+            {
+                "command": "ipython.runSelections",
+                "key": "f9",
+                "when": "ipython.isUse && !inDebugMode && editorTextFocus && !findInputFocussed && !replaceInputFocussed && editorLangId == python"
+            },
+            {
+                "command": "ipython.runCell",
+                "key": "alt+enter",
+                "when": "ipython.isUse && !inDebugMode && editorTextFocus && editorLangId == python"
+            },
+            {
+                "command": "ipython.runCellAndMoveToNext",
+                "key": "shift+alt+enter",
+                "when": "ipython.isUse && !inDebugMode && editorTextFocus && !notebookEditorFocused && editorLangId == python"
+            },
+            {
+                "command": "ipython.runToLine",
+                "key": "ctrl+shift+i l",
+                "when": "ipython.isUse && !inDebugMode && editorTextFocus && !notebookEditorFocused && editorLangId == python"
+            },
+            {
+                "command": "ipython.runFromLine",
+                "key": "ctrl+shift+i shift+l",
+                "when": "ipython.isUse && !inDebugMode && editorTextFocus && !notebookEditorFocused && editorLangId == python"
+            }
+        ]
+    },
+    "scripts": {
+        "vscode:prepublish": "npm run compile",
+        "compile": "tsc -p ./",
+        "watch": "tsc -watch -p ./",
+        "pretest": "npm run compile && npm run lint",
+        "lint": "eslint src --ext ts",
+        "test": "node ./out/test/runTest.js"
+    },
+    "devDependencies": {
+        "@types/vscode": "^1.60.0",
+        "@types/glob": "^7.1.4",
+        "@types/mocha": "^9.0.0",
+        "@types/node": "14.x",
+        "@typescript-eslint/eslint-plugin": "^4.31.1",
+        "@typescript-eslint/parser": "^4.31.1",
+        "eslint": "^7.32.0",
+        "glob": "^7.1.7",
+        "mocha": "^9.1.1",
+        "typescript": "^4.4.3",
+        "@vscode/test-electron": "^1.6.2"
+    },
+    "dependencies": {
+        "python": "0.0.4"
+    }
 }

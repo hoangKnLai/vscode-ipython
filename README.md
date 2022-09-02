@@ -1,25 +1,30 @@
 # ipython
 
-Hooks to enable direct execution of `python` code from editor to an
-IPython terminal.
+Enable IPython Terminal creation and direct execution of `python` code from
+editor.
 
 If you find the extension useful, it would be awesome if you can leave a comment
- here and/or suggestion on GitHub!!
+ here and/or a suggestion on GitHub!!
 - What feature you like and use the most?
 - What other feature(s) you would like to have?
+
 ## Features
 
 Key features tagged with `IPython`:
 - Configurations to control the startup of an IPython console
-  - Console launch argument (e.g., `--matplotlib=qt5`)
-  - Console start up command (e.g., `["%load_ext autoreload", %autoreload 2]`)
-  - Configurable cell block tag (e.g. `# %%`)
-- Added commands to run `python` code interactively
-  - E.g. Run a file, selection(s) of code, cell block, run to line, run from line, ...
+    - Launch argument (e.g., `--matplotlib=qt5`)
+    - Start up command (e.g., `["%load_ext autoreload", %autoreload 2]`)
+- Configurable:
+    - Cell block tag (e.g. `# %%`)
+    - `%run` arguments options
+    - Command line arguments (i.e., `sys.argv`) options
+- Commands to run `python` code interactively
+    - E.g., run a file, selection(s) of code, cell block, run to line, run from line, ...
 
 ![feature X](md_img/vscode-ipython.png)
 
-See `ipython: Feature Contribution` tab in VSCode Extension (Ctrl + Shift + X) panel for latest features and details.
+See `ipython: Feature Contribution` tab in VSCode Extension (Ctrl + Shift + X)
+panel for latest features and details.
 
 ## Requirements
 
@@ -27,21 +32,15 @@ See `ipython: Feature Contribution` tab in VSCode Extension (Ctrl + Shift + X) p
 
 **Strongly recommend setting `Git Bash` as default terminal on Window to properly launch an IPython terminal.**
 
-## Known Issues
-- Keybinding conflict with Jupyter extension
-  - Recommend enabling only one extension at a time and/or map the keybinding to
-  deconflict
-    - If anyone has a good deconflict keybinding json, it is awesome if you can
-    share it on this project GitHub issue page. Thanks!
-- Not a direct hook to the IPython API
-  - Might not be possible. It appears that IPython API requires spawning and
-  communicating with a sub `python` process.
-- Cannot resolve recently used IPython terminal when it is not the current
-active terminal
-  - Always use most recently created terminal
-- This README.md and other *.md can use improvement
-
 ## Release Notes
+
+### 2022.9.x
+- Added `Run Arguments` and `Command Line Arguments` for `Run File` variants
+    - Default `F5` to `Run File with Command Line Arguments`
+        - If `Command Line Arguments` is empty, then it reduces to regular `Run File`
+    - Added `Shift+F5` to `Run File with Run and Command Line Arguments`
+        - Defaulted `Run Arguments` to `-t` which prints `%run` timing
+- Fixed a bug with `Run Cell` skipping last cell line
 
 ### 2022.7.x
 - Changed handling of code block from `%load` to directly sending it to terminal.
