@@ -15,16 +15,16 @@ Key features tagged with `IPython`:
     - Launch argument (e.g., `--matplotlib=qt5`)
     - Start up command (e.g., `["%load_ext autoreload", %autoreload 2]`)
 - Configurable:
-    - Cell block tag (e.g. `# %%`)
-    - `%run` arguments options
-    - Command line arguments (i.e., `sys.argv`) options
-- Commands to run `python` code interactively
+    - Cell block tag (e.g., `# %%`)
+    - `%run` arguments (e.g., `-t` print timing info)
+    - Command line arguments (i.e., `sys.argv` parameters)
+- Useful command to run `python` code interactively
     - E.g., run a file, selection(s) of code, cell block, run to line, run from line, ...
-
-![feature X](md_img/vscode-ipython.png)
 
 See `ipython: Feature Contribution` tab in VSCode Extension (Ctrl + Shift + X)
 panel for latest features and details.
+
+![feature X](md_img/vscode-ipython.png)
 
 ## Requirements
 
