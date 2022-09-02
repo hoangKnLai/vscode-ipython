@@ -41,6 +41,8 @@ panel for latest features and details.
     - Added `Shift+F5` to `Run File with Run and Command Line Arguments`
         - Defaulted `Run Arguments` to `-t` which prints `%run` timing
 - Fixed a bug with `Run Cell` skipping last cell line
+- Configuration applies immediately when changed instead of only when extension
+activated
 
 ### 2022.7.x
 - Changed handling of code block from `%load` to directly sending it to terminal.
@@ -52,7 +54,7 @@ panel for latest features and details.
   - If runSelections is called and no text selected, then run the line the
   cursor is on.
   - This applies independently for each cursor (e.g., `Alt+Click` adds more cursors)
-- More details in [issue #11 note](https://github.com/hoangKnLai/vscode-ipython/issues/11#issuecomment-1186551199)
+- More details in [issue `#11` note](https://github.com/hoangKnLai/vscode-ipython/issues/11#issuecomment-1186551199)
 ### 2022.4.x
 - Changed `execute()` of `python` code ensuring an `ExecLagMilliSec` between
 every major `enterKey` pressed to `IPython` terminal.
