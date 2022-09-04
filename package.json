@@ -161,7 +161,7 @@
         "keybindings": [
             {
                 "command": "ipython.moveToPreviousCell",
-                "key": "alt+u",
+                "key": "alt+k",
                 "when": "ipython.isUse && editorTextFocus && editorLangId == python"
             },
             {
