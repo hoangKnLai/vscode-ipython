@@ -1,7 +1,5 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
-import { privateEncrypt } from "crypto";
-import { moveCursor } from "readline";
 import * as vscode from "vscode";
 
 // === CONSTANTS ===
@@ -125,13 +123,14 @@ function getPythonEditor() {
  * Find cell tag line and level starting at cursor line and go toward beginning
  * of file.
  *
- * @param aLevel - desired equal or higher level of the cell to find
  * @param startLine - desired starting line, default to current cursor
+ * @param aLevel - desired equal or higher level of the cell to find.
+ * Set `undefine` to find nearest.
  * @returns [line, level] the line the cell is found and its level
  */
 function findCellAboveCursor(
+  startLine: number | undefined,
   aLevel: number | undefined,
-  startLine: number | undefined
 ) {
   let cellPattern = getCellPattern();
   let editor = getPythonEditor();
@@ -163,13 +162,14 @@ function findCellAboveCursor(
 /**
  * Find cell tag line and level starting at cursor line + 1 toward end of file.
  *
- * @param aLevel - desired equal or higher level of the cell to find
  * @param startLine - desired starting line, default to current cursor
+ * @param aLevel - desired equal or higher level of the cell to find.
+ * Set `undefine` to find nearest.
  * @returns [line, level] the line the cell is found and its level
  */
 function findCellBelowCursor(
+  startLine: number | undefined,
   aLevel: number | undefined,
-  startLine: number | undefined
 ) {
   let cellPattern = getCellPattern();
   let editor = getPythonEditor();
@@ -183,7 +183,7 @@ function findCellBelowCursor(
 
   let cellLine = lineCount - 1; // end of file or last cell
   let cellLevel = 0; // no char before cell block
-  for (let iLine = startLine + 1; iLine < lineCount; iLine++) {
+  for (let iLine = startLine; iLine < lineCount; iLine++) {
     let line = editor.document.lineAt(iLine).text;
     let found = line.match(cellPattern);
     if (found) {
@@ -453,7 +453,9 @@ export function activate(context: vscode.ExtensionContext) {
       return;
     }
 
-    const cellAbove = findCellAboveCursor(undefined, undefined);
+    // Find cell immediately at or above current cursor
+    let line = editor.selection.start.line;
+    const cellAbove = findCellAboveCursor(line, undefined);
     if (cellAbove === undefined) {
       console.error("Failed to find Cell");
       return;
@@ -461,7 +463,12 @@ export function activate(context: vscode.ExtensionContext) {
     let cellStart = cellAbove[0];
     let cellLevel = cellAbove[1];
 
-    const cellBelow = findCellBelowCursor(undefined, cellLevel);
+    // Find cell below current cursor with same level as above cell
+    let lineCount = editor.document.lineCount;
+    if (line < lineCount - 1){
+      line += 1;
+    }
+    const cellBelow = findCellBelowCursor(line, cellLevel);
     if (cellBelow === undefined) {
       console.error("Failed to find Cell");
       return;
@@ -489,11 +496,15 @@ export function activate(context: vscode.ExtensionContext) {
     }
 
     if (isNext) {
-      let lineCount = editor.document.lineCount;
-      let isNotLast = cellStop + 1 < lineCount;
-      if (isNotLast) {
-        let nextCell = cellStop + 1;
-        moveAndRevealCursor(editor, nextCell);
+      if (cellStop < lineCount - 1) {
+        let cellPattern = getCellPattern();
+        let text = editor.document.lineAt(cellStop).text;
+        let found = text.match(cellPattern);
+        let char = 0;
+        if (found){
+            char = found[1].length;
+        }
+        moveAndRevealCursor(editor, cellStop, char);
       }
     }
   }
@@ -535,7 +546,7 @@ export function activate(context: vscode.ExtensionContext) {
     }
   }
 
-  function moveCursorToCell(next: Boolean) {
+  function moveCursorToCell(below: Boolean) {
     let editor = getPythonEditor();
     if (editor === undefined) {
       console.error("Unable to get editor");
@@ -544,11 +555,11 @@ export function activate(context: vscode.ExtensionContext) {
     let line = editor.selection.start.line;
     let cellLine: number;
 
-    if (next) {
+    if (below) {
       if (line < editor.document.lineCount - 1) {
         line += 1;
       }
-      const cellBelow = findCellBelowCursor(undefined, line);
+      const cellBelow = findCellBelowCursor(line, undefined);
       if (cellBelow === undefined) {
         console.error("Failed to find cell above");
         return;
@@ -558,7 +569,7 @@ export function activate(context: vscode.ExtensionContext) {
       if (line > 0) {
         line -= 1;
       }
-      const cellAbove = findCellAboveCursor(undefined, line);
+      const cellAbove = findCellAboveCursor(line, undefined);
       if (cellAbove === undefined) {
         console.error("Failed to find cell above");
         return;
@@ -577,13 +588,13 @@ export function activate(context: vscode.ExtensionContext) {
 
   // -- Register Command to Extension
   context.subscriptions.push(
-    vscode.commands.registerCommand("ipython.moveToPreviousCell", () =>
+    vscode.commands.registerCommand("ipython.moveToCellTagAbove", () =>
       moveCursorToCell(false)
     )
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("ipython.moveToNextCell", () =>
+    vscode.commands.registerCommand("ipython.moveToCellTagBelow", () =>
       moveCursorToCell(true)
     )
   );

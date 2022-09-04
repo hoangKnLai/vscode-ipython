@@ -72,13 +72,13 @@
         "commands": [
             {
                 "category": "IPython",
-                "command": "ipython.moveToPreviousCell",
-                "title": "Move Cursor to Above Cell Tag"
+                "command": "ipython.moveToCellTagAbove",
+                "title": "Move Cursor to Cell Tag Above"
             },
             {
                 "category": "IPython",
-                "command": "ipython.moveToNextCell",
-                "title": "Move Cursor to Next Cell Tag"
+                "command": "ipython.moveToCellTagBelow",
+                "title": "Move Cursor to Cell Tag Below"
             },
 
             {
@@ -160,12 +160,12 @@
         ],
         "keybindings": [
             {
-                "command": "ipython.moveToPreviousCell",
+                "command": "ipython.moveToCellTagAbove",
                 "key": "alt+k",
                 "when": "ipython.isUse && editorTextFocus && editorLangId == python"
             },
             {
-                "command": "ipython.moveToNextCell",
+                "command": "ipython.moveToCellTagBelow",
                 "key": "alt+j",
                 "when": "ipython.isUse && editorTextFocus && editorLangId == python"
             },
