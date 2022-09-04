@@ -72,6 +72,17 @@
         "commands": [
             {
                 "category": "IPython",
+                "command": "ipython.moveToPreviousCell",
+                "title": "Move Cursor to Above Cell Tag"
+            },
+            {
+                "category": "IPython",
+                "command": "ipython.moveToNextCell",
+                "title": "Move Cursor to Next Cell Tag"
+            },
+
+            {
+                "category": "IPython",
                 "command": "ipython.createTerminal",
                 "title": "Create an IPython Terminal"
             },
@@ -148,6 +159,17 @@
             }
         ],
         "keybindings": [
+            {
+                "command": "ipython.moveToPreviousCell",
+                "key": "alt+u",
+                "when": "ipython.isUse && editorTextFocus && editorLangId == python"
+            },
+            {
+                "command": "ipython.moveToNextCell",
+                "key": "alt+j",
+                "when": "ipython.isUse && editorTextFocus && editorLangId == python"
+            },
+
             {
                 "command": "ipython.createTerminal",
                 "key": "ctrl+shift+i c",
