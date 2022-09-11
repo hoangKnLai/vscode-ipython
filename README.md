@@ -35,6 +35,9 @@ panel for latest features and details.
 ## Release Notes
 
 ### 2022.9.x
+- Always save file in `runFile` command so that `%run` magic works as intended
+    - Other `run` commands (e.g., `selection`, `toLine`, `fromLine`) respect user choice
+- Added `Move Cursor to Cell Tag Above/Below`
 - Added `Run Arguments` and `Command Line Arguments` for `Run File` variants
     - Default `F5` to `Run File with Command Line Arguments`
         - If `Command Line Arguments` is empty, then it reduces to regular `Run File`

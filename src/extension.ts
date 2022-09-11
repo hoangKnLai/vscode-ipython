@@ -368,6 +368,7 @@ export function activate(context: vscode.ExtensionContext) {
   ) {
     console.log("IPython run file...");
     let editor = vscode.window.activeTextEditor;
+    await editor?.document.save();
     if (editor === undefined) {
       console.error("Unable to access Active Text Editor");
       return;
