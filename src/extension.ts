@@ -11,7 +11,7 @@ if (editor !== undefined) {
     newLine = "\r\n";
   }
 }
-newLine = "\n";
+
 
 // \x0A is hex code for `Enter` key which likely is better than \n
 // let enterKey: string = "\x0A";
@@ -263,10 +263,6 @@ export function activate(context: vscode.ExtensionContext) {
 
     textLines = leftAdjustTrim(textLines);
     if (textLines.length > 0) {
-      if (textLines.length > 1){
-        textLines[0] = textLines[0] + ';';
-      }
-
       cmd = textLines.join(newLine);
       nExec = 1; // extra exec to handle hanging block like `else:`
 
@@ -284,14 +280,28 @@ export function activate(context: vscode.ExtensionContext) {
   async function execute(
     terminal: vscode.Terminal,
     cmd: string,
-    nExec: number = 1
+    nExec: number = 1,
+    useClipboard: Boolean = false,
   ) {
     if (cmd.length > 0) {
       terminal.show(true); // preserve focus
 
-      // No newLine in sendText to execute since IPython is trippy with
-      // when/how to execute a code line, block, multi-lines/blocks, etc.
-      terminal.sendText(cmd, false); // false: no append `newline`
+      if (useClipboard){
+        console.log(`--Use clipboard for command--`);
+        let clip = await vscode.env.clipboard.readText();
+        await vscode.env.clipboard.writeText(cmd);
+        await vscode.commands.executeCommand('workbench.action.terminal.paste');
+        await vscode.env.clipboard.writeText(clip);
+        let editor = vscode.window.activeTextEditor;
+        if (editor === undefined){
+          return;
+        }
+        await vscode.window.showTextDocument(editor.document);
+      }else{
+        // No newLine in sendText to execute since IPython is trippy with
+        // when/how to execute a code line, block, multi-lines/blocks, etc.
+        terminal.sendText(cmd, false); // false: no append `newline`
+      }
       console.log(`Command sent to terminal`);
 
       // Wait for IPython to register command before execution
@@ -445,7 +455,7 @@ export function activate(context: vscode.ExtensionContext) {
 
       if (stackCmd !== "") {
         console.log(`IPython Run Line Selection(s):${stackCmd}`);
-        await execute(terminal, stackCmd.trim(), stackExec);
+        await execute(terminal, stackCmd.trim(), stackExec, true);
       }
       await vscode.commands.executeCommand(
         "workbench.action.terminal.scrollToBottom"
@@ -504,7 +514,7 @@ export function activate(context: vscode.ExtensionContext) {
       }
 
       console.log("IPython Run Cell: \n" + cmd);
-      await execute(terminal, cmd, nExec);
+      await execute(terminal, cmd, nExec, true);
       await vscode.commands.executeCommand(
         "workbench.action.terminal.scrollToBottom"
       );
@@ -550,7 +560,7 @@ export function activate(context: vscode.ExtensionContext) {
     if (cmd !== "") {
       let terminal = await getTerminal();
       if (terminal !== undefined) {
-        await execute(terminal, cmd, nExec);
+        await execute(terminal, cmd, nExec, true);
         await vscode.commands.executeCommand(
           "workbench.action.terminal.scrollToBottom"
         );
