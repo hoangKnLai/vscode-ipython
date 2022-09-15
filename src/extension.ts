@@ -11,6 +11,8 @@ if (editor !== undefined) {
     newLine = "\r\n";
   }
 }
+newLine = "\n";
+
 // \x0A is hex code for `Enter` key which likely is better than \n
 // let enterKey: string = "\x0A";
 // let enterKey:string = newLine;
@@ -72,8 +74,16 @@ function replaceTabWithSpace(str:string, n=4){
 }
 
 
+/**
+ * Remove empty lines, left trim greatest common spaces, right trim spaces,
+ * and newline
+ *
+ * @param lines - of strings
+ * @returns trimLines
+ */
 function leftAdjustTrim(lines: string[]) {
-  // Remove empty lines and left trim greatest common spaces
+  // Remove empty lines, left trim greatest common spaces, right trim spaces
+  // and newline
   lines = lines.filter((item) => item.trim().length > 0);
 
   let start = 0;
@@ -94,7 +104,7 @@ function leftAdjustTrim(lines: string[]) {
       start = begin;
     }
 
-    trimLines.push(line.substring(start));
+    trimLines.push(line.substring(start).trimEnd());
   }
   return trimLines;
 }
@@ -253,6 +263,10 @@ export function activate(context: vscode.ExtensionContext) {
 
     textLines = leftAdjustTrim(textLines);
     if (textLines.length > 0) {
+      if (textLines.length > 1){
+        textLines[0] = textLines[0] + ';';
+      }
+
       cmd = textLines.join(newLine);
       nExec = 1; // extra exec to handle hanging block like `else:`
 
