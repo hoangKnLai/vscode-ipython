@@ -35,6 +35,7 @@ panel for latest features and details.
 ## Release Notes
 
 ### 2022.9.x
+- Fixed a bug with `runSelection` executing line-by-line on Linux instead of as a block (issue #17)
 - Always save file in `runFile` command so that `%run` magic works as intended
     - Other `run` commands (e.g., `selection`, `toLine`, `fromLine`) respect user choice
 - Added `Move Cursor to Cell Tag Above/Below`
