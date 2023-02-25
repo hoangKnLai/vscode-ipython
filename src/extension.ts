@@ -2,7 +2,7 @@
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from "vscode";
 import * as path from "path";
-import * as fs from "fs";
+// import * as fs from "fs";
 
 // === CONSTANTS ===
 let newLine: string = "\n"; // default to eol === 1
@@ -232,7 +232,9 @@ export function activate(context: vscode.ExtensionContext) {
     let file = vscode.Uri.file(path.join(folder, relName));
 
     console.log(`Write File: ${file}`);
-    let cmd = Buffer.from(command, "utf8");
+
+    // NOTE: extra newline for indented code at end of file
+    let cmd = Buffer.from(command + "\n\n", "utf8");
     vscode.workspace.fs.writeFile(file, cmd);
     // fs.writeFileSync(file, command + "\n");
 
@@ -318,8 +320,8 @@ export function activate(context: vscode.ExtensionContext) {
           let filename = "command.py";
           let file = writeCommandFile(filename, cmd);
 
-          terminal.sendText(`%load ${file} `, true);
-          nExec = 2;
+          terminal.sendText(`%load ${file} `);
+          nExec = 2;  // %load command requires 2 newlines after loading to excute
 
         } else if (sendMethod === "clipboard") {
           console.log(`--Use clipboard for command--`);
@@ -483,17 +485,20 @@ export function activate(context: vscode.ExtensionContext) {
     if (terminal !== undefined) {
       let stackCmd = "";
       let stackExec = 1;
+      let numLines = 0;
       for (let select of editor.selections) {
         let { cmd, nExec } = getIpyCommand(editor.document, select);
         stackExec = nExec; // NOTE: only need last
         if (cmd !== "") {
           stackCmd += newLine + cmd;
+          numLines += 1;
         }
       }
 
       if (stackCmd !== "") {
         console.log(`IPython Run Line Selection(s):${stackCmd}`);
-        await execute(terminal, stackCmd.trim(), stackExec, true);
+        let isSingleLine = numLines === 1;
+        await execute(terminal, stackCmd.trim(), stackExec, isSingleLine);
       }
       await vscode.commands.executeCommand(
         "workbench.action.terminal.scrollToBottom"
