@@ -336,8 +336,10 @@ export function activate(context: vscode.ExtensionContext) {
     // Launch options
     let cmd = "ipython ";
     let launchArgs = getConfig("LaunchArguments");
-    if (launchArgs !== undefined) {
-      cmd += launchArgs;
+    if (launchArgs !== undefined && typeof launchArgs === 'string') {
+      cmd += launchArgs + " ";
+    }else {
+      console.error('Invalid LaunchArguments configuration found!');
     }
 
     // Startup options
@@ -345,9 +347,13 @@ export function activate(context: vscode.ExtensionContext) {
     let cmds = getConfig("StartupCommands") as any[];
     let startupCmd = "";
     if (cmds !== undefined) {
-      startupCmd = " --InteractiveShellApp.exec_lines=";
+      startupCmd = "";
       for (let c of cmds) {
-        startupCmd += " --InteractiveShellApp.exec_lines=" + `'${c}'`;
+        if (typeof c === 'string'){
+          startupCmd += "--InteractiveShellApp.exec_lines=" + `'${c}' `;
+        } else {
+          console.error('Invalid StartupCommands configuration found!');
+        }
       }
       cmd += startupCmd;
     }
