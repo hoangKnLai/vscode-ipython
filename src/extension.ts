@@ -220,6 +220,15 @@ export function activate(context: vscode.ExtensionContext) {
   activatePython();
 
   // === LOCAL HELPERS ===
+  function getExecCommand(
+    document: vscode.TextDocument,
+    selection: vscode.Selection,
+  ){
+    return;
+  }
+
+
+
   function getIpyCommand(
     document: vscode.TextDocument,
     selection: vscode.Selection
@@ -304,8 +313,8 @@ export function activate(context: vscode.ExtensionContext) {
       }
       console.log(`Command sent to terminal`);
 
-      // Wait for IPython to register command before execution
-      // in case it got stuck between each execution sent
+      // Wait for IPython to register command before execution.
+      // NOTE: this helps with command race condition, not solves it.
       if (nExec > 0) {
         let execLagMilliSec = getConfig("ExecutionLagMilliSec") as number;
         console.log(`+ Number of Execution: ${nExec}`);
