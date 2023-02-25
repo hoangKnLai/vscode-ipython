@@ -1,6 +1,8 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from "vscode";
+import * as path from "path";
+import * as fs from "fs";
 
 // === CONSTANTS ===
 let newLine: string = "\n"; // default to eol === 1
@@ -11,7 +13,6 @@ if (editor !== undefined) {
     newLine = "\r\n";
   }
 }
-
 
 // \x0A is hex code for `Enter` key which likely is better than \n
 // let enterKey: string = "\x0A";
@@ -63,16 +64,13 @@ function moveAndRevealCursor(
   );
 }
 
-
 function wait(msec: number) {
   return new Promise((resolve) => setTimeout(resolve, msec));
 }
 
-
-function replaceTabWithSpace(str:string, n=4){
-    return str.replace(/\t/gy, " ".repeat(n));
+function replaceTabWithSpace(str: string, n = 4) {
+  return str.replace(/\t/gy, " ".repeat(n));
 }
-
 
 /**
  * Remove empty lines, left trim greatest common spaces, right trim spaces,
@@ -82,8 +80,6 @@ function replaceTabWithSpace(str:string, n=4){
  * @returns trimLines
  */
 function leftAdjustTrim(lines: string[]) {
-  // Remove empty lines, left trim greatest common spaces, right trim spaces
-  // and newline
   lines = lines.filter((item) => item.trim().length > 0);
 
   let start = 0;
@@ -115,7 +111,6 @@ function getCellPattern() {
   return new RegExp(`^([\\t ]*)(?:${cellFlag})`);
 }
 
-
 function getPythonEditor() {
   let editor = vscode.window.activeTextEditor;
   if (editor === undefined) {
@@ -140,7 +135,7 @@ function getPythonEditor() {
  */
 function findCellAboveCursor(
   startLine: number | undefined,
-  aLevel: number | undefined,
+  aLevel: number | undefined
 ) {
   let cellPattern = getCellPattern();
   let editor = getPythonEditor();
@@ -179,7 +174,7 @@ function findCellAboveCursor(
  */
 function findCellBelowCursor(
   startLine: number | undefined,
-  aLevel: number | undefined,
+  aLevel: number | undefined
 ) {
   let cellPattern = getCellPattern();
   let editor = getPythonEditor();
@@ -220,14 +215,29 @@ export function activate(context: vscode.ExtensionContext) {
   activatePython();
 
   // === LOCAL HELPERS ===
-  function getExecCommand(
-    document: vscode.TextDocument,
-    selection: vscode.Selection,
-  ){
-    return;
+  function writeCommandFile(
+    filename: string,
+    command: string,
+  ) {
+    // -- Write File
+    let wsFolders = vscode.workspace.workspaceFolders;  // Assume single workspace
+    if (wsFolders === undefined){
+      console.error("Workspace folder not found");
+      return;
+    }
+
+    let folder = wsFolders[0].uri.fsPath;
+    let relName = path.join("./", ".vscode", "ipython", filename);
+    // let file = path.join(folder, relName);
+    let file = vscode.Uri.file(path.join(folder, relName));
+
+    console.log(`Write File: ${file}`);
+    let cmd = Buffer.from(command, "utf8");
+    vscode.workspace.fs.writeFile(file, cmd);
+    // fs.writeFileSync(file, command + "\n");
+
+    return relName;
   }
-
-
 
   function getIpyCommand(
     document: vscode.TextDocument,
@@ -290,26 +300,39 @@ export function activate(context: vscode.ExtensionContext) {
     terminal: vscode.Terminal,
     cmd: string,
     nExec: number = 1,
-    useClipboard: Boolean = false,
+    isSingleLine: boolean
   ) {
     if (cmd.length > 0) {
       terminal.show(true); // preserve focus
 
-      if (useClipboard){
-        console.log(`--Use clipboard for command--`);
-        let clip = await vscode.env.clipboard.readText();
-        await vscode.env.clipboard.writeText(cmd);
-        await vscode.commands.executeCommand('workbench.action.terminal.paste');
-        await vscode.env.clipboard.writeText(clip);
-        let editor = vscode.window.activeTextEditor;
-        if (editor === undefined){
-          return;
-        }
-        await vscode.window.showTextDocument(editor.document);
-      }else{
+      if (isSingleLine) {
         // No newLine in sendText to execute since IPython is trippy with
         // when/how to execute a code line, block, multi-lines/blocks, etc.
         terminal.sendText(cmd, false); // false: no append `newline`
+
+      } else {
+        let sendMethod = getConfig("SendCommandMethod") as string;
+
+        if (sendMethod === "file") {
+          // let filename = ".vscode/ipython/temp_command.py";
+          let filename = "command.py";
+          let file = writeCommandFile(filename, cmd);
+
+          terminal.sendText(`%load ${file} `, true);
+          nExec = 2;
+
+        } else if (sendMethod === "clipboard") {
+          console.log(`--Use clipboard for command--`);
+          let clip = await vscode.env.clipboard.readText();
+          await vscode.env.clipboard.writeText(cmd);
+          await vscode.commands.executeCommand("workbench.action.terminal.paste");
+          await vscode.env.clipboard.writeText(clip);
+          let editor = vscode.window.activeTextEditor;
+          if (editor === undefined) {
+            return;
+          }
+          await vscode.window.showTextDocument(editor.document);
+        }
       }
       console.log(`Command sent to terminal`);
 
@@ -345,10 +368,10 @@ export function activate(context: vscode.ExtensionContext) {
     // Launch options
     let cmd = "ipython ";
     let launchArgs = getConfig("LaunchArguments");
-    if (launchArgs !== undefined && typeof launchArgs === 'string') {
+    if (launchArgs !== undefined && typeof launchArgs === "string") {
       cmd += launchArgs + " ";
-    }else {
-      console.error('Invalid LaunchArguments configuration found!');
+    } else {
+      console.error("Invalid LaunchArguments configuration found!");
     }
 
     // Startup options
@@ -358,17 +381,17 @@ export function activate(context: vscode.ExtensionContext) {
     if (cmds !== undefined) {
       startupCmd = "";
       for (let c of cmds) {
-        if (typeof c === 'string'){
+        if (typeof c === "string") {
           startupCmd += "--InteractiveShellApp.exec_lines=" + `'${c}' `;
         } else {
-          console.error('Invalid StartupCommands configuration found!');
+          console.error("Invalid StartupCommands configuration found!");
         }
       }
       cmd += startupCmd;
     }
     console.log("Startup Command: ", startupCmd);
-    await execute(terminal, cmd);
-    await wait(1000); // IPython may take awhile to load
+    await execute(terminal, cmd, 1, true);
+    await wait(1000); // IPython may take awhile to load. FIXME: move to config
     await vscode.commands.executeCommand(
       "workbench.action.terminal.scrollToBottom"
     );
@@ -401,9 +424,9 @@ export function activate(context: vscode.ExtensionContext) {
 
   // === COMMANDS ===
   async function runFile(
-    isReset: Boolean = false,
-    isWithArgs: Boolean = false,
-    isWithCli: Boolean = false
+    isReset: boolean = false,
+    isWithArgs: boolean = false,
+    isWithCli: boolean = false
   ) {
     console.log("IPython run file...");
     let editor = vscode.window.activeTextEditor;
@@ -422,7 +445,7 @@ export function activate(context: vscode.ExtensionContext) {
     if (terminal !== undefined) {
       if (isReset) {
         console.log("Reset workspace");
-        await execute(terminal, `%reset -f`, 1);
+        await execute(terminal, `%reset -f`, 1, true);
       }
 
       let file = editor.document.fileName;
@@ -437,7 +460,7 @@ export function activate(context: vscode.ExtensionContext) {
       }
       cmd = `%run ` + cmd;
       console.log("IPython Run File Command: " + cmd);
-      await execute(terminal, cmd, 1);
+      await execute(terminal, cmd, 1, true);
     }
     await vscode.commands.executeCommand(
       "workbench.action.terminal.scrollToBottom"
@@ -505,7 +528,7 @@ export function activate(context: vscode.ExtensionContext) {
 
     // Find cell below current cursor with same level as above cell
     let lineCount = editor.document.lineCount;
-    if (line < lineCount - 1){
+    if (line < lineCount - 1) {
       line += 1;
     }
     const cellBelow = findCellBelowCursor(line, cellLevel);
@@ -529,7 +552,7 @@ export function activate(context: vscode.ExtensionContext) {
       }
 
       console.log("IPython Run Cell: \n" + cmd);
-      await execute(terminal, cmd, nExec, true);
+      await execute(terminal, cmd, nExec, false);
       await vscode.commands.executeCommand(
         "workbench.action.terminal.scrollToBottom"
       );
@@ -541,8 +564,8 @@ export function activate(context: vscode.ExtensionContext) {
         let text = editor.document.lineAt(cellStop).text;
         let found = text.match(cellPattern);
         let char = 0;
-        if (found){
-            char = found[1].length;
+        if (found) {
+          char = found[1].length;
         }
         moveAndRevealCursor(editor, cellStop, char);
       }
@@ -586,7 +609,7 @@ export function activate(context: vscode.ExtensionContext) {
     }
   }
 
-  function moveCursorToCell(below: Boolean) {
+  function moveCursorToCell(below: boolean) {
     let editor = getPythonEditor();
     if (editor === undefined) {
       console.error("Unable to get editor");
@@ -620,8 +643,8 @@ export function activate(context: vscode.ExtensionContext) {
     let text = editor.document.lineAt(cellLine).text;
     let found = text.match(cellPattern);
     let char = 0;
-    if (found){
-        char = found[1].length;
+    if (found) {
+      char = found[1].length;
     }
     moveAndRevealCursor(editor, cellLine, char);
   }
@@ -706,4 +729,15 @@ export function activate(context: vscode.ExtensionContext) {
 }
 
 // this method is called when your extension is deactivated
-export function deactivate() {}
+export function deactivate() {
+  // let wsFolders = vscode.workspace.workspaceFolders;  // Assume single workspace
+  //   if (wsFolders === undefined){
+  //     console.error("Workspace folder not found");
+  //     return;
+  //   }
+
+  // let ws = wsFolders[0].uri.fsPath;
+  // let folder = path.join(ws, ".vscode", "ipython");
+  // let uri = vscode.Uri.file(folder);
+  // vscode.workspace.fs.delete(uri, {recursive: true, useTrash: false});
+}
