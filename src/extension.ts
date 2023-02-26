@@ -603,7 +603,7 @@ export function activate(context: vscode.ExtensionContext) {
     if (cmd !== "") {
       let terminal = await getTerminal();
       if (terminal !== undefined) {
-        await execute(terminal, cmd, nExec, true);
+        await execute(terminal, cmd, nExec, false);
         await vscode.commands.executeCommand(
           "workbench.action.terminal.scrollToBottom"
         );
