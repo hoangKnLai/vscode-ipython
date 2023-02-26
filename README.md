@@ -3,8 +3,7 @@
 Enable IPython Terminal creation and direct execution of `python` code from
 editor.
 
-If you find the extension useful, it would be awesome if you can leave a comment
- here and/or a suggestion on GitHub!!
+If you find the extension useful, it would be awesome if you can leave a comment and/or a suggestion on GitHub!!
 - What feature you like and use the most?
 - What other feature(s) you would like to have?
 
@@ -12,7 +11,7 @@ If you find the extension useful, it would be awesome if you can leave a comment
 
 Key features tagged with `IPython`:
 - Configurations to control the startup of an IPython console
-    - Launch argument (e.g., `--matplotlib=qt5`)
+    - Launch argument (e.g., `--matplotlib=qt`)
     - Start up command (e.g., `["%load_ext autoreload", %autoreload 2]`)
 - Configurable:
     - Cell block tag (e.g., `# %%`)
@@ -33,6 +32,12 @@ panel for latest features and details.
 **Strongly recommend setting `Git Bash` as default terminal on Window to properly launch an IPython terminal.**
 
 ## Release Notes
+
+### 2023.2.x
+- Added a `SendCommandMethod` setting with `file` or `clipboard` options
+    - `file`: uses `.vscode/ipython/command.py` and `%load command.py` to terminal
+    - `clipboard`: prior method of copy-paste via system clipboard
+- Fixed a bug with calling `ipython` with an empty  `--InteractiveShellApp.exec_lines=''`. See issue #21.
 
 ### 2022.9.x
 - Fixed a bug with `runSelection` executing line-by-line on Linux instead of as a block (issue #17)

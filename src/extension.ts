@@ -215,13 +215,10 @@ export function activate(context: vscode.ExtensionContext) {
   activatePython();
 
   // === LOCAL HELPERS ===
-  function writeCommandFile(
-    filename: string,
-    command: string,
-  ) {
+  function writeCommandFile(filename: string, command: string) {
     // -- Write File
-    let wsFolders = vscode.workspace.workspaceFolders;  // Assume single workspace
-    if (wsFolders === undefined){
+    let wsFolders = vscode.workspace.workspaceFolders; // Assume single workspace
+    if (wsFolders === undefined) {
       console.error("Workspace folder not found");
       return;
     }
@@ -311,7 +308,6 @@ export function activate(context: vscode.ExtensionContext) {
         // No newLine in sendText to execute since IPython is trippy with
         // when/how to execute a code line, block, multi-lines/blocks, etc.
         terminal.sendText(cmd, false); // false: no append `newline`
-
       } else {
         let sendMethod = getConfig("SendCommandMethod") as string;
 
@@ -321,13 +317,14 @@ export function activate(context: vscode.ExtensionContext) {
           let file = writeCommandFile(filename, cmd);
 
           terminal.sendText(`%load ${file} `);
-          nExec = 2;  // %load command requires 2 newlines after loading to excute
-
+          nExec = 2; // %load command requires 2 newlines after loading to excute
         } else if (sendMethod === "clipboard") {
           console.log(`--Use clipboard for command--`);
           let clip = await vscode.env.clipboard.readText();
           await vscode.env.clipboard.writeText(cmd);
-          await vscode.commands.executeCommand("workbench.action.terminal.paste");
+          await vscode.commands.executeCommand(
+            "workbench.action.terminal.paste"
+          );
           await vscode.env.clipboard.writeText(clip);
           let editor = vscode.window.activeTextEditor;
           if (editor === undefined) {
@@ -358,39 +355,42 @@ export function activate(context: vscode.ExtensionContext) {
 
     // -- Create and Tag IPython Terminal
     await vscode.commands.executeCommand("python.createTerminal");
-    wait(200); // msec, to help with a race condition not naming terminal
+    wait(250); // msec, to help with a race condition not naming terminal
     await vscode.commands.executeCommand(
       "workbench.action.terminal.renameWithArg",
       { name: terminalName }
     );
-    wait(500); // msec, to help with a race condition not naming terminal
+    wait(250); // msec, to help with a race condition not naming terminal
 
     let terminal = vscode.window.activeTerminal as vscode.Terminal;
 
     // Launch options
     let cmd = "ipython ";
-    let launchArgs = getConfig("LaunchArguments");
-    if (launchArgs !== undefined && typeof launchArgs === "string") {
-      cmd += launchArgs + " ";
-    } else {
-      console.error("Invalid LaunchArguments configuration found!");
+    let launchArgs = getConfig("LaunchArguments") as string;
+
+    let args = launchArgs.split(" ");
+    for (let arg of args) {
+      let s = arg.trim();
+      if (s.length === 0) {
+        continue;
+      }
+      cmd += s + " ";
     }
 
     // Startup options
     // REF: https://ipython.readthedocs.io/en/stable/config/intro.html#command-line-arguments
-    let cmds = getConfig("StartupCommands") as any[];
+    let cmds = getConfig("StartupCommands") as string[];
     let startupCmd = "";
-    if (cmds !== undefined) {
-      startupCmd = "";
-      for (let c of cmds) {
-        if (typeof c === "string") {
-          startupCmd += "--InteractiveShellApp.exec_lines=" + `'${c}' `;
-        } else {
-          console.error("Invalid StartupCommands configuration found!");
-        }
+
+    for (let c of cmds) {
+      let s = c.trim();
+      if (s.length === 0) {
+        continue;
       }
-      cmd += startupCmd;
+      startupCmd += "--InteractiveShellApp.exec_lines=" + `'${s}' `;
     }
+    cmd += startupCmd;
+
     console.log("Startup Command: ", startupCmd);
     await execute(terminal, cmd, 1, true);
     await wait(1000); // IPython may take awhile to load. FIXME: move to config
@@ -740,7 +740,6 @@ export function deactivate() {
   //     console.error("Workspace folder not found");
   //     return;
   //   }
-
   // let ws = wsFolders[0].uri.fsPath;
   // let folder = path.join(ws, ".vscode", "ipython");
   // let uri = vscode.Uri.file(folder);
