@@ -602,15 +602,14 @@ export function activate(context: vscode.ExtensionContext) {
     let { cmd, nExec } = getIpyCommand(editor.document, selection);
     if (cmd !== "") {
       let terminal = await getTerminal();
-      if (terminal !== undefined) {
-        await execute(terminal, cmd, nExec, false);
-        await vscode.commands.executeCommand(
-          "workbench.action.terminal.scrollToBottom"
-        );
-      } else {
+      if (terminal === undefined) {
         console.error("Failed to get terminal");
         return;
       }
+      await execute(terminal, cmd, nExec, selection.isSingleLine);
+      await vscode.commands.executeCommand(
+        "workbench.action.terminal.scrollToBottom"
+      );
     }
   }
 
