@@ -5,6 +5,8 @@ import * as path from "path";
 // import * as fs from "fs";
 
 // === CONSTANTS ===
+let DEBUG = false;  // general debug
+
 let newLine: string = "\n"; // default to eol === 1
 let editor = vscode.window.activeTextEditor;
 if (editor !== undefined) {
@@ -21,6 +23,10 @@ if (editor !== undefined) {
 let terminalName = "IPython"; //TODO: consider making configurable?!
 
 // === FUNCTIONS ===
+function consoleLog(message:string){
+  if (DEBUG){console.log(message);};
+}
+
 async function activatePython() {
   let pyExtension = vscode.extensions.getExtension("ms-python.python");
   if (pyExtension === undefined) {
@@ -35,7 +41,7 @@ function getConfig(name: string) {
   return config.get(name);
 }
 
-// NOTE: don't need when not using `%load`
+// NOTE: don't need when not using `%load` on non-tab corrected command
 // function checkEncodingTag(document: vscode.TextDocument){
 // 	// REF: https://docs.python.org/3/reference/lexical_analysis.html#encoding-declarations
 //  let encodePattern = new RegExp('coding[=:]\\s*([-\\w.]+)');
@@ -207,7 +213,7 @@ function findCellBelowCursor(
 // === MAIN ===
 export function activate(context: vscode.ExtensionContext) {
   // Activation of this extension
-  // Use the console to output diagnostic information (console.log)
+  // Use the console to output diagnostic information (consoleLog)
   // and errors (console.error)
   // These line of code will only be executed once when extension is activated
 
@@ -228,7 +234,7 @@ export function activate(context: vscode.ExtensionContext) {
     // let file = path.join(folder, relName);
     let file = vscode.Uri.file(path.join(folder, relName));
 
-    console.log(`Write File: ${file}`);
+    consoleLog(`Write File: ${file}`);
 
     // NOTE: extra newline for indented code at end of file
     let cmd = Buffer.from(command + "\n\n", "utf8");
@@ -286,8 +292,7 @@ export function activate(context: vscode.ExtensionContext) {
 
       let lastIndex = textLines.length - 1;
       let firstChar = textLines[lastIndex].search(/\S|$/);
-      if (firstChar > 0) {
-        // last line is part of a block
+      if (firstChar > 0) { // last line is part of a block
         nExec = 2;
       }
       return { cmd, nExec };
@@ -315,11 +320,11 @@ export function activate(context: vscode.ExtensionContext) {
           // let filename = ".vscode/ipython/temp_command.py";
           let filename = "command.py";
           let file = writeCommandFile(filename, cmd);
-
-          terminal.sendText(`%load ${file} `);
+          // NOTE: require quotation "${file}" to properly load in all cases
+          terminal.sendText(`%load "${file}" `);
           nExec = 2; // %load command requires 2 newlines after loading to excute
         } else if (sendMethod === "clipboard") {
-          console.log(`--Use clipboard for command--`);
+          consoleLog(`--Use clipboard for command--`);
           let clip = await vscode.env.clipboard.readText();
           await vscode.env.clipboard.writeText(cmd);
           await vscode.commands.executeCommand(
@@ -333,25 +338,25 @@ export function activate(context: vscode.ExtensionContext) {
           await vscode.window.showTextDocument(editor.document);
         }
       }
-      console.log(`Command sent to terminal`);
+      consoleLog(`Command sent to terminal`);
 
       // Wait for IPython to register command before execution.
       // NOTE: this helps with command race condition, not solves it.
       if (nExec > 0) {
         let execLagMilliSec = getConfig("ExecutionLagMilliSec") as number;
-        console.log(`+ Number of Execution: ${nExec}`);
+        consoleLog(`+ Number of Execution: ${nExec}`);
         for (let i = 0; i < nExec; i++) {
           await wait(execLagMilliSec);
-          console.log(`- Waited ${execLagMilliSec} msec`);
+          consoleLog(`- Waited ${execLagMilliSec} msec`);
           terminal.sendText(`${newLine}`);
-          console.log(`- Execute ID ${i}`);
+          consoleLog(`- Execute ID ${i}`);
         }
       }
     }
   }
 
   async function createTerminal() {
-    console.log("Creating IPython Terminal...");
+    consoleLog("Creating IPython Terminal...");
 
     // -- Create and Tag IPython Terminal
     await vscode.commands.executeCommand("python.createTerminal");
@@ -391,7 +396,7 @@ export function activate(context: vscode.ExtensionContext) {
     }
     cmd += startupCmd;
 
-    console.log("Startup Command: ", startupCmd);
+    consoleLog(`Startup Command: ${startupCmd}`);
     await execute(terminal, cmd, 1, true);
     await wait(1000); // IPython may take awhile to load. FIXME: move to config
     await vscode.commands.executeCommand(
@@ -430,7 +435,7 @@ export function activate(context: vscode.ExtensionContext) {
     isWithArgs: boolean = false,
     isWithCli: boolean = false
   ) {
-    console.log("IPython run file...");
+    consoleLog("IPython run file...");
     let editor = vscode.window.activeTextEditor;
     await editor?.document.save();
     if (editor === undefined) {
@@ -446,7 +451,7 @@ export function activate(context: vscode.ExtensionContext) {
     let terminal = await getTerminal();
     if (terminal !== undefined) {
       if (isReset) {
-        console.log("Reset workspace");
+        consoleLog("Reset workspace");
         await execute(terminal, `%reset -f`, 1, true);
       }
 
@@ -461,7 +466,7 @@ export function activate(context: vscode.ExtensionContext) {
         cmd = `${args} ` + cmd;
       }
       cmd = `%run ` + cmd;
-      console.log("IPython Run File Command: " + cmd);
+      consoleLog("IPython Run File Command: " + cmd);
       await execute(terminal, cmd, 1, true);
     }
     await vscode.commands.executeCommand(
@@ -470,7 +475,7 @@ export function activate(context: vscode.ExtensionContext) {
   }
 
   async function runSelections() {
-    console.log("IPython run selection...");
+    consoleLog("IPython run selection...");
     let editor = vscode.window.activeTextEditor;
     if (editor === undefined) {
       console.error("Unable to access Active Text Editor");
@@ -485,20 +490,18 @@ export function activate(context: vscode.ExtensionContext) {
     if (terminal !== undefined) {
       let stackCmd = "";
       let stackExec = 1;
-      let numLines = 0;
       for (let select of editor.selections) {
         let { cmd, nExec } = getIpyCommand(editor.document, select);
         stackExec = nExec; // NOTE: only need last
         if (cmd !== "") {
           stackCmd += newLine + cmd;
-          numLines += 1;
         }
       }
-
+      stackCmd = stackCmd.trim();
+      let isSingleLine = stackCmd.indexOf(newLine) === -1;
       if (stackCmd !== "") {
-        console.log(`IPython Run Line Selection(s):${stackCmd}`);
-        let isSingleLine = numLines === 1;
-        await execute(terminal, stackCmd.trim(), stackExec, isSingleLine);
+        consoleLog(`IPython Run Line Selection(s):${stackCmd}`);
+        await execute(terminal, stackCmd, stackExec, isSingleLine);
       }
       await vscode.commands.executeCommand(
         "workbench.action.terminal.scrollToBottom"
@@ -510,7 +513,7 @@ export function activate(context: vscode.ExtensionContext) {
   }
 
   async function runCell(isNext: boolean) {
-    console.log("IPython run cell...");
+    consoleLog("IPython run cell...");
     let editor = vscode.window.activeTextEditor;
     if (editor === undefined) {
       console.error("Unable to access Active Text Editor");
@@ -556,7 +559,7 @@ export function activate(context: vscode.ExtensionContext) {
         return;
       }
 
-      console.log("IPython Run Cell: \n" + cmd);
+      consoleLog("IPython Run Cell: \n" + cmd);
       await execute(terminal, cmd, nExec, false);
       await vscode.commands.executeCommand(
         "workbench.action.terminal.scrollToBottom"

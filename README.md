@@ -33,6 +33,9 @@ panel for latest features and details.
 
 ## Release Notes
 
+### 2023.3.x
+- Fixed a minor bug with sending multi-line code on Linux
+
 ### 2023.2.x
 - Added a `SendCommandMethod` setting with `file` or `clipboard` options
     - `file`: uses `.vscode/ipython/command.py` and `%load command.py` to terminal
