@@ -7,6 +7,9 @@ import * as path from "path";
 // === CONSTANTS ===
 let DEBUG = false;  // general debug
 
+// FIXME: make configurable?
+let MAX_TIMEOUT = 1000;  // msec
+
 let newLine: string = "\n"; // default to eol === 1
 let editor = vscode.window.activeTextEditor;
 if (editor !== undefined) {
@@ -34,6 +37,8 @@ async function activatePython() {
     return;
   }
   await pyExtension.activate();
+  let editor = getPythonEditor();
+  decorateCell(editor);
 }
 
 function getConfig(name: string) {
@@ -112,19 +117,20 @@ function leftAdjustTrim(lines: string[]) {
 }
 
 function getCellPattern() {
-  // RegExp to find and extract spaces in front of cell flag
   let cellFlag = getConfig("CellTag") as string;
-  return new RegExp(`^([\\t ]*)(?:${cellFlag})`);
+  // NOTE: find cell tag, capture tab and space before it in a line
+  return new RegExp(`(?:^([\\t ]*)${cellFlag.trim()} )`);
+  // return new RegExp(`^([\\t ]*)(?:${cellFlag})`);  // (?:^([\t ]*)# %% )
 }
 
 function getPythonEditor() {
   let editor = vscode.window.activeTextEditor;
   if (editor === undefined) {
-    console.error("Unable to access Active Text Editor");
+    consoleLog("Unable to access Active Text Editor");
     return;
   }
   if (editor.document.languageId !== "python") {
-    console.error('Command only support "python" .py file');
+    consoleLog('Command only support "python" .py file');
     return;
   }
   return editor;
@@ -209,6 +215,69 @@ function findCellBelowCursor(
   }
   return [cellLine, cellLevel] as const;
 }
+
+// ==== CELL DIVIDER ====
+
+/**
+ * regex matching cell tag in current active editor .py
+ *
+ * @returns matches - regular expression matching cell tag position
+ */
+function findCells() {
+  let cellFlag = getConfig("CellTag") as string;
+  let editor = getPythonEditor();
+  if (editor === undefined) {
+    return undefined;
+  }
+  // NOTE: find cell tag without capture, gm: global, multiline
+  let pattern = new RegExp(`(?:^[\\t ]*${cellFlag.trim()} )`, 'gm');
+
+  let text = editor.document.getText();
+  return text.matchAll(pattern);
+}
+
+// TODO: make configurable?
+// REF: https://www.dofactory.com/css/
+const cellDecorType = vscode.window.createTextEditorDecorationType({
+  isWholeLine: true,
+  borderWidth: '1px 0 0 0',
+  borderStyle: 'dotted',  // 'groove',  // 'dashed',
+  borderColor: 'inherit',  // 'LightSlateGray',
+  fontWeight: 'bolder',
+  fontStyle: 'italic',
+});
+
+function decorateCell(editor: vscode.TextEditor | undefined) {
+  if (editor === undefined) {
+    return;
+  }
+  if (editor.document.languageId !== "python") {
+    consoleLog('Command only support "python" .py file');
+    return;
+  }
+  let matches = findCells();
+  if (matches === undefined) {
+    return;
+  }
+
+  const decors: vscode.DecorationOptions[] = [];
+  for (let match of matches) {
+    if (match.index === undefined) {
+      continue;
+    }
+    let position = editor.document.positionAt(match.index);
+    decors.push({
+      range: new vscode.Range(position, position),
+    });
+  }
+  editor.setDecorations(cellDecorType, decors);
+}
+
+function updateCellDecor(editor: vscode.TextEditor | undefined) {
+  setTimeout(decorateCell, MAX_TIMEOUT);
+  decorateCell(editor);
+}
+
 
 // === MAIN ===
 export function activate(context: vscode.ExtensionContext) {
@@ -429,6 +498,19 @@ export function activate(context: vscode.ExtensionContext) {
     }
   }
 
+  // === TRIGGERS ===
+  vscode.window.onDidChangeActiveTextEditor(editor => {
+    updateCellDecor(editor);
+  }, null, context.subscriptions);
+
+  vscode.workspace.onDidChangeTextDocument(event => {
+    if (event.contentChanges.length === 0) {
+      return;
+    }
+    let editor = getPythonEditor();
+    updateCellDecor(editor);
+  }, null, context.subscriptions);
+
   // === COMMANDS ===
   async function runFile(
     isReset: boolean = false,
@@ -514,13 +596,9 @@ export function activate(context: vscode.ExtensionContext) {
 
   async function runCell(isNext: boolean) {
     consoleLog("IPython run cell...");
-    let editor = vscode.window.activeTextEditor;
+    let editor = getPythonEditor();
     if (editor === undefined) {
       console.error("Unable to access Active Text Editor");
-      return;
-    }
-    if (editor.document.languageId !== "python") {
-      console.error('Command only support "python" .py file');
       return;
     }
 
@@ -657,6 +735,18 @@ export function activate(context: vscode.ExtensionContext) {
   }
 
   // -- Register Command to Extension
+  // NOTE: place in package.json:"command" section for testing
+  // {
+  //   "category": "IPython",
+  //   "command": "ipython._ipytest",
+  //   "title": "Testing CODE. DEV ONLY."
+  // },
+  // context.subscriptions.push(
+  //   vscode.commands.registerCommand("ipython._ipytest", () =>
+  //     updateCellDecor(getPythonEditor())
+  //   )
+  // );
+
   context.subscriptions.push(
     vscode.commands.registerCommand("ipython.moveToCellTagAbove", () =>
       moveCursorToCell(false)

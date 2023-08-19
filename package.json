@@ -37,7 +37,7 @@
                 "ipython.SendCommandMethod": {
                     "type": "string",
                     "enum": ["file", "clipboard"],
-                    "default": "clipboard",
+                    "default": "file",
                     "markdownDescription": "- **file**, send command to `./.vscode/ipython/command.py`, then use `%load command.py` to terminal.  \n- **clipboard**, copy-paste command to terminal via clipboard."
                 },
                 "ipython.LaunchArguments": {

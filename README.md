@@ -19,6 +19,7 @@ Key features tagged with `IPython`:
     - Command line arguments (i.e., `sys.argv` parameters)
 - Useful command to run `python` code interactively
     - E.g., run a file, selection(s) of code, cell block, run to line, run from line, ...
+- Code formatting for visualizing cell blocks (#25)
 
 See `ipython: Feature Contribution` tab in VSCode Extension (Ctrl + Shift + X)
 panel for latest features and details.
@@ -32,6 +33,10 @@ panel for latest features and details.
 **Strongly recommend setting `Git Bash` as default terminal on Window to properly launch an IPython terminal.**
 
 ## Release Notes
+
+### 2023.8.x
+- Added cell dividers
+- Defaulting send code to `file` instead of `clipboard`
 
 ### 2023.3.x
 - Fixed a minor bug with sending multi-line code on Linux
