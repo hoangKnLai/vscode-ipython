@@ -138,6 +138,11 @@
             },
             {
                 "category": "IPython",
+                "command": "ipython.runLineAndAdvance",
+                "title": "Run Code on current line and advance to next line"
+            },
+            {
+                "category": "IPython",
                 "command": "ipython.runCell",
                 "title": "Run Cell Block of Code"
             },

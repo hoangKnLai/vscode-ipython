@@ -36,6 +36,7 @@ panel for latest features and details.
 
 ### 2023.8.x
 - Added cell dividers
+- Added an alpha feature `runLineAndAdvance` (#18)
 - Defaulting send code to `file` instead of `clipboard`
 
 ### 2023.3.x

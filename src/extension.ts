@@ -2,6 +2,7 @@
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from "vscode";
 import * as path from "path";
+import { moveCursor } from "readline";
 // import * as fs from "fs";
 
 // === CONSTANTS ===
@@ -61,6 +62,13 @@ function getConfig(name: string) {
 // 	return match;
 // }
 
+/**
+ * Move the cursor to location and reveal it editor
+ *
+ * @param editor - a text editor
+ * @param line - line number of cursor
+ * @param char - character number of cursor
+ */
 function moveAndRevealCursor(
   editor: vscode.TextEditor,
   line: number,
@@ -119,7 +127,7 @@ function leftAdjustTrim(lines: string[]) {
 function getCellPattern() {
   let cellFlag = getConfig("CellTag") as string;
   // NOTE: find cell tag, capture tab and space before it in a line
-  return new RegExp(`(?:^([\\t ]*)${cellFlag.trim()} )`);
+  return new RegExp(`(?:^([\\t ]*)${cellFlag.trim()})`);
   // return new RegExp(`^([\\t ]*)(?:${cellFlag})`);  // (?:^([\t ]*)# %% )
 }
 
@@ -230,7 +238,7 @@ function findCells() {
     return undefined;
   }
   // NOTE: find cell tag without capture, gm: global, multiline
-  let pattern = new RegExp(`(?:^[\\t ]*${cellFlag.trim()} )`, 'gm');
+  let pattern = new RegExp(`(?:^[\\t ]*${cellFlag.trim()})`, 'gm');
 
   let text = editor.document.getText();
   return text.matchAll(pattern);
@@ -558,40 +566,68 @@ export function activate(context: vscode.ExtensionContext) {
 
   async function runSelections() {
     consoleLog("IPython run selection...");
-    let editor = vscode.window.activeTextEditor;
+    let editor = getPythonEditor();
     if (editor === undefined) {
       console.error("Unable to access Active Text Editor");
       return;
     }
-    if (editor.document.languageId !== "python") {
-      console.error('Command only support "python" .py file');
+
+    let terminal = await getTerminal();
+    if (terminal === undefined) {
+      console.error("Unable to get an IPython Terminal");
+      return;
+    }
+
+    let stackCmd = "";
+    let stackExec = 1;
+    for (let select of editor.selections) {
+      let { cmd, nExec } = getIpyCommand(editor.document, select);
+      stackExec = nExec; // NOTE: only need last
+      if (cmd !== "") {
+        stackCmd += newLine + cmd;
+      }
+    }
+    stackCmd = stackCmd.trim();
+    let isSingleLine = stackCmd.indexOf(newLine) === -1;
+    if (stackCmd !== "") {
+      consoleLog(`IPython Run Line Selection(s):${stackCmd}`);
+      await execute(terminal, stackCmd, stackExec, isSingleLine);
+    }
+
+    await vscode.commands.executeCommand(
+      "workbench.action.terminal.scrollToBottom"
+    );
+
+  }
+
+  async function runLine() {
+    consoleLog("IPython run a line...");
+    let editor = getPythonEditor();
+    if (editor === undefined) {
+      console.error("Unable to access Active Text Editor");
+      return;
+    }
+
+    if (!editor.selection.isSingleLine && !editor.selection.isEmpty) {
+      consoleLog('More than one selections or a line with a selection of char');
+      runSelections();
       return;
     }
 
     let terminal = await getTerminal();
-    if (terminal !== undefined) {
-      let stackCmd = "";
-      let stackExec = 1;
-      for (let select of editor.selections) {
-        let { cmd, nExec } = getIpyCommand(editor.document, select);
-        stackExec = nExec; // NOTE: only need last
-        if (cmd !== "") {
-          stackCmd += newLine + cmd;
-        }
-      }
-      stackCmd = stackCmd.trim();
-      let isSingleLine = stackCmd.indexOf(newLine) === -1;
-      if (stackCmd !== "") {
-        consoleLog(`IPython Run Line Selection(s):${stackCmd}`);
-        await execute(terminal, stackCmd, stackExec, isSingleLine);
-      }
-      await vscode.commands.executeCommand(
-        "workbench.action.terminal.scrollToBottom"
-      );
-    } else {
+    if (terminal === undefined) {
       console.error("Unable to get an IPython Terminal");
       return;
     }
+
+    let { cmd, nExec } = getIpyCommand(editor.document, editor.selection);
+    if (cmd !== "") {
+      consoleLog(`IPython Run Line :${cmd}`);
+      await execute(terminal, cmd, nExec, editor.selection.isSingleLine);
+    }
+
+    let line = editor.selection.start.line + 1;
+    moveAndRevealCursor(editor, line);
   }
 
   async function runCell(isNext: boolean) {
@@ -800,6 +836,9 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand("ipython.resetAndRunFileWithArgsCli", () =>
       runFile(true, true, true)
     )
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand("ipython.runLineAndAdvance", runLine)
   );
   context.subscriptions.push(
     vscode.commands.registerCommand("ipython.runSelections", runSelections)
