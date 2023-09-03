@@ -68,45 +68,22 @@ export function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(
         vscode.commands.registerCommand(
             "ipython.runFileWithArgs",
-            () => ipy.runFile(false, true, false)
+            () => ipy.runFile(true, false)
         )
     );
     context.subscriptions.push(
         vscode.commands.registerCommand(
             "ipython.runFileWithCli",
-            () => ipy.runFile(false, false, true)
+            () => ipy.runFile(false, true)
         )
     );
     context.subscriptions.push(
         vscode.commands.registerCommand(
             "ipython.runFileWithArgsCli",
-            () => ipy.runFile(false, true, true)
+            () => ipy.runFile(true, true)
         )
     );
-    context.subscriptions.push(
-        vscode.commands.registerCommand(
-            "ipython.resetAndRunFile",
-            () => ipy.runFile(true, false, false)
-        )
-    );
-    context.subscriptions.push(
-        vscode.commands.registerCommand(
-            "ipython.resetAndRunFileWithArgs",
-            () => ipy.runFile(true, true, false)
-        )
-    );
-    context.subscriptions.push(
-        vscode.commands.registerCommand(
-            "ipython.resetAndRunFileWithCli",
-            () => ipy.runFile(true, false, true)
-        )
-    );
-    context.subscriptions.push(
-        vscode.commands.registerCommand(
-            "ipython.resetAndRunFileWithArgsCli",
-            () => ipy.runFile(true, true, true)
-        )
-    );
+
     context.subscriptions.push(
         vscode.commands.registerCommand(
             "ipython.runLineAndAdvance",
@@ -134,13 +111,13 @@ export function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(
         vscode.commands.registerCommand(
             "ipython.runToLine",
-            () => ipy.runCursor("top")
+            () => ipy.runCursor(false)
         )
     );
     context.subscriptions.push(
         vscode.commands.registerCommand(
             "ipython.runFromLine",
-            () => ipy.runCursor("bottom")
+            () => ipy.runCursor(true)
         )
     );
 }

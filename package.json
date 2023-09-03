@@ -33,12 +33,6 @@
         "configuration": {
             "title": "IPython",
             "properties": {
-                "ipython.SendCommandMethod": {
-                    "type": "string",
-                    "enum": ["file", "clipboard"],
-                    "default": "file",
-                    "markdownDescription": "- **file**, send command to `./.vscode/ipython/command.py`, then use `%load command.py` to terminal.  \n- **clipboard**, copy-paste command to terminal via clipboard."
-                },
                 "ipython.LaunchArguments": {
                     "type": "string",
                     "default": "--no-autoindent",
@@ -61,6 +55,15 @@
                     "type": "number",
                     "default": 32,
                     "markdownDescription": "Millisecond delay between each code execution. Helps with race condition when sending text to IPython `stdin` shell."
+                },
+                "ipython.RunCellMethod": {
+                    "type": "string",
+                    "enum": [
+                        "%load",
+                        "%run -i"
+                    ],
+                    "default": "%run -i",
+                    "markdownDescription": "Write `./.vscode/ipython/code.py`, then use `%run -i cell.py` to terminal.\n NOTE: open `.vscode/ipython/code.py` to see exact code executed."
                 },
                 "ipython.RunArguments": {
                     "type": "string",
@@ -112,26 +115,6 @@
             },
             {
                 "category": "IPython",
-                "command": "ipython.resetAndRunFile",
-                "title": "Reset then Run File"
-            },
-            {
-                "category": "IPython",
-                "command": "ipython.resetAndRunFileWithArgs",
-                "title": "Reset then Run File with Run Arguments"
-            },
-            {
-                "category": "IPython",
-                "command": "ipython.resetAndRunFileWithCli",
-                "title": "Reset then Run File with Command Line Arguments"
-            },
-            {
-                "category": "IPython",
-                "command": "ipython.resetAndRunFileWithArgsCli",
-                "title": "Reset then Run File with Run and Command Line Arguments"
-            },
-            {
-                "category": "IPython",
                 "command": "ipython.runSelections",
                 "title": "Run Code Selection(s) or Line at each Cursor"
             },
@@ -172,7 +155,6 @@
                 "key": "alt+j",
                 "when": "ipython.isUse && editorTextFocus && editorLangId == python"
             },
-
             {
                 "command": "ipython.createTerminal",
                 "key": "ctrl+shift+i c",
@@ -186,11 +168,6 @@
             {
                 "command": "ipython.runFileWithArgsCli",
                 "key": "shift+f5",
-                "when": "ipython.isUse && !inDebugMode && editorTextFocus && editorLangId == python"
-            },
-            {
-                "command": "ipython.resetAndRunFile",
-                "key": "ctrl+shift+i f5",
                 "when": "ipython.isUse && !inDebugMode && editorTextFocus && editorLangId == python"
             },
             {
@@ -229,17 +206,17 @@
         "test": "node ./out/test/runTest.js"
     },
     "devDependencies": {
-        "@types/vscode": "^1.60.0",
-        "@types/glob": "^7.1.4",
-        "@types/mocha": "^9.0.0",
-        "@types/node": "14.x",
-        "@typescript-eslint/eslint-plugin": "^4.31.1",
-        "@typescript-eslint/parser": "^4.31.1",
+        "@types/glob": "^7.2.0",
+        "@types/mocha": "^9.1.1",
+        "@types/node": "^14.18.58",
+        "@types/vscode": "^1.81.0",
+        "@typescript-eslint/eslint-plugin": "^4.33.0",
+        "@typescript-eslint/parser": "^4.33.0",
+        "@vscode/test-electron": "^1.6.2",
         "eslint": "^7.32.0",
-        "glob": "^7.1.7",
-        "mocha": "^9.1.1",
-        "typescript": "^4.4.3",
-        "@vscode/test-electron": "^1.6.2"
+        "glob": "^7.2.3",
+        "mocha": "^9.2.2",
+        "typescript": "^4.9.5"
     },
     "dependencies": {
         "python": "0.0.4"

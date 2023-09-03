@@ -5,7 +5,7 @@ import * as util from "./utility";
 import * as cst from "./constants";
 
 // === CONSTANTS ===
-let newLine = util.getNewLine()
+let newLine = util.getNewLine();
 export const terminalName = "IPython";  //TODO: consider making configurable?!
 
 // TODO: make configurable?
@@ -24,16 +24,12 @@ const cellDecorType = vscode.window.createTextEditorDecorationType({
 /**
  * Get current editor.
  *
- * @returns - active python text editor
+ * @returns active python text editor
  */
 export function getPythonEditor() {
-    let editor = vscode.window.activeTextEditor;
-    if (editor === undefined) {
-        util.consoleLog("Unable to access Active Text Editor");
-        return;
-    }
+    let editor = vscode.window.activeTextEditor as vscode.TextEditor;
+
     if (editor.document.languageId !== "python") {
-        util.consoleLog('Command only support "python" .py file');
         return;
     }
     return editor;
@@ -49,7 +45,9 @@ export async function activatePython() {
         console.error("Failed to get MS-Python Extension");
         return;
     }
-    await pyExtension.activate();
+    if (!pyExtension.isActive){
+        await pyExtension.activate();
+    }
     let editor = getPythonEditor();
     decorateCell(editor);
 }
@@ -65,7 +63,7 @@ export function getConfig(name: string) {
 }
 
 /**
- * Move the cursor to location and reveal it editor
+ * Move the cursor to location and reveal its editor
  *
  * @param editor - a text editor
  * @param line - line number of cursor
@@ -272,7 +270,14 @@ export function updateCellDecor(editor: vscode.TextEditor | undefined) {
     decorateCell(editor);
 }
 
-export function writeCommandFile(filename: string, command: string) {
+/**
+ * Write code to file.
+ *
+ * @param filename - name of file to write code to
+ * @param code - properly formatted code
+ * @returns workspace relative path to written file
+ */
+export function writeCodeFile(filename: string, code: string) {
     // -- Write File
     let wsFolders = vscode.workspace.workspaceFolders; // Assume single workspace
     if (wsFolders === undefined) {
@@ -281,14 +286,13 @@ export function writeCommandFile(filename: string, command: string) {
     }
 
     let folder = wsFolders[0].uri.fsPath;
-    let relName = path.join("./", ".vscode", "ipython", filename);
-    // let file = path.join(folder, relName);
+    let relName = path.join(cst.WORK_FOLDER, filename);
     let file = vscode.Uri.file(path.join(folder, relName));
 
     util.consoleLog(`Write File: ${file}`);
 
     // NOTE: extra newline for indented code at end of file
-    let cmd = Buffer.from(command + "\n\n", "utf8");
+    let cmd = Buffer.from(code, "utf8");
     vscode.workspace.fs.writeFile(file, cmd);
     // fs.writeFileSync(file, command + "\n");
 
@@ -388,11 +392,7 @@ export async function createTerminal() {
     cmd += startupCmd;
 
     util.consoleLog(`Startup Command: ${startupCmd}`);
-    await execute(terminal, cmd, 1, true);
-    await util.wait(500); // IPython may take awhile to load. FIXME: move to config
-    await vscode.commands.executeCommand(
-        "workbench.action.terminal.scrollToBottom"
-    );
+    await executeTerminalCommand(terminal, cmd, 1, true);
     return terminal;
 }
 
@@ -426,47 +426,47 @@ export async function getTerminal() {
 }
 
 /**
- * Ipython terminal specific command and execution for use with `execute()`
+ * Format single line or consecutive lines of code to fit ipython terminal.
+ *
+ * NOTE: always return code with empty newline like newline at end of file.
+ *
  * @param document - current active python file
  * @param selection - a selection in python file
- * @returns cmd, nExec - command string and number of executions in terminal
+ * @returns code - executable on ipython terminal
  */
-export function getIpyCommand(
+export function formatCode(
     document: vscode.TextDocument,
     selection: vscode.Selection
 ) {
-    let nExec = 0; // Number of execution needed on IPython console
-    let cmd = "";
-    document.save(); // force saving to properly use IPython %load
-    // -- Single line
+    let code = "";
+    document.save(); // force saving to properly get text
+
     if (selection.isSingleLine) {
         let text: string = "";
         if (selection.isEmpty) {
-            // support: run line at cursor when empty selection
+            // Support run line at cursor when empty selection
             text = document.lineAt(selection.start.line).text;
         } else {
             text = document.getText(selection.with());
         }
-        cmd = `${text.trim()}`;
-        nExec = 1;
-        return { cmd, nExec };
+        code = text.trim() + newLine;
+        return code;
     }
 
-    // -- Stack multiple consecutive lines
+    // -- Format & Stack
     let textLines = document.getText(selection.with()).split(newLine);
     const isNotEmpty = (item: string) => item.trim().length > 0;
     let startLine = selection.start.line;
     let startIndex = textLines.findIndex(isNotEmpty);
     if (startIndex !== -1) {
         startLine += startIndex;
-    } else {
-        // all lines and partial lines are whitespaces
-        cmd = "";
-        nExec = 0;
-        return { cmd, nExec };
+    } else {  // all lines and partial lines are whitespaces
+        code = "" + newLine;
+        return code;
     }
-    // NOTE: will use first non-empty line and include the whole line
-    // even if it is partially selected
+
+    // NOTE: use first non-empty line and include the whole line even if it is
+    // partially selected
     let start = selection.start.with(startLine, 0);
     let range = selection.with(start);
 
@@ -474,18 +474,44 @@ export function getIpyCommand(
 
     textLines = leftAdjustTrim(textLines);
     if (textLines.length > 0) {
-        cmd = textLines.join(newLine);
-        nExec = 1; // extra exec to handle hanging block like `else:`
+        code = textLines.join(newLine);
 
-        let lastIndex = textLines.length - 1;
-        let firstChar = textLines[lastIndex].search(/\S|$/);
-        if (firstChar > 0) { // last line is part of a block
-            nExec = 2;
-        }
-        return { cmd, nExec };
+        // let lastIndex = textLines.length - 1;
+        // let firstChar = textLines[lastIndex].search(/\S|$/);
+        // if (firstChar > 0) { // last line is part of a block
+        //     code += newLine;
+        // }
     }
-    return { cmd, nExec };
+    return code + newLine;
 }
+
+
+/**
+ * Execute a block of code.
+ *
+ * @param terminal - an ipython terminal
+ * @param code - block of code
+ * @param identity - of block
+ */
+export async function executeCodeBlock(
+    terminal: vscode.Terminal,
+    code: string,
+    identity: string = ''
+) {
+    let file = writeCodeFile(cst.CODE_FILE, code);
+
+    let nExec = 1;  // default to %run -i
+    let execMethod = getConfig("RunCellMethod") as string;
+    if (execMethod === '%load'){
+        nExec = 2;
+    }
+
+    // NOTE: terminal needs quotation "${file}" in all cases
+    terminal.sendText(`${execMethod} "${file}"  ${identity}`);
+
+    await execute(terminal, nExec);
+}
+
 
 /**
  * Execute ipython command on terminal.
@@ -494,61 +520,61 @@ export function getIpyCommand(
  * @param cmd - a command
  * @param nExec - number of executions
  * @param isSingleLine - a single line or multi-line command
- * @returns - undefined when unable
+ * @param Promise - executed on terminal
  */
-export async function execute(
+export async function executeTerminalCommand(
     terminal: vscode.Terminal,
     cmd: string,
     nExec: number = 1,
-    isSingleLine: boolean
+    isSingleLine: boolean = true,
 ) {
-    if (cmd.length > 0) {
-        terminal.show(true); // preserve focus
-
-        if (isSingleLine) {
-            // No newLine in sendText to execute since IPython is trippy with
-            // when/how to execute a code line, block, multi-lines/blocks, etc.
-            terminal.sendText(cmd, false); // false: no append `newline`
-        } else {
-            let sendMethod = getConfig("SendCommandMethod") as string;
-
-            if (sendMethod === "file") {
-                // let filename = ".vscode/ipython/temp_command.py";
-                let filename = "command.py";
-                let file = writeCommandFile(filename, cmd);
-                // NOTE: require quotation "${file}" to properly load in all cases
-                terminal.sendText(`%load "${file}" `);
-                nExec = 2; // %load command requires 2 newlines after loading to excute
-            } else if (sendMethod === "clipboard") {
-                util.consoleLog(`--Use clipboard for command--`);
-                let clip = await vscode.env.clipboard.readText();
-                await vscode.env.clipboard.writeText(cmd);
-                await vscode.commands.executeCommand(
-                    "workbench.action.terminal.paste"
-                );
-                await vscode.env.clipboard.writeText(clip);
-                let editor = vscode.window.activeTextEditor;
-                if (editor === undefined) {
-                    return;
-                }
-                await vscode.window.showTextDocument(editor.document);
-            }
-        }
-        util.consoleLog(`Command sent to terminal`);
-
-        // Wait for IPython to register command before execution.
-        // NOTE: this helps with command race condition, not solves it.
-        if (nExec > 0) {
-            let execLagMilliSec = getConfig("ExecutionLagMilliSec") as number;
-            util.consoleLog(`+ Number of Execution: ${nExec}`);
-            for (let i = 0; i < nExec; i++) {
-                await util.wait(execLagMilliSec);
-                util.consoleLog(`- Waited ${execLagMilliSec} msec`);
-                terminal.sendText(`${newLine}`);
-                util.consoleLog(`- Execute ID ${i}`);
-            }
-        }
+    if (cmd.length === 0){
+        return;
     }
+    terminal.show(true); // preserve focus
+
+    if (isSingleLine) {
+        // NOTE: no newLine in sendText to execute since IPython is trippy
+        // with when/how to execute a code line, block, multi-lines/blocks.
+        terminal.sendText(cmd, false); // false: no append `newline`
+    } else {  // use file to send
+        let file = writeCodeFile(cst.CMD_FILE, cmd);
+        nExec = 2;  // %load needs atleast two executions
+
+        // NOTE: terminal needs quotation "${file}" in all cases
+        terminal.sendText(`%load "${file}" `);
+    }
+    util.consoleLog(`Command sent to terminal`);
+
+    await execute(terminal, nExec);
+}
+
+/**
+ * Execute code that are already sent to an ipython terminal.
+ *
+ * @param terminal - an ipython terminal
+ * @param nExec - number of ipython execution
+ * @param Promise - executed on terminal
+ */
+async function execute(terminal: vscode.Terminal, nExec=1){
+   // Wait for IPython to register command before execution.
+    // NOTE: this helps with race condition, not solves it.
+    if (nExec === 0) {
+        return;
+    }
+
+    let execLagMilliSec = getConfig("ExecutionLagMilliSec") as number;
+    util.consoleLog(`+ Number of Execution: ${nExec}`);
+    for (let i = 0; i < nExec; i++) {
+        await util.wait(execLagMilliSec);
+        util.consoleLog(`- Waited ${execLagMilliSec} msec`);
+        terminal.sendText(`${newLine}`);
+        util.consoleLog(`- Execute ID ${i}`);
+    }
+
+    await vscode.commands.executeCommand(
+        "workbench.action.terminal.scrollToBottom"
+    );
 }
 
 
@@ -562,47 +588,28 @@ export async function execute(
  * @returns Promise - is ran in terminal
  */
 export async function runFile(
-    isReset: boolean = false,
     isWithArgs: boolean = false,
     isWithCli: boolean = false
 ) {
     util.consoleLog("IPython run file...");
-    let editor = vscode.window.activeTextEditor;
-    await editor?.document.save();
-    if (editor === undefined) {
-        console.error("Unable to access Active Text Editor");
-        return;
-    }
-    if (editor.document.languageId !== "python") {
-        console.error('Command only support "python" .py file');
-        return;
-    }
+    let editor = getPythonEditor() as vscode.TextEditor;
+    await editor.document.save();
 
-    // let {cmd, nExec} = getIpyCommand(editor.document, undefined);
-    let terminal = await getTerminal();
-    if (terminal !== undefined) {
-        if (isReset) {
-            util.consoleLog("Reset workspace");
-            await execute(terminal, `%reset -f`, 1, true);
-        }
+    let terminal = await getTerminal() as vscode.Terminal;
 
-        let file = editor.document.fileName;
-        let cmd = `"${file}"`;
-        if (isWithCli) {
-            let args = getConfig("CommandLineArguments") as string;
-            cmd = cmd + ` ${args}`;
-        }
-        if (isWithArgs) {
-            let args = getConfig("RunArguments") as string;
-            cmd = `${args} ` + cmd;
-        }
-        cmd = `%run ` + cmd;
-        util.consoleLog("IPython Run File Command: " + cmd);
-        await execute(terminal, cmd, 1, true);
+    let file = editor.document.fileName;
+    let cmd = `"${file}"`;
+    if (isWithCli) {
+        let args = getConfig("CommandLineArguments") as string;
+        cmd = cmd + ` ${args}`;
     }
-    await vscode.commands.executeCommand(
-        "workbench.action.terminal.scrollToBottom"
-    );
+    if (isWithArgs) {
+        let args = getConfig("RunArguments") as string;
+        cmd = `${args} ` + cmd;
+    }
+    cmd = `%run ` + cmd;
+    util.consoleLog("IPython Run File Command: " + cmd);
+    await executeTerminalCommand(terminal, cmd, 1, true);
 }
 
 /**
@@ -612,55 +619,39 @@ export async function runFile(
  */
 export async function runSelections() {
     util.consoleLog("IPython run selection...");
-    let editor = getPythonEditor();
-    if (editor === undefined) {
-        console.error("Unable to access Active Text Editor");
-        return;
-    }
+    let editor = getPythonEditor() as vscode.TextEditor;
+    let terminal = await getTerminal() as vscode.Terminal;
 
-    let terminal = await getTerminal();
-    if (terminal === undefined) {
-        console.error("Unable to get an IPython Terminal");
-        return;
-    }
-
-    let stackCmd = "";
-    let stackExec = 1;
+    let codes:string[] = [];
     for (let select of editor.selections) {
-        let { cmd, nExec } = getIpyCommand(editor.document, select);
-        stackExec = nExec; // NOTE: only need last
-        if (cmd !== "") {
-            stackCmd += newLine + cmd;
+        let code = formatCode(editor.document, select);
+        let lines = code.trimEnd().split(newLine);
+        for (let line of lines) {
+            codes.push(line);
         }
     }
-    stackCmd = stackCmd.trim();
-    let isSingleLine = stackCmd.indexOf(newLine) === -1;
-    if (stackCmd !== "") {
-        util.consoleLog(`IPython Run Line Selection(s):${stackCmd}`);
-        await execute(terminal, stackCmd, stackExec, isSingleLine);
+    let isSingleLine = codes.length === 1;
+    let code = codes.join(newLine) + newLine;
+
+    util.consoleLog(`IPython Run Line Selection(s):${code}`);
+    if (isSingleLine){
+        await executeTerminalCommand(terminal, code, 1, isSingleLine);
+        return;
     }
-
-    await vscode.commands.executeCommand(
-        "workbench.action.terminal.scrollToBottom"
-    );
-
+    let identity = '# selection(s)';
+    await executeCodeBlock(terminal, code, identity);
 }
 
 /**
- * Run current line of python code in an ipython terminal.
+ * Run current line of code in an ipython terminal.
  *
- * @returns Promise - is ran in terminal
+ * @returns Promise - executed in terminal
  */
 export async function runLine() {
     util.consoleLog("IPython run a line...");
-    let editor = getPythonEditor();
-    if (editor === undefined) {
-        console.error("Unable to access Active Text Editor");
-        return;
-    }
+    let editor = getPythonEditor() as vscode.TextEditor;
 
     if (!editor.selection.isSingleLine && !editor.selection.isEmpty) {
-        util.consoleLog('More than one selections or a line with a selection of char');
         runSelections();
         return;
     }
@@ -671,10 +662,10 @@ export async function runLine() {
         return;
     }
 
-    let { cmd, nExec } = getIpyCommand(editor.document, editor.selection);
+    let cmd = formatCode(editor.document, editor.selection);
     if (cmd !== "") {
         util.consoleLog(`IPython Run Line :${cmd}`);
-        await execute(terminal, cmd, nExec, editor.selection.isSingleLine);
+        await executeTerminalCommand(terminal, cmd, 1, editor.selection.isSingleLine);
     }
 
     let line = editor.selection.start.line + 1;
@@ -694,7 +685,7 @@ export async function runCell(isNext: boolean) {
         console.error("Unable to access Active Text Editor");
         return;
     }
-
+    // FIXME: probably an easier way of doing this using regular expression
     // Find cell immediately at or above current cursor
     let line = editor.selection.start.line;
     const cellAbove = findCellAboveCursor(line, undefined);
@@ -715,26 +706,30 @@ export async function runCell(isNext: boolean) {
         console.error("Failed to find Cell");
         return;
     }
-    let cellStop = cellBelow[0];
+    let cellStop = cellBelow[0];  // one line below last line
 
     let start = new vscode.Position(cellStart, 0);
     let stop = new vscode.Position(cellStop, 0);
     let selection = new vscode.Selection(start, stop);
-    let { cmd, nExec } = getIpyCommand(editor.document, selection);
 
-    if (cmd !== "") {
-        // Terminal
+    let cellName = '#';  // empty python comment
+    if (cellStart > 0){
+        cellName = editor.document.lineAt(cellStart).text.trim();
+    }
+
+    // NOTE: editor is 1-indexing
+    let identity = `${cellName} (Line ${cellStart + 1}:${cellStop})`;
+    let code = formatCode(editor.document, selection);
+
+    if (code !== "") {
         let terminal = await getTerminal();
         if (terminal === undefined) {
             console.error("Unable to get an IPython Terminal");
             return;
         }
 
-        util.consoleLog("IPython Run Cell: \n" + cmd);
-        await execute(terminal, cmd, nExec, false);
-        await vscode.commands.executeCommand(
-            "workbench.action.terminal.scrollToBottom"
-        );
+        util.consoleLog("IPython Run Cell: \n" + code);
+        await executeCodeBlock(terminal, code, identity);
     }
 
     if (isNext) {
@@ -754,41 +749,40 @@ export async function runCell(isNext: boolean) {
 /**
  * Run code to or from cursor.
  *
- * @param toFrom - inclusively from top to line or from line to end of file
+ * @param toEnd - inclusively from top to line or from line to end of file
  * @returns Promise - is ran in terminal
  */
-export async function runCursor(toFrom: string) {
-    let editor = getPythonEditor();
-    if (editor === undefined) {
-        console.error("Failed to get editor");
-        return;
-    }
-    let anchor: vscode.Position;
-    let active: vscode.Position;
-    let line = editor.selection.start.line;
-    if (toFrom === "top") {
-        anchor = new vscode.Position(0, 0);
-        active = editor.selection.start.with(line, 0);
-    } else if (toFrom === "bottom") {
-        anchor = editor.selection.start.with(line, 0);
-        active = new vscode.Position(editor.document.lineCount, 0);
-    } else {
-        console.error(`Invalid option "toFrom": ${toFrom}`);
-        return;
-    }
+export async function runCursor(toEnd: boolean) {
+    let editor = getPythonEditor() as vscode.TextEditor;
 
-    let selection = new vscode.Selection(anchor, active);
+    // Default to beginning of file
+    let startLine = 0;
+    // let startChar = 0;
 
-    let { cmd, nExec } = getIpyCommand(editor.document, selection);
-    if (cmd !== "") {
-        let terminal = await getTerminal();
-        if (terminal === undefined) {
-            console.error("Failed to get terminal");
-            return;
-        }
-        await execute(terminal, cmd, nExec, selection.isSingleLine);
-        await vscode.commands.executeCommand(
-            "workbench.action.terminal.scrollToBottom"
-        );
+    // Default to current line
+    let stopLine = editor.selection.start.line;
+    // let stopChar = editor.document.lineAt(stopLine).text.length - 1;
+
+    if (toEnd) {  // to bottom
+        startLine = editor.selection.start.line;
+        stopLine = editor.document.lineCount - 1;
+        // stopChar = editor.document.lineAt(stopLine).text.length - 1;
+    }
+    // let startPosition = new vscode.Position(startLine, startChar);
+    // let stopPosition = new vscode.Position(stopLine, stopChar);
+    let startPosition = new vscode.Position(startLine, 0);
+    let stopPosition = new vscode.Position(stopLine, 0);
+    let selection = new vscode.Selection(startPosition, stopPosition);
+
+    let name = path.basename(editor.document.fileName);
+    // NOTE: editor display line is 1-indexing
+    let start = selection.start.line + 1;
+    let end = selection.end.line + 1;
+    let identity = `# ${name} Line ${start}:${end}`;
+
+    let code = formatCode(editor.document, selection);
+    if (code !== "") {
+        let terminal = await getTerminal() as vscode.Terminal;
+        await executeCodeBlock(terminal, code, identity);
     }
 }
