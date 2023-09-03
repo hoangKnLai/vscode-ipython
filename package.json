@@ -7,7 +7,7 @@
     "publisher": "HoangKimLai",
     "repository": "https://github.com/hoangKnLai/vscode-ipython",
     "engines": {
-        "vscode": "^1.60.0"
+        "vscode": "^1.81.0"
     },
     "keywords": [
         "python",
@@ -23,8 +23,7 @@
         "ms-python.python"
     ],
     "activationEvents": [
-        "onLanguage:python",
-        "onCommand:ipython.createTerminal"
+        "onLanguage:python"
     ],
     "main": "./out/extension.js",
     "capabilities": {
@@ -177,7 +176,7 @@
             {
                 "command": "ipython.createTerminal",
                 "key": "ctrl+shift+i c",
-                "when": ""
+                "when": "ipython.isUse"
             },
             {
                 "command": "ipython.runFileWithCli",
