@@ -417,12 +417,13 @@ export async function getTerminal() {
                 return terminals[i];
             }
         }
-    } else {
-        let terminal = await createTerminal();
-        if (terminal !== undefined) {
-            return terminal;
-        }
     }
+
+    terminal = await createTerminal();
+    if (terminal !== undefined) {
+        return terminal;
+    }
+
 }
 
 /**
@@ -501,7 +502,7 @@ export async function executeCodeBlock(
     let file = writeCodeFile(cst.CODE_FILE, code);
 
     let nExec = 1;  // default to %run -i
-    let execMethod = getConfig("RunCodeBlockMethod") as string;
+    let execMethod = getConfig('RunCodeBlockMethod') as string;
     let command = `${execMethod} "${file}"`;
 
     if (execMethod === '%run -i'){
@@ -519,6 +520,8 @@ export async function executeCodeBlock(
 
 /**
  * Execute ipython command on terminal.
+ *
+ * FIXME: reduce scope to just a single line of code / command (no %load here)
  *
  * @param terminal - an ipython terminal
  * @param cmd - a command
@@ -548,7 +551,7 @@ export async function executeTerminalCommand(
         // NOTE: terminal needs quotation "${file}" in all cases
         terminal.sendText(`%load "${file}" `);
     }
-    util.consoleLog(`Command sent to terminal`);
+    util.consoleLog('Command sent to terminal');
 
     await execute(terminal, nExec);
 }
