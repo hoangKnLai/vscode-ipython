@@ -501,13 +501,17 @@ export async function executeCodeBlock(
     let file = writeCodeFile(cst.CODE_FILE, code);
 
     let nExec = 1;  // default to %run -i
-    let execMethod = getConfig("RunCellMethod") as string;
-    if (execMethod === '%load'){
+    let execMethod = getConfig("RunCodeBlockMethod") as string;
+    let command = `${execMethod} "${file}"`;
+
+    if (execMethod === '%run -i'){
+        command += `  ${identity}`;
+    } else {  // assume %load
         nExec = 2;
     }
 
     // NOTE: terminal needs quotation "${file}" in all cases
-    terminal.sendText(`${execMethod} "${file}"  ${identity}`);
+    terminal.sendText(command);
 
     await execute(terminal, nExec);
 }

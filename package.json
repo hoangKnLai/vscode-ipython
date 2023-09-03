@@ -56,14 +56,14 @@
                     "default": 32,
                     "markdownDescription": "Millisecond delay between each code execution. Helps with race condition when sending text to IPython `stdin` shell."
                 },
-                "ipython.RunCellMethod": {
+                "ipython.RunCodeBlockMethod": {
                     "type": "string",
                     "enum": [
                         "%load",
                         "%run -i"
                     ],
                     "default": "%run -i",
-                    "markdownDescription": "Write `./.vscode/ipython/code.py`, then use `%run -i cell.py` to terminal.\n NOTE: open `.vscode/ipython/code.py` to see exact code executed."
+                    "markdownDescription": "Write code block (cell, multi-selections) to `.vscode/ipython/code.py`, then execute using `%run -i or %load code.py`. NOTE: open `code.py` to see exact code executed."
                 },
                 "ipython.RunArguments": {
                     "type": "string",
