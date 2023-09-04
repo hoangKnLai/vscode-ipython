@@ -253,10 +253,18 @@ export function decorateSection(editor: vscode.TextEditor) {
     editor.setDecorations(sectionDecorType, decors);
 }
 
+/**
+ * Remove section position cache.
+ * @param fileName - a vscode document.fileName
+ */
 export function removeSectionCache(fileName: string){
     sectionCache.delete(fileName);
 }
 
+/**
+ * Update section cache of active editor.document.
+ * @param editor - an active python text editor
+ */
 export function updateSectionCache(editor: vscode.TextEditor){
     let positions = findSections();
     let key = editor.document.fileName;
