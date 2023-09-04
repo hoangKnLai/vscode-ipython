@@ -13,17 +13,31 @@ export function activate(context: vscode.ExtensionContext) {
     ipy.activatePython();
 
     // === TRIGGERS ===
-    vscode.window.onDidChangeActiveTextEditor(editor => {
-        ipy.updateSectionDecor(editor);
-    }, null, context.subscriptions);
+    vscode.window.onDidChangeActiveTextEditor(
+        () => {
+            ipy.updateSectionDecor();
+        },
+        null,
+        context.subscriptions
+    );
 
-    vscode.workspace.onDidChangeTextDocument(event => {
-        if (event.contentChanges.length === 0) {
-            return;
+    vscode.workspace.onDidCloseTextDocument(
+        event => {
+            ipy.removeSectionCache(event.fileName);
         }
-        let editor = ipy.getPythonEditor();
-        ipy.updateSectionDecor(editor);
-    }, null, context.subscriptions);
+    );
+
+    vscode.workspace.onDidChangeTextDocument(
+        event => {
+            if (event.contentChanges.length === 0) {
+                return;
+            }
+
+            ipy.updateSectionDecor();
+        },
+        null,
+        context.subscriptions
+    );
 
     // == Register Command ==
     // NOTE: place in package.json:"command" section for testing

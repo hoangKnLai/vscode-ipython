@@ -19,6 +19,8 @@ const sectionDecorType = vscode.window.createTextEditorDecorationType({
     fontStyle: 'italic',
 });
 
+let sectionCache = new Map<string, vscode.Position[]>();
+
 // === MISC ===
 
 /**
@@ -48,8 +50,7 @@ export async function activatePython() {
     if (!pyExtension.isActive){
         await pyExtension.activate();
     }
-    let editor = getPythonEditor();
-    decorateSection(editor);
+    updateSectionDecor();
 }
 
 /**
@@ -241,16 +242,8 @@ export function findSections() {
  * @param editor - current active python editor
  * @returns - undefined when failed
  */
-export function decorateSection(editor: vscode.TextEditor | undefined) {
-    if (editor === undefined) {
-        return;
-    }
-    if (editor.document.languageId !== "python") {
-        util.consoleLog('Command only support "python" .py file');
-        return;
-    }
-    let positions = findSections();
-
+export function decorateSection(editor: vscode.TextEditor) {
+    let positions = sectionCache.get(editor.document.fileName) as vscode.Position[];
     const decors: vscode.DecorationOptions[] = [];
     for (let position of positions){
         decors.push({
@@ -260,11 +253,25 @@ export function decorateSection(editor: vscode.TextEditor | undefined) {
     editor.setDecorations(sectionDecorType, decors);
 }
 
+export function removeSectionCache(fileName: string){
+    sectionCache.delete(fileName);
+}
+
+export function updateSectionCache(editor: vscode.TextEditor){
+    let positions = findSections();
+    let key = editor.document.fileName;
+    sectionCache.set(key, positions);
+}
+
 /**
- * Update section decoration
+ * Update section decoration.
  * @param editor - current active python editor
  */
-export function updateSectionDecor(editor: vscode.TextEditor | undefined) {
+export function updateSectionDecor() {
+    let editor = getPythonEditor() as vscode.TextEditor;
+
+    updateSectionCache(editor);
+
     setTimeout(decorateSection, cst.MAX_TIMEOUT);
     decorateSection(editor);
 }
