@@ -66,8 +66,8 @@ export function getConfig(name: string) {
  * Move the cursor to location and reveal its editor
  *
  * @param editor - a text editor
- * @param line - line number of cursor
- * @param char - character number of cursor
+ * @param line - line number of location
+ * @param char - character number of location
  */
 export function moveAndRevealCursor(
     editor: vscode.TextEditor,
@@ -84,8 +84,7 @@ export function moveAndRevealCursor(
 }
 
 /**
- * Remove empty lines, left trim greatest common spaces, right trim spaces,
- * and newline
+ * Remove empty lines, left trim greatest common spaces, trim ends.
  *
  * @param lines - of strings
  * @returns trimLines - trimmed line of string
@@ -103,7 +102,7 @@ export function leftAdjustTrim(lines: string[]) {
         let begin = line.search(/\S|$/); // index of first non-whitespace
         isNewBlock = begin < start;
         if (isFirst) {
-            // first line has hanging spaces
+            // First line has hanging spaces
             start = begin;
             isFirst = false;
         }
@@ -126,14 +125,13 @@ export function leftAdjustTrim(lines: string[]) {
  */
 export function getSectionPattern() {
     let sectionFlag = getConfig("SectionTag") as string;
-    // NOTE: find section tag, capture tab and space before it in a line
+    // NOTE: find section tag, capture tab and space before tag in a line
     return new RegExp(`(?:^([\\t ]*)${sectionFlag.trim()})`);
-    // return new RegExp(`^([\\t ]*)(?:${sectionFlag})`);  // (?:^([\t ]*)# %% )
 }
 
 /**
- * Find section tag line and level starting at cursor line and go toward beginning
- * of file.
+ * Find section tag line and level starting at cursor line and go toward
+ * beginning of file.
  *
  * @param startLine - desired starting line, default to current cursor
  * @param aLevel - desired equal or higher level of the section to find.
@@ -212,21 +210,29 @@ export function findSectionBelowCursor(
 }
 
 /**
- * regex matching section tag in current active editor .py
+ * Find section tag in current active text editor.
  *
- * @returns matches - regular expression matching section tag position
+ * @returns positions of section tag
  */
 export function findSections() {
     let sectionFlag = getConfig("SectionTag") as string;
-    let editor = getPythonEditor();
-    if (editor === undefined) {
-        return undefined;
-    }
+    let editor = getPythonEditor() as vscode.TextEditor;
+
     // NOTE: find section tag without capture, gm: global, multiline
     let pattern = new RegExp(`(?:^[\\t ]*${sectionFlag.trim()})`, 'gm');
 
     let text = editor.document.getText();
-    return text.matchAll(pattern);
+    let matches = text.matchAll(pattern);
+
+    let positions: vscode.Position[] = [];
+    for (let match of matches) {
+        if (match.index === undefined) {
+            continue;
+        }
+        let position = editor.document.positionAt(match.index);
+        positions.push(position);
+    }
+    return positions;
 }
 
 /**
@@ -243,17 +249,10 @@ export function decorateSection(editor: vscode.TextEditor | undefined) {
         util.consoleLog('Command only support "python" .py file');
         return;
     }
-    let matches = findSections();
-    if (matches === undefined) {
-        return;
-    }
+    let positions = findSections();
 
     const decors: vscode.DecorationOptions[] = [];
-    for (let match of matches) {
-        if (match.index === undefined) {
-            continue;
-        }
-        let position = editor.document.positionAt(match.index);
+    for (let position of positions){
         decors.push({
             range: new vscode.Range(position, position),
         });
