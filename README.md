@@ -14,12 +14,12 @@ Key features tagged with `IPython`:
     - Launch argument (e.g., `--matplotlib=qt`)
     - Start up command (e.g., `["%load_ext autoreload", %autoreload 2]`)
 - Configurable:
-    - Cell block tag (e.g., `# %%`)
+    - Section block tag (e.g., `# %%`)
     - `%run` arguments (e.g., `-t` print timing info)
     - Command line arguments (i.e., `sys.argv` parameters)
 - Useful command to run `python` code interactively
-    - E.g., run a file, selection(s) of code, cell block, run to line, run from line, ...
-- Code formatting for visualizing cell blocks (#25)
+    - E.g., run a file, selection(s) of code, section block, run to line, run from line, ...
+- Code formatting for visualizing section blocks (#25)
 
 See `ipython: Feature Contribution` tab in VSCode Extension (Ctrl + Shift + X)
 panel for latest features and details.
@@ -35,7 +35,7 @@ panel for latest features and details.
 ## Release Notes
 
 ### 2023.8.x
-- Added cell dividers
+- Added section dividers
 - Added an alpha feature `runLineAndAdvance` (#18)
 - Defaulting send code to `file` instead of `clipboard`
 
@@ -52,13 +52,13 @@ panel for latest features and details.
 - Fixed a bug with `runSelection` executing line-by-line on Linux instead of as a block (issue #17)
 - Always save file in `runFile` command so that `%run` magic works as intended
     - Other `run` commands (e.g., `selection`, `toLine`, `fromLine`) respect user choice
-- Added `Move Cursor to Cell Tag Above/Below`
+- Added `Move Cursor to Section Tag Above/Below`
 - Added `Run Arguments` and `Command Line Arguments` for `Run File` variants
     - Default `F5` to `Run File with Command Line Arguments`
         - If `Command Line Arguments` is empty, then it reduces to regular `Run File`
     - Added `Shift+F5` to `Run File with Run and Command Line Arguments`
         - Defaulted `Run Arguments` to `-t` which prints `%run` timing
-- Fixed a bug with `Run Cell` skipping last cell line
+- Fixed a bug with `Run Section` skipping last section line
 - Configuration applies immediately when changed instead of only when extension
 activated
 
@@ -111,8 +111,8 @@ parsing code to send to IPython console
 **Features**:
 - Added keybinds (overwrite base interactive python and Jupyter)
   - Recommend rebind as needed
-- Added run cell and go to next (`ipython.runCellAndMoveToNext`)
-- Added customizable cell block tag option
+- Added run section and go to next (`ipython.runSectionAndMoveToNext`)
+- Added customizable section block tag option
 - Other minor QoL
 
 **Fixes:**

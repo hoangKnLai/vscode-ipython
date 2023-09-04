@@ -10,7 +10,7 @@ export const terminalName = "IPython";  //TODO: consider making configurable?!
 
 // TODO: make configurable?
 // REF: https://www.dofactory.com/css/
-const cellDecorType = vscode.window.createTextEditorDecorationType({
+const sectionDecorType = vscode.window.createTextEditorDecorationType({
     isWholeLine: true,
     borderWidth: '1px 0 0 0',
     borderStyle: 'dotted',  // 'groove',  // 'dashed',
@@ -49,7 +49,7 @@ export async function activatePython() {
         await pyExtension.activate();
     }
     let editor = getPythonEditor();
-    decorateCell(editor);
+    decorateSection(editor);
 }
 
 /**
@@ -119,32 +119,32 @@ export function leftAdjustTrim(lines: string[]) {
 // === CELL ===
 
 /**
- * Pattern to look for code cell.
+ * Pattern to look for code section.
  *
- * @returns pattern - regular expression to find cell tag capture tab and space
+ * @returns pattern - regular expression to find section tag capture tab and space
  * before it in a line
  */
-export function getCellPattern() {
-    let cellFlag = getConfig("CellTag") as string;
-    // NOTE: find cell tag, capture tab and space before it in a line
-    return new RegExp(`(?:^([\\t ]*)${cellFlag.trim()})`);
-    // return new RegExp(`^([\\t ]*)(?:${cellFlag})`);  // (?:^([\t ]*)# %% )
+export function getSectionPattern() {
+    let sectionFlag = getConfig("SectionTag") as string;
+    // NOTE: find section tag, capture tab and space before it in a line
+    return new RegExp(`(?:^([\\t ]*)${sectionFlag.trim()})`);
+    // return new RegExp(`^([\\t ]*)(?:${sectionFlag})`);  // (?:^([\t ]*)# %% )
 }
 
 /**
- * Find cell tag line and level starting at cursor line and go toward beginning
+ * Find section tag line and level starting at cursor line and go toward beginning
  * of file.
  *
  * @param startLine - desired starting line, default to current cursor
- * @param aLevel - desired equal or higher level of the cell to find.
+ * @param aLevel - desired equal or higher level of the section to find.
  * Set `undefine` to find nearest.
- * @returns [line, level] the line the cell is found and its level
+ * @returns [line, level] the line the section is found and its level
  */
-export function findCellAboveCursor(
+export function findSectionAboveCursor(
     startLine: number | undefined,
     aLevel: number | undefined
 ) {
-    let cellPattern = getCellPattern();
+    let sectionPattern = getSectionPattern();
     let editor = getPythonEditor();
     if (editor === undefined) {
         return;
@@ -153,37 +153,37 @@ export function findCellAboveCursor(
         startLine = editor.selection.start.line;
     }
 
-    let cellLine = 0; // beginning of file or first cell
-    let cellLevel = 0; // no char before cell block
+    let sectionLine = 0; // beginning of file or first section
+    let sectionLevel = 0; // no char before section block
     for (let iLine = startLine; iLine > 0; iLine--) {
         let line = editor.document.lineAt(iLine).text;
-        let found = line.match(cellPattern);
+        let found = line.match(sectionPattern);
         if (found) {
             let level = util.replaceTabWithSpace(found[1]).length;
             if (aLevel !== undefined && level > aLevel) {
                 continue;
             }
-            cellLine = iLine;
-            cellLevel = level;
+            sectionLine = iLine;
+            sectionLevel = level;
             break;
         }
     }
-    return [cellLine, cellLevel] as const;
+    return [sectionLine, sectionLevel] as const;
 }
 
 /**
- * Find cell tag line and level starting at cursor line + 1 toward end of file.
+ * Find section tag line and level starting at cursor line + 1 toward end of file.
  *
  * @param startLine - desired starting line, default to current cursor
- * @param aLevel - desired equal or higher level of the cell to find.
+ * @param aLevel - desired equal or higher level of the section to find.
  * Set `undefine` to find nearest.
- * @returns [line, level] the line the cell is found and its level
+ * @returns [line, level] the line the section is found and its level
  */
-export function findCellBelowCursor(
+export function findSectionBelowCursor(
     startLine: number | undefined,
     aLevel: number | undefined
 ) {
-    let cellPattern = getCellPattern();
+    let sectionPattern = getSectionPattern();
     let editor = getPythonEditor();
     if (editor === undefined) {
         return;
@@ -193,49 +193,49 @@ export function findCellBelowCursor(
     }
     let lineCount = editor.document.lineCount;
 
-    let cellLine = lineCount - 1; // end of file or last cell
-    let cellLevel = 0; // no char before cell block
+    let sectionLine = lineCount - 1; // end of file or last section
+    let sectionLevel = 0; // no char before section block
     for (let iLine = startLine; iLine < lineCount; iLine++) {
         let line = editor.document.lineAt(iLine).text;
-        let found = line.match(cellPattern);
+        let found = line.match(sectionPattern);
         if (found) {
             let level = util.replaceTabWithSpace(found[1]).length;
             if (aLevel !== undefined && level > aLevel) {
                 continue;
             }
-            cellLine = iLine;
-            cellLevel = level;
+            sectionLine = iLine;
+            sectionLevel = level;
             break;
         }
     }
-    return [cellLine, cellLevel] as const;
+    return [sectionLine, sectionLevel] as const;
 }
 
 /**
- * regex matching cell tag in current active editor .py
+ * regex matching section tag in current active editor .py
  *
- * @returns matches - regular expression matching cell tag position
+ * @returns matches - regular expression matching section tag position
  */
-export function findCells() {
-    let cellFlag = getConfig("CellTag") as string;
+export function findSections() {
+    let sectionFlag = getConfig("SectionTag") as string;
     let editor = getPythonEditor();
     if (editor === undefined) {
         return undefined;
     }
-    // NOTE: find cell tag without capture, gm: global, multiline
-    let pattern = new RegExp(`(?:^[\\t ]*${cellFlag.trim()})`, 'gm');
+    // NOTE: find section tag without capture, gm: global, multiline
+    let pattern = new RegExp(`(?:^[\\t ]*${sectionFlag.trim()})`, 'gm');
 
     let text = editor.document.getText();
     return text.matchAll(pattern);
 }
 
 /**
- * Decorate cell with divider.
+ * Decorate section with divider.
  *
  * @param editor - current active python editor
  * @returns - undefined when failed
  */
-export function decorateCell(editor: vscode.TextEditor | undefined) {
+export function decorateSection(editor: vscode.TextEditor | undefined) {
     if (editor === undefined) {
         return;
     }
@@ -243,7 +243,7 @@ export function decorateCell(editor: vscode.TextEditor | undefined) {
         util.consoleLog('Command only support "python" .py file');
         return;
     }
-    let matches = findCells();
+    let matches = findSections();
     if (matches === undefined) {
         return;
     }
@@ -258,16 +258,16 @@ export function decorateCell(editor: vscode.TextEditor | undefined) {
             range: new vscode.Range(position, position),
         });
     }
-    editor.setDecorations(cellDecorType, decors);
+    editor.setDecorations(sectionDecorType, decors);
 }
 
 /**
- * Update cell decoration
+ * Update section decoration
  * @param editor - current active python editor
  */
-export function updateCellDecor(editor: vscode.TextEditor | undefined) {
-    setTimeout(decorateCell, cst.MAX_TIMEOUT);
-    decorateCell(editor);
+export function updateSectionDecor(editor: vscode.TextEditor | undefined) {
+    setTimeout(decorateSection, cst.MAX_TIMEOUT);
+    decorateSection(editor);
 }
 
 /**
@@ -300,47 +300,47 @@ export function writeCodeFile(filename: string, code: string) {
 }
 
 /**
- * Move cursor to a cell above or below
+ * Move cursor to a section above or below
  * @param below - look below or above
  */
-export function moveCursorToCell(below: boolean) {
+export function moveCursorToSection(below: boolean) {
     let editor = getPythonEditor();
     if (editor === undefined) {
         console.error("Unable to get editor");
         return;
     }
     let line = editor.selection.start.line;
-    let cellLine: number;
+    let sectionLine: number;
 
     if (below) {
         if (line < editor.document.lineCount - 1) {
             line += 1;
         }
-        const cellBelow = findCellBelowCursor(line, undefined);
-        if (cellBelow === undefined) {
-            console.error("Failed to find cell above");
+        const sectionBelow = findSectionBelowCursor(line, undefined);
+        if (sectionBelow === undefined) {
+            console.error("Failed to find section above");
             return;
         }
-        cellLine = cellBelow[0];
+        sectionLine = sectionBelow[0];
     } else {
         if (line > 0) {
             line -= 1;
         }
-        const cellAbove = findCellAboveCursor(line, undefined);
-        if (cellAbove === undefined) {
-            console.error("Failed to find cell above");
+        const sectionAbove = findSectionAboveCursor(line, undefined);
+        if (sectionAbove === undefined) {
+            console.error("Failed to find section above");
             return;
         }
-        cellLine = cellAbove[0];
+        sectionLine = sectionAbove[0];
     }
-    let cellPattern = getCellPattern();
-    let text = editor.document.lineAt(cellLine).text;
-    let found = text.match(cellPattern);
+    let sectionPattern = getSectionPattern();
+    let text = editor.document.lineAt(sectionLine).text;
+    let found = text.match(sectionPattern);
     let char = 0;
     if (found) {
         char = found[1].length;
     }
-    moveAndRevealCursor(editor, cellLine, char);
+    moveAndRevealCursor(editor, sectionLine, char);
 }
 
 // === TERMINAL ===
@@ -511,11 +511,7 @@ export async function executeCodeBlock(
     } else {  // assume %load
         nExec = 2;
     }
-
-    // NOTE: terminal needs quotation "${file}" in all cases
     await executeSingleLine(terminal, command);
-
-    await execute(terminal, nExec);
 }
 
 
@@ -667,52 +663,52 @@ export async function runLine() {
 }
 
 /**
- * Run current cell of python code in an ipython terminal.
+ * Run current section of python code in an ipython terminal.
  *
- * @param isNext - move cursor to next cell if any
+ * @param isNext - move cursor to next section if any
  * @returns Promise - is ran in terminal
  */
-export async function runCell(isNext: boolean) {
-    util.consoleLog("IPython run cell...");
+export async function runSection(isNext: boolean) {
+    util.consoleLog("IPython run section...");
     let editor = getPythonEditor();
     if (editor === undefined) {
         console.error("Unable to access Active Text Editor");
         return;
     }
     // FIXME: probably an easier way of doing this using regular expression
-    // Find cell immediately at or above current cursor
+    // Find section immediately at or above current cursor
     let line = editor.selection.start.line;
-    const cellAbove = findCellAboveCursor(line, undefined);
-    if (cellAbove === undefined) {
-        console.error("Failed to find Cell");
+    const sectionAbove = findSectionAboveCursor(line, undefined);
+    if (sectionAbove === undefined) {
+        console.error("Failed to find Section");
         return;
     }
-    let cellStart = cellAbove[0];
-    let cellLevel = cellAbove[1];
+    let sectionStart = sectionAbove[0];
+    let sectionLevel = sectionAbove[1];
 
-    // Find cell below current cursor with same level as above cell
+    // Find section below current cursor with same level as above section
     let lineCount = editor.document.lineCount;
     if (line < lineCount - 1) {
         line += 1;
     }
-    const cellBelow = findCellBelowCursor(line, cellLevel);
-    if (cellBelow === undefined) {
-        console.error("Failed to find Cell");
+    const sectionBelow = findSectionBelowCursor(line, sectionLevel);
+    if (sectionBelow === undefined) {
+        console.error("Failed to find Section");
         return;
     }
-    let cellStop = cellBelow[0];  // one line below last line
+    let sectionStop = sectionBelow[0];  // one line below last line
 
-    let start = new vscode.Position(cellStart, 0);
-    let stop = new vscode.Position(cellStop, 0);
+    let start = new vscode.Position(sectionStart, 0);
+    let stop = new vscode.Position(sectionStop, 0);
     let selection = new vscode.Selection(start, stop);
 
-    let cellName = '#';  // empty python comment
-    if (cellStart > 0){
-        cellName = editor.document.lineAt(cellStart).text.trim();
+    let sectionName = '#';  // empty python comment
+    if (sectionStart > 0){
+        sectionName = editor.document.lineAt(sectionStart).text.trim();
     }
 
     // NOTE: editor is 1-indexing
-    let identity = `${cellName} (Line ${cellStart + 1}:${cellStop})`;
+    let identity = `${sectionName} (Line ${sectionStart + 1}:${sectionStop})`;
     let code = formatCode(editor.document, selection);
 
     if (code !== "") {
@@ -722,20 +718,20 @@ export async function runCell(isNext: boolean) {
             return;
         }
 
-        util.consoleLog("IPython Run Cell: \n" + code);
+        util.consoleLog("IPython Run Section: \n" + code);
         await executeCodeBlock(terminal, code, identity);
     }
 
     if (isNext) {
-        if (cellStop < lineCount - 1) {
-            let cellPattern = getCellPattern();
-            let text = editor.document.lineAt(cellStop).text;
-            let found = text.match(cellPattern);
+        if (sectionStop < lineCount - 1) {
+            let sectionPattern = getSectionPattern();
+            let text = editor.document.lineAt(sectionStop).text;
+            let found = text.match(sectionPattern);
             let char = 0;
             if (found) {
                 char = found[1].length;
             }
-            moveAndRevealCursor(editor, cellStop, char);
+            moveAndRevealCursor(editor, sectionStop, char);
         }
     }
 }

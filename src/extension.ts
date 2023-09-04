@@ -14,7 +14,7 @@ export function activate(context: vscode.ExtensionContext) {
 
     // === TRIGGERS ===
     vscode.window.onDidChangeActiveTextEditor(editor => {
-        ipy.updateCellDecor(editor);
+        ipy.updateSectionDecor(editor);
     }, null, context.subscriptions);
 
     vscode.workspace.onDidChangeTextDocument(event => {
@@ -22,7 +22,7 @@ export function activate(context: vscode.ExtensionContext) {
             return;
         }
         let editor = ipy.getPythonEditor();
-        ipy.updateCellDecor(editor);
+        ipy.updateSectionDecor(editor);
     }, null, context.subscriptions);
 
     // == Register Command ==
@@ -34,21 +34,21 @@ export function activate(context: vscode.ExtensionContext) {
     // },
     // context.subscriptions.push(
     //   vscode.commands.registerCommand("ipython._ipytest", () =>
-    //     updateCellDecor(getPythonEditor())
+    //     updateSectionDecor(getPythonEditor())
     //   )
     // );
 
     context.subscriptions.push(
         vscode.commands.registerCommand(
-            "ipython.moveToCellTagAbove",
-            () => ipy.moveCursorToCell(false)
+            "ipython.moveToSectionTagAbove",
+            () => ipy.moveCursorToSection(false)
         )
     );
 
     context.subscriptions.push(
         vscode.commands.registerCommand(
-            "ipython.moveToCellTagBelow",
-            () => ipy.moveCursorToCell(true)
+            "ipython.moveToSectionTagBelow",
+            () => ipy.moveCursorToSection(true)
         )
     );
 
@@ -98,14 +98,14 @@ export function activate(context: vscode.ExtensionContext) {
     );
     context.subscriptions.push(
         vscode.commands.registerCommand(
-            "ipython.runCell",
-            ipy.runCell
+            "ipython.runSection",
+            ipy.runSection
         )
     );
     context.subscriptions.push(
         vscode.commands.registerCommand(
-            "ipython.runCellAndMoveToNext",
-             () => ipy.runCell(true)
+            "ipython.runSectionAndMoveToNext",
+             () => ipy.runSection(true)
         )
     );
     context.subscriptions.push(

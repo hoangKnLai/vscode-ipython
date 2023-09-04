@@ -46,10 +46,10 @@
                     ],
                     "markdownDescription": "List of commands to execute line-by-line after launching IPython terminal (e.g., `['%load_ext autoreload', '%autoreload 2']`)."
                 },
-                "ipython.CellTag": {
+                "ipython.SectionTag": {
                     "type": "string",
                     "default": "# %%",
-                    "markdownDescription": "Tag indicating a cell block"
+                    "markdownDescription": "Tag indicating a section block"
                 },
                 "ipython.ExecutionLagMilliSec": {
                     "type": "number",
@@ -63,7 +63,7 @@
                         "%run -i"
                     ],
                     "default": "%run -i",
-                    "markdownDescription": "Write code block (cell, multi-selections) to `.vscode/ipython/code.py`, then execute using `%run -i or %load code.py`. NOTE: open `code.py` to see exact code executed."
+                    "markdownDescription": "Write code block (section, multi-selections) to `.vscode/ipython/code.py`, then execute using `%run -i or %load code.py`. NOTE: open `code.py` to see exact code executed."
                 },
                 "ipython.RunArguments": {
                     "type": "string",
@@ -80,13 +80,13 @@
         "commands": [
             {
                 "category": "IPython",
-                "command": "ipython.moveToCellTagAbove",
-                "title": "Move Cursor to Cell Tag Above"
+                "command": "ipython.moveToSectionTagAbove",
+                "title": "Move Cursor to Section Tag Above"
             },
             {
                 "category": "IPython",
-                "command": "ipython.moveToCellTagBelow",
-                "title": "Move Cursor to Cell Tag Below"
+                "command": "ipython.moveToSectionTagBelow",
+                "title": "Move Cursor to Section Tag Below"
             },
             {
                 "category": "IPython",
@@ -125,13 +125,13 @@
             },
             {
                 "category": "IPython",
-                "command": "ipython.runCell",
-                "title": "Run Cell Block of Code"
+                "command": "ipython.runSection",
+                "title": "Run Section Block of Code"
             },
             {
                 "category": "IPython",
-                "command": "ipython.runCellAndMoveToNext",
-                "title": "Run Cell and Move to Next Cell"
+                "command": "ipython.runSectionAndMoveToNext",
+                "title": "Run Section and Move to Next Section"
             },
             {
                 "category": "IPython",
@@ -146,12 +146,12 @@
         ],
         "keybindings": [
             {
-                "command": "ipython.moveToCellTagAbove",
+                "command": "ipython.moveToSectionTagAbove",
                 "key": "alt+k",
                 "when": "ipython.isUse && editorTextFocus && editorLangId == python"
             },
             {
-                "command": "ipython.moveToCellTagBelow",
+                "command": "ipython.moveToSectionTagBelow",
                 "key": "alt+j",
                 "when": "ipython.isUse && editorTextFocus && editorLangId == python"
             },
@@ -176,12 +176,12 @@
                 "when": "ipython.isUse && !inDebugMode && editorTextFocus && !findInputFocussed && !replaceInputFocussed && editorLangId == python"
             },
             {
-                "command": "ipython.runCell",
+                "command": "ipython.runSection",
                 "key": "alt+enter",
                 "when": "ipython.isUse && !inDebugMode && editorTextFocus && editorLangId == python"
             },
             {
-                "command": "ipython.runCellAndMoveToNext",
+                "command": "ipython.runSectionAndMoveToNext",
                 "key": "shift+alt+enter",
                 "when": "ipython.isUse && !inDebugMode && editorTextFocus && !notebookEditorFocused && editorLangId == python"
             },
