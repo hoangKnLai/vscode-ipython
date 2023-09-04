@@ -3,11 +3,15 @@
     "displayName": "ipython",
     "description": "IPython integration supporting direct interactive usage and commands.",
     "icon": "md_img/icon.png",
-    "version": "2023.8.0",
+    "version": "2023.9.0",
     "publisher": "HoangKimLai",
-    "repository": "https://github.com/hoangKnLai/vscode-ipython",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/hoangKnLai/vscode-ipython"
+    },
+
     "engines": {
-        "vscode": "^1.60.0"
+        "vscode": "^1.81.0"
     },
     "keywords": [
         "python",
@@ -23,8 +27,7 @@
         "ms-python.python"
     ],
     "activationEvents": [
-        "onLanguage:python",
-        "onCommand:ipython.createTerminal"
+        "onLanguage:python"
     ],
     "main": "./out/extension.js",
     "capabilities": {
@@ -34,12 +37,6 @@
         "configuration": {
             "title": "IPython",
             "properties": {
-                "ipython.SendCommandMethod": {
-                    "type": "string",
-                    "enum": ["file", "clipboard"],
-                    "default": "file",
-                    "markdownDescription": "- **file**, send command to `./.vscode/ipython/command.py`, then use `%load command.py` to terminal.  \n- **clipboard**, copy-paste command to terminal via clipboard."
-                },
                 "ipython.LaunchArguments": {
                     "type": "string",
                     "default": "--no-autoindent",
@@ -53,15 +50,24 @@
                     ],
                     "markdownDescription": "List of commands to execute line-by-line after launching IPython terminal (e.g., `['%load_ext autoreload', '%autoreload 2']`)."
                 },
-                "ipython.CellTag": {
+                "ipython.SectionTag": {
                     "type": "string",
                     "default": "# %%",
-                    "markdownDescription": "Tag indicating a cell block"
+                    "markdownDescription": "Tag indicating a section block"
                 },
                 "ipython.ExecutionLagMilliSec": {
                     "type": "number",
-                    "default": 32,
+                    "default": 128,
                     "markdownDescription": "Millisecond delay between each code execution. Helps with race condition when sending text to IPython `stdin` shell."
+                },
+                "ipython.RunCodeBlockMethod": {
+                    "type": "string",
+                    "enum": [
+                        "%load",
+                        "%run -i"
+                    ],
+                    "default": "%run -i",
+                    "markdownDescription": "Write code block (section, multi-selections) to `.vscode/ipython/code.py`, then execute using `%run -i or %load code.py`. NOTE: open `code.py` to see exact code executed."
                 },
                 "ipython.RunArguments": {
                     "type": "string",
@@ -78,13 +84,13 @@
         "commands": [
             {
                 "category": "IPython",
-                "command": "ipython.moveToCellTagAbove",
-                "title": "Move Cursor to Cell Tag Above"
+                "command": "ipython.moveToSectionTagAbove",
+                "title": "Move Cursor to Section Tag Above"
             },
             {
                 "category": "IPython",
-                "command": "ipython.moveToCellTagBelow",
-                "title": "Move Cursor to Cell Tag Below"
+                "command": "ipython.moveToSectionTagBelow",
+                "title": "Move Cursor to Section Tag Below"
             },
             {
                 "category": "IPython",
@@ -113,26 +119,6 @@
             },
             {
                 "category": "IPython",
-                "command": "ipython.resetAndRunFile",
-                "title": "Reset then Run File"
-            },
-            {
-                "category": "IPython",
-                "command": "ipython.resetAndRunFileWithArgs",
-                "title": "Reset then Run File with Run Arguments"
-            },
-            {
-                "category": "IPython",
-                "command": "ipython.resetAndRunFileWithCli",
-                "title": "Reset then Run File with Command Line Arguments"
-            },
-            {
-                "category": "IPython",
-                "command": "ipython.resetAndRunFileWithArgsCli",
-                "title": "Reset then Run File with Run and Command Line Arguments"
-            },
-            {
-                "category": "IPython",
                 "command": "ipython.runSelections",
                 "title": "Run Code Selection(s) or Line at each Cursor"
             },
@@ -143,13 +129,13 @@
             },
             {
                 "category": "IPython",
-                "command": "ipython.runCell",
-                "title": "Run Cell Block of Code"
+                "command": "ipython.runSection",
+                "title": "Run Section Block of Code"
             },
             {
                 "category": "IPython",
-                "command": "ipython.runCellAndMoveToNext",
-                "title": "Run Cell and Move to Next Cell"
+                "command": "ipython.runSectionAndMoveToNext",
+                "title": "Run Section and Move to Next Section"
             },
             {
                 "category": "IPython",
@@ -164,20 +150,19 @@
         ],
         "keybindings": [
             {
-                "command": "ipython.moveToCellTagAbove",
+                "command": "ipython.moveToSectionTagAbove",
                 "key": "alt+k",
                 "when": "ipython.isUse && editorTextFocus && editorLangId == python"
             },
             {
-                "command": "ipython.moveToCellTagBelow",
+                "command": "ipython.moveToSectionTagBelow",
                 "key": "alt+j",
                 "when": "ipython.isUse && editorTextFocus && editorLangId == python"
             },
-
             {
                 "command": "ipython.createTerminal",
                 "key": "ctrl+shift+i c",
-                "when": ""
+                "when": "ipython.isUse"
             },
             {
                 "command": "ipython.runFileWithCli",
@@ -190,22 +175,17 @@
                 "when": "ipython.isUse && !inDebugMode && editorTextFocus && editorLangId == python"
             },
             {
-                "command": "ipython.resetAndRunFile",
-                "key": "ctrl+shift+i f5",
-                "when": "ipython.isUse && !inDebugMode && editorTextFocus && editorLangId == python"
-            },
-            {
                 "command": "ipython.runSelections",
                 "key": "f9",
                 "when": "ipython.isUse && !inDebugMode && editorTextFocus && !findInputFocussed && !replaceInputFocussed && editorLangId == python"
             },
             {
-                "command": "ipython.runCell",
+                "command": "ipython.runSection",
                 "key": "alt+enter",
                 "when": "ipython.isUse && !inDebugMode && editorTextFocus && editorLangId == python"
             },
             {
-                "command": "ipython.runCellAndMoveToNext",
+                "command": "ipython.runSectionAndMoveToNext",
                 "key": "shift+alt+enter",
                 "when": "ipython.isUse && !inDebugMode && editorTextFocus && !notebookEditorFocused && editorLangId == python"
             },
@@ -230,17 +210,17 @@
         "test": "node ./out/test/runTest.js"
     },
     "devDependencies": {
-        "@types/vscode": "^1.60.0",
-        "@types/glob": "^7.1.4",
-        "@types/mocha": "^9.0.0",
-        "@types/node": "14.x",
-        "@typescript-eslint/eslint-plugin": "^4.31.1",
-        "@typescript-eslint/parser": "^4.31.1",
+        "@types/glob": "^7.2.0",
+        "@types/mocha": "^9.1.1",
+        "@types/node": "^14.18.58",
+        "@types/vscode": "^1.81.0",
+        "@typescript-eslint/eslint-plugin": "^4.33.0",
+        "@typescript-eslint/parser": "^4.33.0",
+        "@vscode/test-electron": "^1.6.2",
         "eslint": "^7.32.0",
-        "glob": "^7.1.7",
-        "mocha": "^9.1.1",
-        "typescript": "^4.4.3",
-        "@vscode/test-electron": "^1.6.2"
+        "glob": "^7.2.3",
+        "mocha": "^9.2.2",
+        "typescript": "^4.9.5"
     },
     "dependencies": {
         "python": "0.0.4"
