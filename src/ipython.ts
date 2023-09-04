@@ -169,22 +169,6 @@ export interface SectionPosition {
 }
 
 /**
- * Level of a section.
- * @param sectionHeader a section heading with leading spaces for level
- * @returns level of section. Smaller number is a higher level.
- */
-export function getSectionLevel(
-    sectionHeader: string,
-) {
-    let sectionPattern = getSectionPattern();
-
-    // NOTE: pattern extracts spaces and tabs at beginning of a section line
-    let matches = sectionHeader.match(sectionPattern) as RegExpMatchArray;
-    let level = util.replaceTabWithSpace(matches[1]).length;
-    return level;
-}
-
-/**
  * Position of the section positions nearest to cursor in document.
  * @param editor - active python text `editor`
  * @param cursor - default to `editor.selection.start`
@@ -194,7 +178,7 @@ export function getSectionLevel(
 export function getSectionAtCursor(
     editor: vscode.TextEditor,
     cursor: vscode.Position | undefined = undefined,
-    ignoreLevel: boolean = true,
+    ignoreLevel: boolean = false,
 ) {
     let document = editor.document;
     let docCursor = editor.selection.start;
