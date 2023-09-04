@@ -53,7 +53,7 @@
                 },
                 "ipython.ExecutionLagMilliSec": {
                     "type": "number",
-                    "default": 32,
+                    "default": 128,
                     "markdownDescription": "Millisecond delay between each code execution. Helps with race condition when sending text to IPython `stdin` shell."
                 },
                 "ipython.RunCodeBlockMethod": {

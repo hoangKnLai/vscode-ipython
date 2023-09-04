@@ -355,7 +355,7 @@ export async function createTerminal() {
 
     // -- Create and Tag IPython Terminal
     await vscode.commands.executeCommand("python.createTerminal");
-    util.wait(500); // msec, to help with a race condition not naming terminal
+    util.wait(500); // msec, to help with a race condition of not naming terminal
     await vscode.commands.executeCommand(
         "workbench.action.terminal.renameWithArg",
         { name: terminalName }
@@ -392,7 +392,8 @@ export async function createTerminal() {
     cmd += startupCmd;
 
     util.consoleLog(`Startup Command: ${startupCmd}`);
-    await executeTerminalCommand(terminal, cmd, 1, true);
+    await executeSingleLine(terminal, cmd);
+    await util.wait(500);  // may take awhile to startup ipython
     return terminal;
 }
 
@@ -512,48 +513,33 @@ export async function executeCodeBlock(
     }
 
     // NOTE: terminal needs quotation "${file}" in all cases
-    terminal.sendText(command);
+    await executeSingleLine(terminal, command);
 
     await execute(terminal, nExec);
 }
 
 
 /**
- * Execute ipython command on terminal.
- *
- * FIXME: reduce scope to just a single line of code / command (no %load here)
+ * Execute single line command.
  *
  * @param terminal - an ipython terminal
- * @param cmd - a command
- * @param nExec - number of executions
- * @param isSingleLine - a single line or multi-line command
+ * @param command - a command
  * @param Promise - executed on terminal
  */
-export async function executeTerminalCommand(
+export async function executeSingleLine(
     terminal: vscode.Terminal,
-    cmd: string,
-    nExec: number = 1,
-    isSingleLine: boolean = true,
+    command: string,
 ) {
-    if (cmd.length === 0){
+    command = command.trim();
+
+    if (command.length === 0){
         return;
     }
-    terminal.show(true); // preserve focus
 
-    if (isSingleLine) {
-        // NOTE: no newLine in sendText to execute since IPython is trippy
-        // with when/how to execute a code line, block, multi-lines/blocks.
-        terminal.sendText(cmd, false); // false: no append `newline`
-    } else {  // use file to send
-        let file = writeCodeFile(cst.CMD_FILE, cmd);
-        nExec = 2;  // %load needs atleast two executions
-
-        // NOTE: terminal needs quotation "${file}" in all cases
-        terminal.sendText(`%load "${file}" `);
-    }
-    util.consoleLog('Command sent to terminal');
-
-    await execute(terminal, nExec);
+    // NOTE: no newLine in sendText to execute since IPython is trippy
+    // with when/how to execute a code line, block, multi-lines/blocks.
+    terminal.sendText(command, false); // false: no append `newline`
+    await execute(terminal);
 }
 
 /**
@@ -575,13 +561,14 @@ async function execute(terminal: vscode.Terminal, nExec=1){
     for (let i = 0; i < nExec; i++) {
         await util.wait(execLagMilliSec);
         util.consoleLog(`- Waited ${execLagMilliSec} msec`);
-        terminal.sendText(`${newLine}`);
+        terminal.sendText('');
         util.consoleLog(`- Execute ID ${i}`);
     }
 
     await vscode.commands.executeCommand(
         "workbench.action.terminal.scrollToBottom"
     );
+    terminal.show(true);
 }
 
 
@@ -616,7 +603,7 @@ export async function runFile(
     }
     cmd = `%run ` + cmd;
     util.consoleLog("IPython Run File Command: " + cmd);
-    await executeTerminalCommand(terminal, cmd, 1, true);
+    await executeSingleLine(terminal, cmd);
 }
 
 /**
@@ -642,7 +629,7 @@ export async function runSelections() {
 
     util.consoleLog(`IPython Run Line Selection(s):${code}`);
     if (isSingleLine){
-        await executeTerminalCommand(terminal, code, 1, isSingleLine);
+        await executeSingleLine(terminal, code);
         return;
     }
     let identity = '# selection(s)';
@@ -650,7 +637,7 @@ export async function runSelections() {
 }
 
 /**
- * Run current line of code in an ipython terminal.
+ * Run current line of code and move cursor to next line.
  *
  * @returns Promise - executed in terminal
  */
@@ -672,7 +659,7 @@ export async function runLine() {
     let cmd = formatCode(editor.document, editor.selection);
     if (cmd !== "") {
         util.consoleLog(`IPython Run Line :${cmd}`);
-        await executeTerminalCommand(terminal, cmd, 1, editor.selection.isSingleLine);
+        await executeSingleLine(terminal, cmd);
     }
 
     let line = editor.selection.start.line + 1;

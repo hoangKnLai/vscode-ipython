@@ -6,7 +6,7 @@ import * as ipy from "./ipython";
 
 export function activate(context: vscode.ExtensionContext) {
 
-    // -- FIXME: Keybinding `when clause`
+    // FIXME: Keybinding `when clause`
     vscode.commands.executeCommand("setContext", "ipython.isUse", true);
 
     // Always make sure Python is available FIRST
