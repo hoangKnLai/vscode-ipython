@@ -19,6 +19,7 @@ const sectionDecorType = vscode.window.createTextEditorDecorationType({
     fontStyle: 'italic',
 });
 
+// NOTE: most file should have small number of sections!!
 let sectionCache = new Map<string, vscode.Position[]>();
 
 // === MISC ===
@@ -131,89 +132,9 @@ export function getSectionPattern() {
 }
 
 /**
- * Find section tag line and level starting at cursor line and go toward
- * beginning of file.
- *
- * @param startLine - desired starting line, default to current cursor
- * @param aLevel - desired equal or higher level of the section to find.
- * Set `undefine` to find nearest.
- * @returns [line, level] the line the section is found and its level
- */
-export function findSectionAboveCursor(
-    startLine: number | undefined,
-    aLevel: number | undefined
-) {
-    let sectionPattern = getSectionPattern();
-    let editor = getPythonEditor();
-    if (editor === undefined) {
-        return;
-    }
-    if (startLine === undefined) {
-        startLine = editor.selection.start.line;
-    }
-
-    let sectionLine = 0; // beginning of file or first section
-    let sectionLevel = 0; // no char before section block
-    for (let iLine = startLine; iLine > 0; iLine--) {
-        let line = editor.document.lineAt(iLine).text;
-        let found = line.match(sectionPattern);
-        if (found) {
-            let level = util.replaceTabWithSpace(found[1]).length;
-            if (aLevel !== undefined && level > aLevel) {
-                continue;
-            }
-            sectionLine = iLine;
-            sectionLevel = level;
-            break;
-        }
-    }
-    return [sectionLine, sectionLevel] as const;
-}
-
-/**
- * Find section tag line and level starting at cursor line + 1 toward end of file.
- *
- * @param startLine - desired starting line, default to current cursor
- * @param aLevel - desired equal or higher level of the section to find.
- * Set `undefine` to find nearest.
- * @returns [line, level] the line the section is found and its level
- */
-export function findSectionBelowCursor(
-    startLine: number | undefined,
-    aLevel: number | undefined
-) {
-    let sectionPattern = getSectionPattern();
-    let editor = getPythonEditor();
-    if (editor === undefined) {
-        return;
-    }
-    if (startLine === undefined) {
-        startLine = editor.selection.start.line;
-    }
-    let lineCount = editor.document.lineCount;
-
-    let sectionLine = lineCount - 1; // end of file or last section
-    let sectionLevel = 0; // no char before section block
-    for (let iLine = startLine; iLine < lineCount; iLine++) {
-        let line = editor.document.lineAt(iLine).text;
-        let found = line.match(sectionPattern);
-        if (found) {
-            let level = util.replaceTabWithSpace(found[1]).length;
-            if (aLevel !== undefined && level > aLevel) {
-                continue;
-            }
-            sectionLine = iLine;
-            sectionLevel = level;
-            break;
-        }
-    }
-    return [sectionLine, sectionLevel] as const;
-}
-
-/**
  * Find section tag in current active text editor.
  *
- * @returns positions of section tag
+ * @returns positions of section tag in ascending order
  */
 export function findSections() {
     let sectionFlag = getConfig("SectionTag") as string;
@@ -231,9 +152,104 @@ export function findSections() {
             continue;
         }
         let position = editor.document.positionAt(match.index);
+        let textLine = editor.document.lineAt(position.line);
+        position = position.translate(
+            undefined,
+            textLine.firstNonWhitespaceCharacterIndex
+        );
         positions.push(position);
     }
     return positions;
+}
+
+
+export interface SectionPosition {
+    readonly start: vscode.Position,
+    readonly stop: vscode.Position,
+}
+
+/**
+ * Level of a section.
+ * @param sectionHeader a section heading with leading spaces for level
+ * @returns level of section. Smaller number is a higher level.
+ */
+export function getSectionLevel(
+    sectionHeader: string,
+) {
+    let sectionPattern = getSectionPattern();
+
+    // NOTE: pattern extracts spaces and tabs at beginning of a section line
+    let matches = sectionHeader.match(sectionPattern) as RegExpMatchArray;
+    let level = util.replaceTabWithSpace(matches[1]).length;
+    return level;
+}
+
+/**
+ * Position of the section positions nearest to cursor in document.
+ * @param editor - active python text `editor`
+ * @param cursor - default to `editor.selection.start`
+ * @param ignoreLevel - `stop` position allows to be of a lower level than `start`
+ * @returns readonly `{start: vscode.Position, stop: vscode.Position}`
+ */
+export function getSectionAtCursor(
+    editor: vscode.TextEditor,
+    cursor: vscode.Position | undefined = undefined,
+    ignoreLevel: boolean = true,
+) {
+    let document = editor.document;
+    let docCursor = editor.selection.start;
+    if (cursor !== undefined) {
+        docCursor = cursor;
+    }
+
+    // NOTE: should be ascending order or top to bottom of file
+    //  - Must find start level before stop
+    let positions = sectionCache.get(document.fileName) as vscode.Position[];
+
+    // -- Start Position
+    let aboveIndex = positions.reverse().findIndex(  // from cursor to top
+        (position) => {
+            return position.isBeforeOrEqual(docCursor);
+        }
+    );
+
+    let start: vscode.Position;
+    let level: number;
+    if (aboveIndex === -1) {
+        start = new vscode.Position(0, 0);  // first line
+        level = 0;
+    } else {
+        start = positions[aboveIndex];
+        level = document.lineAt(start.line).firstNonWhitespaceCharacterIndex;
+    }
+
+    // -- Find next section at same level
+    let stop:vscode.Position;
+    let lastLine = document.lineCount - 1;
+
+    if (ignoreLevel) {
+        // FIXME: can be more efficient but likely not worth the effort
+        level = Infinity;
+    }
+    // NOTE: reverse() undo prior reverse in finding start position!!
+    let belowIndex = positions.reverse().findIndex(  // from start to bottom
+        (position) => {
+            let currLevel = document.lineAt(position.line).firstNonWhitespaceCharacterIndex;
+            return (position.isAfter(start) && currLevel <= level);
+        }
+    );
+
+    if (belowIndex === -1) {
+        stop = new vscode.Position(lastLine, lastLine);
+    } else {
+        stop = positions[belowIndex];
+    }
+
+    const found: SectionPosition = {
+        start: start,
+        stop: stop,
+    };
+    return found;
 }
 
 /**
@@ -314,50 +330,91 @@ export function writeCodeFile(filename: string, code: string) {
 }
 
 /**
- * Move cursor to a section above or below
- * @param below - look below or above
+ * Move cursor to a section
+ * @param below - move below or above
  */
 export function moveCursorToSection(below: boolean) {
-    let editor = getPythonEditor();
-    if (editor === undefined) {
-        console.error("Unable to get editor");
-        return;
-    }
-    let line = editor.selection.start.line;
-    let sectionLine: number;
+    let editor = getPythonEditor() as vscode.TextEditor;
+
+    let section = getSectionAtCursor(editor, undefined, true);
 
     if (below) {
-        if (line < editor.document.lineCount - 1) {
-            line += 1;
-        }
-        const sectionBelow = findSectionBelowCursor(line, undefined);
-        if (sectionBelow === undefined) {
-            console.error("Failed to find section above");
+        moveAndRevealCursor(editor, section.stop.line, section.stop.character);
+        return;
+    }
+    let cursor = editor.selection.start;
+    if (cursor.line === section.start.line){
+        let deltaLine = - 1;
+        if (cursor.line + deltaLine < 0) {
             return;
         }
-        sectionLine = sectionBelow[0];
-    } else {
-        if (line > 0) {
-            line -= 1;
-        }
-        const sectionAbove = findSectionAboveCursor(line, undefined);
-        if (sectionAbove === undefined) {
-            console.error("Failed to find section above");
-            return;
-        }
-        sectionLine = sectionAbove[0];
+        section = getSectionAtCursor(editor, cursor.translate(deltaLine), true);
     }
-    let sectionPattern = getSectionPattern();
-    let text = editor.document.lineAt(sectionLine).text;
-    let found = text.match(sectionPattern);
-    let char = 0;
-    if (found) {
-        char = found[1].length;
-    }
-    moveAndRevealCursor(editor, sectionLine, char);
+    moveAndRevealCursor(editor, section.start.line, section.start.character);
+    return;
 }
 
 // === TERMINAL ===
+
+/**
+ * Format single line or consecutive lines of code to fit ipython terminal.
+ *
+ * NOTE: always return code with empty newline like newline at end of file.
+ *
+ * @param document - current active python file
+ * @param selection - a selection in python file
+ * @returns code - executable on ipython terminal
+ */
+export function formatCode(
+    document: vscode.TextDocument,
+    selection: vscode.Selection
+) {
+    let code = "";
+    document.save(); // force saving to properly get text
+
+    if (selection.isSingleLine) {
+        let text: string = "";
+        if (selection.isEmpty) {
+            // Support run line at cursor when empty selection
+            text = document.lineAt(selection.start.line).text;
+        } else {
+            text = document.getText(selection.with());
+        }
+        code = text.trim() + newLine;
+        return code;
+    }
+
+    // -- Format & Stack
+    let textLines = document.getText(selection.with()).split(newLine);
+    const isNotEmpty = (item: string) => item.trim().length > 0;
+    let startLine = selection.start.line;
+    let startIndex = textLines.findIndex(isNotEmpty);
+    if (startIndex !== -1) {
+        startLine += startIndex;
+    } else {  // all lines and partial lines are whitespaces
+        code = "" + newLine;
+        return code;
+    }
+
+    // NOTE: use first non-empty line and include the whole line even if it is
+    // partially selected
+    let start = selection.start.with(startLine, 0);
+    let range = selection.with(start);
+
+    textLines = document.getText(range).split(newLine);
+
+    textLines = leftAdjustTrim(textLines);
+    if (textLines.length > 0) {
+        code = textLines.join(newLine);
+
+        // let lastIndex = textLines.length - 1;
+        // let firstChar = textLines[lastIndex].search(/\S|$/);
+        // if (firstChar > 0) { // last line is part of a block
+        //     code += newLine;
+        // }
+    }
+    return code + newLine;
+}
 
 /**
  * Create an ipython terminal.
@@ -442,67 +499,6 @@ export async function getTerminal() {
 }
 
 /**
- * Format single line or consecutive lines of code to fit ipython terminal.
- *
- * NOTE: always return code with empty newline like newline at end of file.
- *
- * @param document - current active python file
- * @param selection - a selection in python file
- * @returns code - executable on ipython terminal
- */
-export function formatCode(
-    document: vscode.TextDocument,
-    selection: vscode.Selection
-) {
-    let code = "";
-    document.save(); // force saving to properly get text
-
-    if (selection.isSingleLine) {
-        let text: string = "";
-        if (selection.isEmpty) {
-            // Support run line at cursor when empty selection
-            text = document.lineAt(selection.start.line).text;
-        } else {
-            text = document.getText(selection.with());
-        }
-        code = text.trim() + newLine;
-        return code;
-    }
-
-    // -- Format & Stack
-    let textLines = document.getText(selection.with()).split(newLine);
-    const isNotEmpty = (item: string) => item.trim().length > 0;
-    let startLine = selection.start.line;
-    let startIndex = textLines.findIndex(isNotEmpty);
-    if (startIndex !== -1) {
-        startLine += startIndex;
-    } else {  // all lines and partial lines are whitespaces
-        code = "" + newLine;
-        return code;
-    }
-
-    // NOTE: use first non-empty line and include the whole line even if it is
-    // partially selected
-    let start = selection.start.with(startLine, 0);
-    let range = selection.with(start);
-
-    textLines = document.getText(range).split(newLine);
-
-    textLines = leftAdjustTrim(textLines);
-    if (textLines.length > 0) {
-        code = textLines.join(newLine);
-
-        // let lastIndex = textLines.length - 1;
-        // let firstChar = textLines[lastIndex].search(/\S|$/);
-        // if (firstChar > 0) { // last line is part of a block
-        //     code += newLine;
-        // }
-    }
-    return code + newLine;
-}
-
-
-/**
  * Execute a block of code.
  *
  * @param terminal - an ipython terminal
@@ -512,7 +508,7 @@ export function formatCode(
 export async function executeCodeBlock(
     terminal: vscode.Terminal,
     code: string,
-    identity: string = ''
+    identity: string = '',
 ) {
     let file = writeCodeFile(cst.CODE_FILE, code);
 
@@ -525,9 +521,9 @@ export async function executeCodeBlock(
     } else {  // assume %load
         nExec = 2;
     }
-    await executeSingleLine(terminal, command);
+    terminal.sendText(command, false); // false: no append `newline`
+    await execute(terminal, nExec);
 }
-
 
 /**
  * Execute single line command.
@@ -559,8 +555,11 @@ export async function executeSingleLine(
  * @param nExec - number of ipython execution
  * @param Promise - executed on terminal
  */
-async function execute(terminal: vscode.Terminal, nExec=1){
-   // Wait for IPython to register command before execution.
+async function execute(
+    terminal: vscode.Terminal,
+    nExec=1
+){
+    // Wait for IPython to register command before execution.
     // NOTE: this helps with race condition, not solves it.
     if (nExec === 0) {
         return;
@@ -580,7 +579,6 @@ async function execute(terminal: vscode.Terminal, nExec=1){
     );
     terminal.show(true);
 }
-
 
 // === COMMANDS ===
 /**
@@ -684,45 +682,21 @@ export async function runLine() {
  */
 export async function runSection(isNext: boolean) {
     util.consoleLog("IPython run section...");
-    let editor = getPythonEditor();
-    if (editor === undefined) {
-        console.error("Unable to access Active Text Editor");
-        return;
-    }
-    // FIXME: probably an easier way of doing this using regular expression
-    // Find section immediately at or above current cursor
-    let line = editor.selection.start.line;
-    const sectionAbove = findSectionAboveCursor(line, undefined);
-    if (sectionAbove === undefined) {
-        console.error("Failed to find Section");
-        return;
-    }
-    let sectionStart = sectionAbove[0];
-    let sectionLevel = sectionAbove[1];
+    let editor = getPythonEditor() as vscode.TextEditor;
 
-    // Find section below current cursor with same level as above section
-    let lineCount = editor.document.lineCount;
-    if (line < lineCount - 1) {
-        line += 1;
-    }
-    const sectionBelow = findSectionBelowCursor(line, sectionLevel);
-    if (sectionBelow === undefined) {
-        console.error("Failed to find Section");
-        return;
-    }
-    let sectionStop = sectionBelow[0];  // one line below last line
+    const section = getSectionAtCursor(editor);
 
-    let start = new vscode.Position(sectionStart, 0);
-    let stop = new vscode.Position(sectionStop, 0);
+    let start = new vscode.Position(section.start.line, 0);
+    let stop = new vscode.Position(section.stop.line, 0);
     let selection = new vscode.Selection(start, stop);
 
     let sectionName = '#';  // empty python comment
-    if (sectionStart > 0){
-        sectionName = editor.document.lineAt(sectionStart).text.trim();
+    if (section.start.line > 0){
+        sectionName = editor.document.lineAt(section.start.line).text.trim();
     }
 
     // NOTE: editor is 1-indexing
-    let identity = `${sectionName} (Line ${sectionStart + 1}:${sectionStop})`;
+    let identity = `${sectionName} (Line ${section.start.line + 1}:${section.stop.line})`;
     let code = formatCode(editor.document, selection);
 
     if (code !== "") {
@@ -737,16 +711,7 @@ export async function runSection(isNext: boolean) {
     }
 
     if (isNext) {
-        if (sectionStop < lineCount - 1) {
-            let sectionPattern = getSectionPattern();
-            let text = editor.document.lineAt(sectionStop).text;
-            let found = text.match(sectionPattern);
-            let char = 0;
-            if (found) {
-                char = found[1].length;
-            }
-            moveAndRevealCursor(editor, sectionStop, char);
-        }
+        moveAndRevealCursor(editor, section.stop.line, section.stop.character);
     }
 }
 

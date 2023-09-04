@@ -136,7 +136,7 @@ export function activate(context: vscode.ExtensionContext) {
     );
 }
 
-// this method is called when your extension is deactivated
+// this method is called when extension is deactivated
 export function deactivate() {
     // let wsFolders = vscode.workspace.workspaceFolders;  // Assume single workspace
     //   if (wsFolders === undefined){
