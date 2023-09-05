@@ -9,7 +9,6 @@
         "type": "git",
         "url": "https://github.com/hoangKnLai/vscode-ipython"
     },
-
     "engines": {
         "vscode": "^1.81.0"
     },
@@ -199,7 +198,26 @@
                 "key": "ctrl+shift+i shift+l",
                 "when": "ipython.isUse && !inDebugMode && editorTextFocus && !notebookEditorFocused && editorLangId == python"
             }
-        ]
+        ],
+        "viewsContainers": {
+            "activitybar": [
+                {
+                    "id": "ipy-navigator",
+                    "title": "Code Navigator",
+                    "icon": "icons/sectioned_snake.svg"
+                }
+            ]
+        },
+        "views": {
+            "ipy-navigator": [
+                {
+                    "id": "ipy-navigator",
+                    "name": "Code Sections",
+                    "icon": "media/sectioned_snake.svg",
+                    "contextualTitle": "View and Navigation of Code Sections"
+                }
+            ]
+        }
     },
     "scripts": {
         "vscode:prepublish": "npm run compile",
@@ -221,8 +239,5 @@
         "glob": "^7.2.3",
         "mocha": "^9.2.2",
         "typescript": "^4.9.5"
-    },
-    "dependencies": {
-        "python": "0.0.4"
     }
 }

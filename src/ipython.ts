@@ -20,7 +20,10 @@ const sectionDecorType = vscode.window.createTextEditorDecorationType({
 });
 
 // NOTE: most file should have small number of sections!!
-let sectionCache = new Map<string, vscode.Position[]>();
+/**
+ * Cache containing `key: document.fileName, positions` of sections
+ */
+export let sectionCache = new Map<string, vscode.Position[]>();
 
 // === MISC ===
 
@@ -171,19 +174,19 @@ export interface SectionPosition {
 /**
  * Position of the section positions nearest to cursor in document.
  * @param editor - active python text `editor`
- * @param cursor - default to `editor.selection.start`
+ * @param position - default to `editor.selection.start`
  * @param ignoreLevel - `stop` position allows to be of a lower level than `start`
  * @returns readonly `{start: vscode.Position, stop: vscode.Position}`
  */
-export function getSectionAtCursor(
+export function getSectionAt(
     editor: vscode.TextEditor,
-    cursor: vscode.Position | undefined = undefined,
+    position: vscode.Position | undefined = undefined,
     ignoreLevel: boolean = false,
 ) {
     let document = editor.document;
     let docCursor = editor.selection.start;
-    if (cursor !== undefined) {
-        docCursor = cursor;
+    if (position !== undefined) {
+        docCursor = position;
     }
 
     // NOTE: should be ascending order or top to bottom of file
@@ -293,13 +296,19 @@ export function updateSectionDecor() {
  */
 export function writeCodeFile(filename: string, code: string) {
     // -- Write File
-    let wsFolders = vscode.workspace.workspaceFolders; // Assume single workspace
-    if (wsFolders === undefined) {
-        console.error("Workspace folder not found");
-        return;
-    }
+    const folder = (
+        vscode.workspace.workspaceFolders
+        && vscode.workspace.workspaceFolders.length > 0
+        ? vscode.workspace.workspaceFolders[0].uri.fsPath : undefined
+    ) as string;
 
-    let folder = wsFolders[0].uri.fsPath;
+    // let wsFolders = vscode.workspace.workspaceFolders; // Assume single workspace
+    // if (wsFolders === undefined) {
+    //     console.error("Workspace folder not found");
+    //     return;
+    // }
+
+    // let folder = wsFolders[0].uri.fsPath;
     let relName = path.join(cst.WORK_FOLDER, filename);
     let file = vscode.Uri.file(path.join(folder, relName));
 
@@ -320,7 +329,7 @@ export function writeCodeFile(filename: string, code: string) {
 export function moveCursorToSection(below: boolean) {
     let editor = getPythonEditor() as vscode.TextEditor;
 
-    let section = getSectionAtCursor(editor, undefined, true);
+    let section = getSectionAt(editor, undefined, true);
 
     if (below) {
         moveAndRevealCursor(editor, section.stop.line, section.stop.character);
@@ -332,7 +341,7 @@ export function moveCursorToSection(below: boolean) {
         if (cursor.line + deltaLine < 0) {
             return;
         }
-        section = getSectionAtCursor(editor, cursor.translate(deltaLine), true);
+        section = getSectionAt(editor, cursor.translate(deltaLine), true);
     }
     moveAndRevealCursor(editor, section.start.line, section.start.character);
     return;
@@ -668,7 +677,7 @@ export async function runSection(isNext: boolean) {
     util.consoleLog("IPython run section...");
     let editor = getPythonEditor() as vscode.TextEditor;
 
-    const section = getSectionAtCursor(editor);
+    const section = getSectionAt(editor);
 
     let start = new vscode.Position(section.start.line, 0);
     let stop = new vscode.Position(section.stop.line, 0);
