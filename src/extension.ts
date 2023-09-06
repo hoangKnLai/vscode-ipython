@@ -29,11 +29,11 @@ export async function activate(context: vscode.ExtensionContext) {
     //     'ipy-navigator',
     //     treeProvider,
     // );
-
-    vscode.window.createTreeView(
+    let treeProvider = new navi.SectionTreeProvider();
+    let navigator = vscode.window.createTreeView(
         'ipy-navigator',
         {
-            treeDataProvider: new navi.SectionTreeProvider()
+            treeDataProvider: treeProvider
         },
     );
 
@@ -41,6 +41,7 @@ export async function activate(context: vscode.ExtensionContext) {
     vscode.window.onDidChangeActiveTextEditor(
         () => {
             navi.updateSectionDecor();
+            treeProvider.refresh();
         },
         null,
         context.subscriptions,
@@ -59,6 +60,7 @@ export async function activate(context: vscode.ExtensionContext) {
             }
 
             navi.updateSectionDecor();
+            treeProvider.refresh();
         },
         null,
         context.subscriptions,

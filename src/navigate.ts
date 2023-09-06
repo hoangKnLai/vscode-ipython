@@ -29,7 +29,7 @@ const sectionDecorType = vscode.window.createTextEditorDecorationType({
 
 
 /**
- * Section in .py file.
+ * Section in file.
  */
 class SectionItem extends vscode.TreeItem {
     constructor(
@@ -47,11 +47,12 @@ class SectionItem extends vscode.TreeItem {
                 tabSize,
             );
             let sectionTag = util.getConfig("SectionTag") as string;
-            let trimHeading = header.trimLeft();
-            let sLevel = (header.length - trimHeading.length);  // should be >= 0
+            // let trimHeading = header.trimLeft();
+            // let sLevel = (header.length - trimHeading.length);  // should be >= 0
             header = header.trim().replace(sectionTag, '');
-            let level = position.character;
-            label = `L${level}: ${header.trim()}`;
+            let level = position.character / tabSize;
+            label = `|${'-'.repeat(level)}-${header}`;
+            // label = header.replace(sectionTag, '').trimEnd();
         }
 
         super(label, collapsibleState);
@@ -101,11 +102,11 @@ export function getSectionPattern() {
 
 
 /**
- * Position of the section positions nearest to cursor in document.
+ * Section containing cursor position in document.
  * @param editor - active python text `editor`
  * @param position - default to `editor.selection.start`
- * @param ignoreLevel - `stop` position allows to be of a lower level than `start`
- * @returns readonly `{start: vscode.Position, stop: vscode.Position}`
+ * @param ignoreLevel - `end` position allows to be of a lower level than `start`
+ * @returns range with `start` and `end` of section
  */
 export function getSectionAt(
     editor: vscode.TextEditor,
@@ -206,12 +207,6 @@ export function findSections() {
     return positions;
 }
 
-
-export interface SectionPosition {
-    readonly start: vscode.Position,
-    readonly stop: vscode.Position,
-}
-
 /**
  * Decorate section with divider.
  *
@@ -289,6 +284,12 @@ export function updateSectionDecor() {
 
 // === TREE PROVIDER ===
 export class SectionTreeProvider implements vscode.TreeDataProvider<SectionItem> {
+    private _onDidChangeTreeDataEmitter: vscode.EventEmitter<SectionItem | undefined | void> = new vscode.EventEmitter<SectionItem | undefined | void>();
+	readonly onDidChangeTreeData: vscode.Event<SectionItem | undefined | void> = this._onDidChangeTreeDataEmitter.event;
+
+	refresh(): void {
+		this._onDidChangeTreeDataEmitter.fire();
+	}
 
     // NOTE: adhering to abstract
     getTreeItem(element: SectionItem): vscode.TreeItem | Thenable<vscode.TreeItem> {
