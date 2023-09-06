@@ -56,3 +56,47 @@ export function replaceTabWithSpace(str: string, n = 4) {
 export function wait(msec: number) {
     return new Promise((resolve) => setTimeout(resolve, msec));
 }
+
+
+/**
+ * Remove empty lines, left trim greatest common spaces, trim ends.
+ *
+ * @param lines - of strings
+ * @returns trimLines - trimmed line of string
+ */
+export function leftAdjustTrim(lines: string[]) {
+    lines = lines.filter((item) => item.trim().length > 0);
+
+    let start = 0;
+    let isFirst = true;
+    let isNewBlock = true;
+    let trimLines: string[] = new Array();
+    for (let line of lines) {
+        // Ensure tab are handled
+        line = replaceTabWithSpace(line);
+        let begin = line.search(/\S|$/); // index of first non-whitespace
+        isNewBlock = begin < start;
+        if (isFirst) {
+            // First line has hanging spaces
+            start = begin;
+            isFirst = false;
+        }
+        if (isNewBlock && !isFirst) {
+            start = begin;
+        }
+
+        trimLines.push(line.substring(start).trimEnd());
+    }
+    return trimLines;
+}
+
+
+/**
+ * Get extension configuration.
+ *
+ * @param name - configuration name
+ * @returns - configuration value
+ */
+export function getConfig(name: string) {
+    return vscode.workspace.getConfiguration("ipython").get(name);
+}

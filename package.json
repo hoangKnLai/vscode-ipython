@@ -212,7 +212,7 @@
             "ipy-navigator": [
                 {
                     "id": "ipy-navigator",
-                    "name": "Code Sections",
+                    "name": "Sections",
                     "icon": "media/sectioned_snake.svg",
                     "contextualTitle": "View and Navigation of Code Sections"
                 }

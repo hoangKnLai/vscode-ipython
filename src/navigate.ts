@@ -1,91 +1,294 @@
 /**
  * Python code section navigation lib
  */
-import * as vscode from 'vscode';
-import * as fs from 'fs';
 import * as path from 'path';
+import * as vscode from 'vscode';
+
 import * as cst from './constants';
-import {sectionCache, getSectionAt, getPythonEditor} from './ipython';
-import {replaceTabWithSpace} from './utility';
+import * as util from './utility';
 
-
-// FIXME: use editor.tabSize &| editor.detectIndentation
-const tabSize = 4;  // spaces
 
 // === CACHE ===
-/**
- * Cache file Section TreeItems
- */
-export let sectionItems = new Map<string, SectionItem[]>();
+export let sectionCache = new Map<string, vscode.Position[]>();
+
+
+// === CONSTANTS ===
+// FIXME: use editor.tabSize &| editor.detectIndentation
+export const tabSize = 4;  // spaces
+
+// TODO: make some configurable?
+// REF: https://www.dofactory.com/css/
+const sectionDecorType = vscode.window.createTextEditorDecorationType({
+    isWholeLine: true,
+    borderWidth: '1px 0 0 0',
+    borderStyle: 'dotted',  // 'groove',  // 'dashed',
+    borderColor: 'inherit',  // 'LightSlateGray',
+    fontWeight: 'bolder',
+    fontStyle: 'italic',
+});
+
 
 /**
  * Section in .py file.
  */
 class SectionItem extends vscode.TreeItem {
     constructor(
-        public readonly header: string,
-        public readonly level: number,
+        public document: vscode.TextDocument,
         public collapsibleState: vscode.TreeItemCollapsibleState,
-        public _uri: vscode.Uri,
-        public position: vscode.Position,
+        public position: vscode.Position | undefined,
     ) {
-        let label = `${header.trim()} -- Level${level}`;
-        super(label, collapsibleState);
-        this.position = position;
-        this._uri = _uri;
+        let label: string;
+        if (position === undefined) {
+            label = path.basename(document.fileName);
 
-        this.tooltip = `Line${position.line}, Col${position.character}`;
-        this.resourceUri = _uri;
+        } else {
+            let header = util.replaceTabWithSpace(
+                document.lineAt(position.line).text,
+                tabSize,
+            );
+            let sectionTag = util.getConfig("SectionTag") as string;
+            let trimHeading = header.trimLeft();
+            let sLevel = (header.length - trimHeading.length);  // should be >= 0
+            header = header.trim().replace(sectionTag, '');
+            let level = position.character;
+            label = `L${level}: ${header.trim()}`;
+        }
+
+        super(label, collapsibleState);
+
+        this.position = position;
+        this.document = document;
+
+        // this.tooltip = `Line${position.line}, Col${position.character}`;
+        this.tooltip = 'click to open';
     }
 }
 
-export function updateSectionItems(){
-    let editor = getPythonEditor() as vscode.TextEditor;
-    let sections = buildSectionItems(editor.document);
-    sectionItems.set(editor.document.fileName, sections);
-}
 
-export function removeSectionItems(
-    fileName: string
-){
-    sectionItems.delete(fileName);
+// === FUNCTIONS ===
+/**
+ * Move the cursor to location and reveal its editor
+ *
+ * @param editor - a text editor
+ * @param line - line number of location
+ * @param char - character number of location
+ */
+export function moveAndRevealCursor(
+    editor: vscode.TextEditor,
+    line: number,
+    char = 0
+) {
+    let position = editor.selection.start.with(line, char);
+    let selection = new vscode.Selection(position, position);
+    editor.selection = selection;
+    editor.revealRange(
+        selection.with(),
+        vscode.TextEditorRevealType.InCenterIfOutsideViewport
+    );
 }
 
 /**
- * Build SectionItem from its cached section position.
- * @param document - an .py file
- * @returns a flat list of `sections` TreeItem
+ * Pattern to look for code section.
+ *
+ * @returns pattern - regular expression to find section tag capture tab and space
+ * before it in a line
  */
-export function buildSectionItems(
-    document: vscode.TextDocument,
-) {
-    let positions = sectionCache.get(document.fileName) as vscode.Position[];
-    let sections: SectionItem[] = [];
-    for (let position of positions){
-        let header = replaceTabWithSpace(
-            document.lineAt(position.line).text,
-            tabSize,
-        );
-
-        let trimHeading = header.trimLeft();
-        let sLevel = (header.length - trimHeading.length);  // should be >= 0
-
-        sections.push(
-            new SectionItem(
-                header,
-                sLevel,
-                vscode.TreeItemCollapsibleState.None,
-                document.uri,
-                position,
-            ),
-        );
-    }
-    return sections;
+export function getSectionPattern() {
+    let sectionFlag = util.getConfig("SectionTag") as string;
+    // NOTE: find section tag, capture tab and space before tag in a line
+    return new RegExp(`(?:^([\\t ]*)${sectionFlag.trim()})`);
 }
+
+
+/**
+ * Position of the section positions nearest to cursor in document.
+ * @param editor - active python text `editor`
+ * @param position - default to `editor.selection.start`
+ * @param ignoreLevel - `stop` position allows to be of a lower level than `start`
+ * @returns readonly `{start: vscode.Position, stop: vscode.Position}`
+ */
+export function getSectionAt(
+    editor: vscode.TextEditor,
+    position: vscode.Position | undefined = undefined,
+    ignoreLevel: boolean = false,
+) {
+    let document = editor.document;
+    let docCursor = editor.selection.start;
+    if (position !== undefined) {
+        docCursor = position;
+    }
+
+    // NOTE: should be ascending order or top to bottom of file
+    //  - Must find start level before stop
+    let positions = sectionCache.get(document.fileName) as vscode.Position[];
+
+    // -- Start Position
+    let aboveIndex = positions.reverse().findIndex(  // from cursor to top
+        (position) => {
+            return position.isBeforeOrEqual(docCursor);
+        }
+    );
+
+    let start: vscode.Position;
+    let level: number;
+    if (aboveIndex === -1) {
+        start = new vscode.Position(0, 0);  // first line
+        level = 0;
+    } else {
+        start = positions[aboveIndex];
+        level = document.lineAt(start.line).firstNonWhitespaceCharacterIndex;
+    }
+
+    // -- Find Section at Same Level
+    if (ignoreLevel) {
+        // FIXME: can be done more efficiently but likely not worth the effort
+        level = Infinity;
+    }
+
+    let end:vscode.Position;
+    let lastLine = document.lineCount - 1;
+
+    // NOTE: reverse() undo prior reverse in finding start position!!
+    let belowIndex = positions.reverse().findIndex(  // from start to bottom
+        (position) => {
+            let currLevel = document.lineAt(position.line).firstNonWhitespaceCharacterIndex;
+            return (position.isAfter(start) && currLevel <= level);
+        }
+    );
+
+    if (belowIndex === -1) {
+        end = new vscode.Position(lastLine, lastLine);
+    } else {
+        end = positions[belowIndex];
+    }
+
+    return new vscode.Range(start, end);
+}
+
+
+// === SECTION ===
+export function getPythonEditor() {
+    return vscode.window.activeTextEditor;
+    // return vscode.window.visibleTextEditors;
+}
+
+
+
+/**
+ * Find section tag in current active text editor.
+ *
+ * @returns positions of section tag in ascending order
+ */
+export function findSections() {
+    let editor = getPythonEditor() as vscode.TextEditor;
+    let document = editor.document;
+    let sectionFlag = util.getConfig("SectionTag") as string;
+
+    // NOTE: find section tag without capture, gm: global, multiline
+    let pattern = new RegExp(`(?:^[\\t ]*${sectionFlag.trim()})`, 'gm');
+
+    let text = document.getText();
+    let matches = text.matchAll(pattern);
+
+    let positions: vscode.Position[] = [];
+    for (let match of matches) {
+        if (match.index === undefined) {
+            continue;
+        }
+        let position = document.positionAt(match.index);
+        let character = document.lineAt(position.line).firstNonWhitespaceCharacterIndex;
+        position = position.translate(
+            undefined,
+            character,
+        );
+        positions.push(position);
+    }
+    return positions;
+}
+
+
+export interface SectionPosition {
+    readonly start: vscode.Position,
+    readonly stop: vscode.Position,
+}
+
+/**
+ * Decorate section with divider.
+ *
+ * @param editor - current active python editor
+ * @returns - undefined when failed
+ */
+export function decorateSection(editor: vscode.TextEditor) {
+    let positions = sectionCache.get(editor.document.fileName) as vscode.Position[];
+    const decors: vscode.DecorationOptions[] = [];
+    for (let position of positions){
+        decors.push({
+            range: new vscode.Range(position, position),
+        });
+    }
+    editor.setDecorations(sectionDecorType, decors);
+}
+
+/**
+ * Remove section position cache.
+ * @param fileName - a vscode document.fileName
+ */
+export function removeSectionCache(fileName: string){
+    sectionCache.delete(fileName);
+}
+
+/**
+ * Update section cache of active editor.document.
+ * @param editor - an active python text editor
+ */
+export function updateSectionCache(editor: vscode.TextEditor){
+    let positions = findSections();
+    let key = editor.document.fileName;
+    sectionCache.set(key, positions);
+}
+
+/**
+ * Move cursor to a section
+ * @param below - move below or above
+ */
+export function moveCursorToSection(below: boolean) {
+    let editor = getPythonEditor() as vscode.TextEditor;
+
+    let section = getSectionAt(editor, undefined, true);
+
+    if (below) {
+        moveAndRevealCursor(editor, section.end.line, section.end.character);
+        return;
+    }
+    let cursor = editor.selection.start;
+    if (cursor.line === section.start.line){
+        let deltaLine = - 1;
+        if (cursor.line + deltaLine < 0) {
+            return;
+        }
+        section = getSectionAt(editor, cursor.translate(deltaLine), true);
+    }
+    moveAndRevealCursor(editor, section.start.line, section.start.character);
+    return;
+}
+
+
+/**
+ * Update section decoration.
+ * @param editor - current active python editor
+ */
+export function updateSectionDecor() {
+    let editor = getPythonEditor() as vscode.TextEditor;
+
+    updateSectionCache(editor);
+
+    setTimeout(decorateSection, cst.MAX_TIMEOUT);
+    decorateSection(editor);
+}
+
 
 // === TREE PROVIDER ===
 export class SectionTreeProvider implements vscode.TreeDataProvider<SectionItem> {
-    constructor(public document: vscode.TextDocument) {}
 
     // NOTE: adhering to abstract
     getTreeItem(element: SectionItem): vscode.TreeItem | Thenable<vscode.TreeItem> {
@@ -94,148 +297,36 @@ export class SectionTreeProvider implements vscode.TreeDataProvider<SectionItem>
 
     getChildren(element?: SectionItem | undefined): vscode.ProviderResult<SectionItem[]> {
         if (element === undefined) {
-            // let editor = getPythonEditor() as vscode.TextEditor;
-            let sections = sectionItems.get(this.document.fileName) as SectionItem[];
+            // Open files as root
+            let sections: SectionItem[] = [];
+            for (let editor of vscode.window.visibleTextEditors) {
+                sections.push(
+                    new SectionItem(
+                        editor.document,
+                        vscode.TreeItemCollapsibleState.Expanded,
+                        undefined,
+                    )
+                );
+            }
+            return Promise.resolve(sections);
+        }
+
+        // Get section positions and convert each to SectionItem
+        if (!element.document.isClosed) {
+            let positions = sectionCache.get(element.document.fileName) as vscode.Position[];
+
+            let sections: SectionItem[] = [];
+            for(let position of positions) {
+                sections.push(
+                    new SectionItem(
+                        element.document,
+                        vscode.TreeItemCollapsibleState.None,
+                        position,
+                    )
+                );
+            }
             return Promise.resolve(sections);
         }
         return Promise.resolve([]);
-        // WIP: how to make collapsible
-        // if (section === undefined) {  // root
-
-        //     let topSections: SectionItem[] = [];
-        //     let topIndices: number[] = [];
-        //     let level: number = Infinity;
-        //     for (let key of sections.keys()) {
-        //         let section = sections[key];
-        //         if (section.level <= level) {
-        //             topSections.push(section);
-        //             topIndices.push(key);
-        //             level = section.level;
-        //         }
-        //     }
-
-        //     for (let ii=0; ii < topIndices.length - 1; ++ii){
-        //         if (topIndices[ii + 1] - topIndices[ii] > 1) {
-        //             topSections[ii].collapsibleState = vscode.TreeItemCollapsibleState.Collapsed;
-        //         }
-        //         topSections[ii].collapsibleState = vscode.TreeItemCollapsibleState.None;
-        //     }
-
-        //     return Promise.resolve(topSections);
-        // }
-
-        // // Look for subsections
-        // let start = section.position;
-
-        // return Promise.resolve([]);
     }
 }
-
-/**
- * EXAMPLE
- */
-export class NodeDependenciesProvider implements vscode.TreeDataProvider<Dependency> {
-    constructor(private workspaceRoot: string) { }
-
-    getTreeItem(element: Dependency): vscode.TreeItem {
-        return element;
-    }
-
-    getChildren(element?: Dependency): Thenable<Dependency[]> {
-        if (!this.workspaceRoot) {
-            vscode.window.showInformationMessage('No dependency in empty workspace');
-            return Promise.resolve([]);
-        }
-
-        if (element) {
-            return Promise.resolve(
-                this.getDepsInPackageJson(
-                    path.join(this.workspaceRoot, 'node_modules', element.label, 'package.json')
-                )
-            );
-        } else {
-            const packageJsonPath = path.join(this.workspaceRoot, 'package.json');
-            if (this.pathExists(packageJsonPath)) {
-                return Promise.resolve(this.getDepsInPackageJson(packageJsonPath));
-            } else {
-                vscode.window.showInformationMessage('Workspace has no package.json');
-                return Promise.resolve([]);
-            }
-        }
-    }
-
-    /**
-     * Given the path to package.json, read all its dependencies and devDependencies.
-     */
-    private getDepsInPackageJson(packageJsonPath: string): Dependency[] {
-        if (this.pathExists(packageJsonPath)) {
-            const toDep = (moduleName: string, version: string): Dependency => {
-                if (this.pathExists(path.join(this.workspaceRoot, 'node_modules', moduleName))) {
-                    return new Dependency(
-                        moduleName,
-                        version,
-                        vscode.TreeItemCollapsibleState.Collapsed
-                    );
-                } else {
-                    return new Dependency(moduleName, version, vscode.TreeItemCollapsibleState.None);
-                }
-            };
-
-            const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
-
-            const deps = packageJson.dependencies
-                ? Object.keys(packageJson.dependencies).map(dep =>
-                    toDep(dep, packageJson.dependencies[dep])
-                )
-                : [];
-            const devDeps = packageJson.devDependencies
-                ? Object.keys(packageJson.devDependencies).map(dep =>
-                    toDep(dep, packageJson.devDependencies[dep])
-                )
-                : [];
-            return deps.concat(devDeps);
-        } else {
-            return [];
-        }
-    }
-
-    private pathExists(p: string): boolean {
-        try {
-            fs.accessSync(p);
-        } catch (err) {
-            return false;
-        }
-        return true;
-    }
-
-    private _onDidChangeTreeData: vscode.EventEmitter<Dependency | undefined | null | void> = new vscode.EventEmitter<Dependency | undefined | null | void>();
-    readonly onDidChangeTreeData: vscode.Event<Dependency | undefined | null | void> = this._onDidChangeTreeData.event;
-
-    refresh(): void {
-        this._onDidChangeTreeData.fire();
-    }
-}
-
-/**
- * EXAMPLE
- */
-class Dependency extends vscode.TreeItem {
-    constructor(
-        public readonly label: string,
-        private version: string,
-        public readonly collapsibleState: vscode.TreeItemCollapsibleState
-    ) {
-        super(label, collapsibleState);
-        this.tooltip = `${this.label}-${this.version}`;
-        this.description = this.version;
-    }
-
-    // iconPath = {
-    //     light: path.join(__filename, '..', '..', 'resources', 'light', 'dependency.svg'),
-    //     dark: path.join(__filename, '..', '..', 'resources', 'dark', 'dependency.svg')
-    // };
-}
-
-
-
-

@@ -4,52 +4,43 @@ import * as vscode from "vscode";
 import * as ipy from "./ipython";
 import * as navi from "./navigate";
 
-export function activate(context: vscode.ExtensionContext) {
+export async function activate(context: vscode.ExtensionContext) {
 
     // FIXME: Keybinding `when clause`
     vscode.commands.executeCommand("setContext", "ipython.isUse", true);
 
     // Always make sure Python is available FIRST for creating terminal
-    ipy.activatePython();
 
-    // === SECTION VIEW ===
-    navi.updateSectionItems();
-    // const rootPath = (
-    //     vscode.workspace.workspaceFolders
-    //     && vscode.workspace.workspaceFolders.length > 0
-    //     ? vscode.workspace.workspaceFolders[0].uri.fsPath : undefined
-    // ) as string;
+    // FIXME: use official ms-python hook instead!?
+    let pyExtension = vscode.extensions.getExtension("ms-python.python");
+    if (pyExtension === undefined) {
+        console.error("Failed to get MS-Python Extension");
+        return;
+    }
+    if (!pyExtension.isActive){
+        await pyExtension.activate();
+    }
+    navi.updateSectionDecor();
 
-    // vscode.window.registerTreeDataProvider(
-    //     'nodeDependencies',
-    //     new navi.NodeDependenciesProvider(rootPath)
-    // );
-
-    // vscode.window.createTreeView(
-    //     'nodeDependencies',
-    //     {
-    //         treeDataProvider: new navi.NodeDependenciesProvider(rootPath)
-    //     }
-    // );
+    // === SECTION VIEWER ===
     let editor = ipy.getPythonEditor() as vscode.TextEditor;
-    let treeProvider = new navi.SectionTreeProvider(editor.document);
-    vscode.window.registerTreeDataProvider(
+    // let treeProvider = new navi.SectionTreeProvider(editor.document);
+    // vscode.window.registerTreeDataProvider(
+    //     'ipy-navigator',
+    //     treeProvider,
+    // );
+
+    vscode.window.createTreeView(
         'ipy-navigator',
-        treeProvider,
+        {
+            treeDataProvider: new navi.SectionTreeProvider()
+        },
     );
 
-    // vscode.window.createTreeView(
-    //     'ipy-navigator',
-    //     {
-    //         treeDataProvider: new navi.SectionTreeProvider(editor.document)
-    //     },
-    // );
-
-    // === TRIGGERS ===
+    // === CALLBACKS ===
     vscode.window.onDidChangeActiveTextEditor(
         () => {
-            ipy.updateSectionDecor();
-            navi.updateSectionItems();
+            navi.updateSectionDecor();
         },
         null,
         context.subscriptions,
@@ -57,8 +48,7 @@ export function activate(context: vscode.ExtensionContext) {
 
     vscode.workspace.onDidCloseTextDocument(
         event => {
-            ipy.removeSectionCache(event.fileName);
-            navi.removeSectionItems(event.fileName);
+            navi.removeSectionCache(event.fileName);
         },
     );
 
@@ -68,8 +58,7 @@ export function activate(context: vscode.ExtensionContext) {
                 return;
             }
 
-            ipy.updateSectionDecor();
-            navi.updateSectionItems();
+            navi.updateSectionDecor();
         },
         null,
         context.subscriptions,
@@ -91,14 +80,14 @@ export function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(
         vscode.commands.registerCommand(
             "ipython.moveToSectionTagAbove",
-            () => ipy.moveCursorToSection(false)
+            () => navi.moveCursorToSection(false)
         )
     );
 
     context.subscriptions.push(
         vscode.commands.registerCommand(
             "ipython.moveToSectionTagBelow",
-            () => ipy.moveCursorToSection(true)
+            () => navi.moveCursorToSection(true)
         )
     );
 

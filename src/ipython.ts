@@ -1,31 +1,21 @@
+/**
+ * IPython specifics
+ */
 import * as vscode from "vscode";
 import * as path from "path";
 
 import * as util from "./utility";
 import * as cst from "./constants";
+import * as navi from "./navigate";
 
 // === CONSTANTS ===
 let newLine = util.getNewLine();
-export const terminalName = "IPython";  //TODO: consider making configurable?!
 
-// TODO: make configurable?
-// REF: https://www.dofactory.com/css/
-const sectionDecorType = vscode.window.createTextEditorDecorationType({
-    isWholeLine: true,
-    borderWidth: '1px 0 0 0',
-    borderStyle: 'dotted',  // 'groove',  // 'dashed',
-    borderColor: 'inherit',  // 'LightSlateGray',
-    fontWeight: 'bolder',
-    fontStyle: 'italic',
-});
+//FIXME: consider making configurable?!
+export const terminalName = "IPython";
 
-// NOTE: most file should have small number of sections!!
-/**
- * Cache containing `key: document.fileName, positions` of sections
- */
-export let sectionCache = new Map<string, vscode.Position[]>();
 
-// === MISC ===
+// === FUNCTIONS ===
 
 /**
  * Get current editor.
@@ -41,251 +31,6 @@ export function getPythonEditor() {
     return editor;
 }
 
-/**
- * Activate parent extensions.
- */
-export async function activatePython() {
-    // FIXME: use official ms-python hook instead!?
-    let pyExtension = vscode.extensions.getExtension("ms-python.python");
-    if (pyExtension === undefined) {
-        console.error("Failed to get MS-Python Extension");
-        return;
-    }
-    if (!pyExtension.isActive){
-        await pyExtension.activate();
-    }
-    updateSectionDecor();
-}
-
-/**
- * Get extension configuration.
- *
- * @param name - configuration name
- * @returns - configuration value
- */
-export function getConfig(name: string) {
-    return vscode.workspace.getConfiguration("ipython").get(name);
-}
-
-/**
- * Move the cursor to location and reveal its editor
- *
- * @param editor - a text editor
- * @param line - line number of location
- * @param char - character number of location
- */
-export function moveAndRevealCursor(
-    editor: vscode.TextEditor,
-    line: number,
-    char = 0
-) {
-    let position = editor.selection.start.with(line, char);
-    let selection = new vscode.Selection(position, position);
-    editor.selection = selection;
-    editor.revealRange(
-        selection.with(),
-        vscode.TextEditorRevealType.InCenterIfOutsideViewport
-    );
-}
-
-/**
- * Remove empty lines, left trim greatest common spaces, trim ends.
- *
- * @param lines - of strings
- * @returns trimLines - trimmed line of string
- */
-export function leftAdjustTrim(lines: string[]) {
-    lines = lines.filter((item) => item.trim().length > 0);
-
-    let start = 0;
-    let isFirst = true;
-    let isNewBlock = true;
-    let trimLines: string[] = new Array();
-    for (let line of lines) {
-        // Ensure tab are handled
-        line = util.replaceTabWithSpace(line);
-        let begin = line.search(/\S|$/); // index of first non-whitespace
-        isNewBlock = begin < start;
-        if (isFirst) {
-            // First line has hanging spaces
-            start = begin;
-            isFirst = false;
-        }
-        if (isNewBlock && !isFirst) {
-            start = begin;
-        }
-
-        trimLines.push(line.substring(start).trimEnd());
-    }
-    return trimLines;
-}
-
-// === CELL ===
-
-/**
- * Pattern to look for code section.
- *
- * @returns pattern - regular expression to find section tag capture tab and space
- * before it in a line
- */
-export function getSectionPattern() {
-    let sectionFlag = getConfig("SectionTag") as string;
-    // NOTE: find section tag, capture tab and space before tag in a line
-    return new RegExp(`(?:^([\\t ]*)${sectionFlag.trim()})`);
-}
-
-/**
- * Find section tag in current active text editor.
- *
- * @returns positions of section tag in ascending order
- */
-export function findSections() {
-    let sectionFlag = getConfig("SectionTag") as string;
-    let editor = getPythonEditor() as vscode.TextEditor;
-
-    // NOTE: find section tag without capture, gm: global, multiline
-    let pattern = new RegExp(`(?:^[\\t ]*${sectionFlag.trim()})`, 'gm');
-
-    let text = editor.document.getText();
-    let matches = text.matchAll(pattern);
-
-    let positions: vscode.Position[] = [];
-    for (let match of matches) {
-        if (match.index === undefined) {
-            continue;
-        }
-        let position = editor.document.positionAt(match.index);
-        let textLine = editor.document.lineAt(position.line);
-        position = position.translate(
-            undefined,
-            textLine.firstNonWhitespaceCharacterIndex
-        );
-        positions.push(position);
-    }
-    return positions;
-}
-
-
-export interface SectionPosition {
-    readonly start: vscode.Position,
-    readonly stop: vscode.Position,
-}
-
-/**
- * Position of the section positions nearest to cursor in document.
- * @param editor - active python text `editor`
- * @param position - default to `editor.selection.start`
- * @param ignoreLevel - `stop` position allows to be of a lower level than `start`
- * @returns readonly `{start: vscode.Position, stop: vscode.Position}`
- */
-export function getSectionAt(
-    editor: vscode.TextEditor,
-    position: vscode.Position | undefined = undefined,
-    ignoreLevel: boolean = false,
-) {
-    let document = editor.document;
-    let docCursor = editor.selection.start;
-    if (position !== undefined) {
-        docCursor = position;
-    }
-
-    // NOTE: should be ascending order or top to bottom of file
-    //  - Must find start level before stop
-    let positions = sectionCache.get(document.fileName) as vscode.Position[];
-
-    // -- Start Position
-    let aboveIndex = positions.reverse().findIndex(  // from cursor to top
-        (position) => {
-            return position.isBeforeOrEqual(docCursor);
-        }
-    );
-
-    let start: vscode.Position;
-    let level: number;
-    if (aboveIndex === -1) {
-        start = new vscode.Position(0, 0);  // first line
-        level = 0;
-    } else {
-        start = positions[aboveIndex];
-        level = document.lineAt(start.line).firstNonWhitespaceCharacterIndex;
-    }
-
-    // -- Find next section at same level
-    let stop:vscode.Position;
-    let lastLine = document.lineCount - 1;
-
-    if (ignoreLevel) {
-        // FIXME: can be more efficient but likely not worth the effort
-        level = Infinity;
-    }
-    // NOTE: reverse() undo prior reverse in finding start position!!
-    let belowIndex = positions.reverse().findIndex(  // from start to bottom
-        (position) => {
-            let currLevel = document.lineAt(position.line).firstNonWhitespaceCharacterIndex;
-            return (position.isAfter(start) && currLevel <= level);
-        }
-    );
-
-    if (belowIndex === -1) {
-        stop = new vscode.Position(lastLine, lastLine);
-    } else {
-        stop = positions[belowIndex];
-    }
-
-    const found: SectionPosition = {
-        start: start,
-        stop: stop,
-    };
-    return found;
-}
-
-/**
- * Decorate section with divider.
- *
- * @param editor - current active python editor
- * @returns - undefined when failed
- */
-export function decorateSection(editor: vscode.TextEditor) {
-    let positions = sectionCache.get(editor.document.fileName) as vscode.Position[];
-    const decors: vscode.DecorationOptions[] = [];
-    for (let position of positions){
-        decors.push({
-            range: new vscode.Range(position, position),
-        });
-    }
-    editor.setDecorations(sectionDecorType, decors);
-}
-
-/**
- * Remove section position cache.
- * @param fileName - a vscode document.fileName
- */
-export function removeSectionCache(fileName: string){
-    sectionCache.delete(fileName);
-}
-
-/**
- * Update section cache of active editor.document.
- * @param editor - an active python text editor
- */
-export function updateSectionCache(editor: vscode.TextEditor){
-    let positions = findSections();
-    let key = editor.document.fileName;
-    sectionCache.set(key, positions);
-}
-
-/**
- * Update section decoration.
- * @param editor - current active python editor
- */
-export function updateSectionDecor() {
-    let editor = getPythonEditor() as vscode.TextEditor;
-
-    updateSectionCache(editor);
-
-    setTimeout(decorateSection, cst.MAX_TIMEOUT);
-    decorateSection(editor);
-}
 
 /**
  * Write code to file.
@@ -295,20 +40,12 @@ export function updateSectionDecor() {
  * @returns workspace relative path to written file
  */
 export function writeCodeFile(filename: string, code: string) {
-    // -- Write File
     const folder = (
         vscode.workspace.workspaceFolders
         && vscode.workspace.workspaceFolders.length > 0
         ? vscode.workspace.workspaceFolders[0].uri.fsPath : undefined
     ) as string;
 
-    // let wsFolders = vscode.workspace.workspaceFolders; // Assume single workspace
-    // if (wsFolders === undefined) {
-    //     console.error("Workspace folder not found");
-    //     return;
-    // }
-
-    // let folder = wsFolders[0].uri.fsPath;
     let relName = path.join(cst.WORK_FOLDER, filename);
     let file = vscode.Uri.file(path.join(folder, relName));
 
@@ -317,35 +54,10 @@ export function writeCodeFile(filename: string, code: string) {
     // NOTE: extra newline for indented code at end of file
     let cmd = Buffer.from(code, "utf8");
     vscode.workspace.fs.writeFile(file, cmd);
-    // fs.writeFileSync(file, command + "\n");
 
     return relName;
 }
 
-/**
- * Move cursor to a section
- * @param below - move below or above
- */
-export function moveCursorToSection(below: boolean) {
-    let editor = getPythonEditor() as vscode.TextEditor;
-
-    let section = getSectionAt(editor, undefined, true);
-
-    if (below) {
-        moveAndRevealCursor(editor, section.stop.line, section.stop.character);
-        return;
-    }
-    let cursor = editor.selection.start;
-    if (cursor.line === section.start.line){
-        let deltaLine = - 1;
-        if (cursor.line + deltaLine < 0) {
-            return;
-        }
-        section = getSectionAt(editor, cursor.translate(deltaLine), true);
-    }
-    moveAndRevealCursor(editor, section.start.line, section.start.character);
-    return;
-}
 
 // === TERMINAL ===
 
@@ -396,7 +108,7 @@ export function formatCode(
 
     textLines = document.getText(range).split(newLine);
 
-    textLines = leftAdjustTrim(textLines);
+    textLines = util.leftAdjustTrim(textLines);
     if (textLines.length > 0) {
         code = textLines.join(newLine);
 
@@ -430,7 +142,7 @@ export async function createTerminal() {
 
     // Launch options
     let cmd = "ipython ";
-    let launchArgs = getConfig("LaunchArguments") as string;
+    let launchArgs = util.getConfig("LaunchArguments") as string;
 
     let args = launchArgs.split(" ");
     for (let arg of args) {
@@ -443,7 +155,7 @@ export async function createTerminal() {
 
     // Startup options
     // REF: https://ipython.readthedocs.io/en/stable/config/intro.html#command-line-arguments
-    let cmds = getConfig("StartupCommands") as string[];
+    let cmds = util.getConfig("StartupCommands") as string[];
     let startupCmd = "";
 
     for (let c of cmds) {
@@ -467,12 +179,11 @@ export async function createTerminal() {
  * @returns terminal - an ipython terminal
  */
 export async function getTerminal() {
-    let terminal = vscode.window.activeTerminal;
+    let terminal = vscode.window.activeTerminal as vscode.Terminal;
+
     // FIXME: use RegExp for terminalName
-    if (terminal !== undefined) {
-        if (terminal.name === terminalName) {
-            return terminal;
-        }
+    if (terminal.name === terminalName) {
+        return terminal;
     }
 
     let terminals = vscode.window.terminals;
@@ -484,11 +195,8 @@ export async function getTerminal() {
         }
     }
 
-    terminal = await createTerminal();
-    if (terminal !== undefined) {
-        return terminal;
-    }
-
+    // No valid terminal exists
+    return await createTerminal();
 }
 
 /**
@@ -506,7 +214,7 @@ export async function executeCodeBlock(
     let file = writeCodeFile(cst.CODE_FILE, code);
 
     let nExec = 1;  // default to %run -i
-    let execMethod = getConfig('RunCodeBlockMethod') as string;
+    let execMethod = util.getConfig('RunCodeBlockMethod') as string;
     let command = `${execMethod} "${file}"`;
 
     if (execMethod === '%run -i'){
@@ -558,7 +266,7 @@ async function execute(
         return;
     }
 
-    let execLagMilliSec = getConfig("ExecutionLagMilliSec") as number;
+    let execLagMilliSec = util.getConfig("ExecutionLagMilliSec") as number;
     util.consoleLog(`+ Number of Execution: ${nExec}`);
     for (let i = 0; i < nExec; i++) {
         await util.wait(execLagMilliSec);
@@ -595,11 +303,11 @@ export async function runFile(
     let file = editor.document.fileName;
     let cmd = `"${file}"`;
     if (isWithCli) {
-        let args = getConfig("CommandLineArguments") as string;
+        let args = util.getConfig("CommandLineArguments") as string;
         cmd = cmd + ` ${args}`;
     }
     if (isWithArgs) {
-        let args = getConfig("RunArguments") as string;
+        let args = util.getConfig("RunArguments") as string;
         cmd = `${args} ` + cmd;
     }
     cmd = `%run ` + cmd;
@@ -664,7 +372,7 @@ export async function runLine() {
     }
 
     let line = editor.selection.start.line + 1;
-    moveAndRevealCursor(editor, line);
+    navi.moveAndRevealCursor(editor, line);
 }
 
 /**
@@ -677,11 +385,11 @@ export async function runSection(isNext: boolean) {
     util.consoleLog("IPython run section...");
     let editor = getPythonEditor() as vscode.TextEditor;
 
-    const section = getSectionAt(editor);
+    const section = navi.getSectionAt(editor);
 
     let start = new vscode.Position(section.start.line, 0);
-    let stop = new vscode.Position(section.stop.line, 0);
-    let selection = new vscode.Selection(start, stop);
+    let end = new vscode.Position(section.end.line, 0);
+    let selection = new vscode.Selection(start, end);
 
     let sectionName = '#';  // empty python comment
     if (section.start.line > 0){
@@ -689,7 +397,7 @@ export async function runSection(isNext: boolean) {
     }
 
     // NOTE: editor is 1-indexing
-    let identity = `${sectionName} (Line ${section.start.line + 1}:${section.stop.line})`;
+    let identity = `${sectionName} (Line ${section.start.line + 1}:${section.end.line})`;
     let code = formatCode(editor.document, selection);
 
     if (code !== "") {
@@ -704,7 +412,7 @@ export async function runSection(isNext: boolean) {
     }
 
     if (isNext) {
-        moveAndRevealCursor(editor, section.stop.line, section.stop.character);
+        navi.moveAndRevealCursor(editor, section.end.line, section.end.character);
     }
 }
 
