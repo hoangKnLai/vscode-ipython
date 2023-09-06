@@ -300,10 +300,11 @@ export class SectionTreeProvider implements vscode.TreeDataProvider<SectionItem>
         if (element === undefined) {
             // Open files as root
             let sections: SectionItem[] = [];
-            for (let editor of vscode.window.visibleTextEditors) {
+
+            for (let document of vscode.workspace.textDocuments) {
                 sections.push(
                     new SectionItem(
-                        editor.document,
+                        document,
                         vscode.TreeItemCollapsibleState.Expanded,
                         undefined,
                     )

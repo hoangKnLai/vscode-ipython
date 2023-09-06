@@ -50,6 +50,7 @@ export async function activate(context: vscode.ExtensionContext) {
     vscode.workspace.onDidCloseTextDocument(
         event => {
             navi.removeSectionCache(event.fileName);
+            treeProvider.refresh();
         },
     );
 
