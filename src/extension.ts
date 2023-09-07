@@ -1,6 +1,8 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from "vscode";
+
+import * as util from "./utility";
 import * as ipy from "./ipython";
 import * as navi from "./navigate";
 
@@ -20,15 +22,13 @@ export async function activate(context: vscode.ExtensionContext) {
     if (!pyExtension.isActive){
         await pyExtension.activate();
     }
-    navi.updateSectionDecor();
+    for (let document of vscode.workspace.textDocuments) {
+        navi.updateSectionCache(document);
+    }
+    navi.updateSectionDecor(vscode.window.activeTextEditor as vscode.TextEditor);
+
 
     // === SECTION VIEWER ===
-    let editor = ipy.getPythonEditor() as vscode.TextEditor;
-    // let treeProvider = new navi.SectionTreeProvider(editor.document);
-    // vscode.window.registerTreeDataProvider(
-    //     'ipy-navigator',
-    //     treeProvider,
-    // );
     let treeProvider = new navi.SectionTreeProvider();
     let navigator = vscode.window.createTreeView(
         'ipy-navigator',
@@ -39,8 +39,10 @@ export async function activate(context: vscode.ExtensionContext) {
 
     // === CALLBACKS ===
     vscode.window.onDidChangeActiveTextEditor(
-        () => {
-            navi.updateSectionDecor();
+        (editor) => {
+            if (editor !== undefined) {
+                navi.updateSectionDecor(editor);
+            }
             treeProvider.refresh();
         },
         null,
@@ -55,12 +57,13 @@ export async function activate(context: vscode.ExtensionContext) {
     );
 
     vscode.workspace.onDidChangeTextDocument(
-        event => {
-            if (event.contentChanges.length === 0) {
+        (event) => {
+            let sectionTag = util.getConfig('SectionTag') as string;
+            if (event.contentChanges.length >= sectionTag.length) {
                 return;
             }
-
-            navi.updateSectionDecor();
+            navi.updateSectionCache(event.document);
+            navi.updateSectionDecor(vscode.window.activeTextEditor as vscode.TextEditor);
             treeProvider.refresh();
         },
         null,

@@ -385,7 +385,9 @@ export async function runSection(isNext: boolean) {
     util.consoleLog("IPython run section...");
     let editor = getPythonEditor() as vscode.TextEditor;
 
-    const section = navi.getSectionAt(editor);
+    let cursor = editor.selection.start;
+    let sectionPositions = navi.sectionCache.get(editor.document.fileName) as vscode.Position[];
+    let section = navi.getSectionAt(cursor, sectionPositions, false);
 
     let start = new vscode.Position(section.start.line, 0);
     let end = new vscode.Position(section.end.line, 0);
@@ -397,7 +399,7 @@ export async function runSection(isNext: boolean) {
     }
 
     // NOTE: editor is 1-indexing
-    let identity = `${sectionName} (Line ${section.start.line + 1}:${section.end.line})`;
+    let identity = `${sectionName} (Line ${section.start.line + 1}:${section.end.line + 1})`;
     let code = formatCode(editor.document, selection);
 
     if (code !== "") {
@@ -425,21 +427,14 @@ export async function runSection(isNext: boolean) {
 export async function runCursor(toEnd: boolean) {
     let editor = getPythonEditor() as vscode.TextEditor;
 
-    // Default to beginning of file
     let startLine = 0;
-    // let startChar = 0;
-
-    // Default to current line
     let stopLine = editor.selection.start.line;
-    // let stopChar = editor.document.lineAt(stopLine).text.length - 1;
 
     if (toEnd) {  // to bottom
         startLine = editor.selection.start.line;
         stopLine = editor.document.lineCount - 1;
-        // stopChar = editor.document.lineAt(stopLine).text.length - 1;
     }
-    // let startPosition = new vscode.Position(startLine, startChar);
-    // let stopPosition = new vscode.Position(stopLine, stopChar);
+
     let startPosition = new vscode.Position(startLine, 0);
     let stopPosition = new vscode.Position(stopLine, 0);
     let selection = new vscode.Selection(startPosition, stopPosition);

@@ -27,7 +27,6 @@ const sectionDecorType = vscode.window.createTextEditorDecorationType({
     fontStyle: 'italic',
 });
 
-
 /**
  * Section in file.
  */
@@ -35,12 +34,13 @@ class SectionItem extends vscode.TreeItem {
     constructor(
         public document: vscode.TextDocument,
         public collapsibleState: vscode.TreeItemCollapsibleState,
-        public position: vscode.Position | undefined,
+        public position: vscode.Position | undefined = undefined,
+        public next: SectionItem | undefined = undefined,
+        public subsection: SectionItem | undefined = undefined,
     ) {
         let label: string;
         if (position === undefined) {
             label = path.basename(document.fileName);
-
         } else {
             let header = util.replaceTabWithSpace(
                 document.lineAt(position.line).text,
@@ -66,6 +66,41 @@ class SectionItem extends vscode.TreeItem {
 }
 
 
+// function buildSectionTree(
+//     document: vscode.TextDocument,
+// ) {
+//     let lastLine = document.lineCount - 1;
+//     let positions = sectionCache.get(document.fileName) as vscode.Position[];
+//     let sections: SectionItem[] = [];
+//     positions.forEach(
+//         (position, index) => {
+//             let sectionPositions = positions.slice(index);
+
+//             // Check subsection
+//             let rangeSub = getSectionAt(position, sectionPositions, lastLine, true);
+//             let collapsibleState = vscode.TreeItemCollapsibleState.None;
+//             if (rangeSub.start.character !== rangeSub.end.character) {
+//                 collapsibleState =  vscode.TreeItemCollapsibleState.Expanded;
+//             }
+
+//             // Check for next secion
+//             let rangeNext = getSectionAt(position, sectionPositions, lastLine, false);
+
+
+//             sections.push(
+//                 new SectionItem(
+//                     document,
+//                     position,
+//                     subsect
+//                 )
+//             )
+
+//         },
+//     );
+// }
+
+
+
 // === FUNCTIONS ===
 /**
  * Move the cursor to location and reveal its editor
@@ -77,7 +112,7 @@ class SectionItem extends vscode.TreeItem {
 export function moveAndRevealCursor(
     editor: vscode.TextEditor,
     line: number,
-    char = 0
+    char = 0,
 ) {
     let position = editor.selection.start.with(line, char);
     let selection = new vscode.Selection(position, position);
@@ -103,66 +138,38 @@ export function getSectionPattern() {
 
 /**
  * Section containing cursor position in document.
- * @param editor - active python text `editor`
- * @param position - default to `editor.selection.start`
+ * @param cursorPosition - default to `editor.selection.start`
+ * @param sectionPositions - ascending positions of section tag in document
  * @param ignoreLevel - `end` position allows to be of a lower level than `start`
  * @returns range with `start` and `end` of section
  */
 export function getSectionAt(
-    editor: vscode.TextEditor,
-    position: vscode.Position | undefined = undefined,
+    cursorPosition: vscode.Position,
+    sectionPositions: vscode.Position[],
     ignoreLevel: boolean = false,
 ) {
-    let document = editor.document;
-    let docCursor = editor.selection.start;
-    if (position !== undefined) {
-        docCursor = position;
-    }
-
-    // NOTE: should be ascending order or top to bottom of file
-    //  - Must find start level before stop
-    let positions = sectionCache.get(document.fileName) as vscode.Position[];
-
-    // -- Start Position
-    let aboveIndex = positions.reverse().findIndex(  // from cursor to top
+    // NOTE: Must find `start` before `end`
+    // -- Start
+    // Exclude bottom of file to avoid cursor locked at bottom
+    let start = sectionPositions.slice(0, -1).reverse().find(
         (position) => {
-            return position.isBeforeOrEqual(docCursor);
-        }
-    );
+        //    return position.isBeforeOrEqual(cursorPosition);
+            return position.line <= cursorPosition.line;
+        },
+    ) as vscode.Position;
 
-    let start: vscode.Position;
-    let level: number;
-    if (aboveIndex === -1) {
-        start = new vscode.Position(0, 0);  // first line
-        level = 0;
-    } else {
-        start = positions[aboveIndex];
-        level = document.lineAt(start.line).firstNonWhitespaceCharacterIndex;
-    }
-
-    // -- Find Section at Same Level
-    if (ignoreLevel) {
-        // FIXME: can be done more efficiently but likely not worth the effort
-        level = Infinity;
-    }
-
-    let end:vscode.Position;
-    let lastLine = document.lineCount - 1;
-
-    // NOTE: reverse() undo prior reverse in finding start position!!
-    let belowIndex = positions.reverse().findIndex(  // from start to bottom
+    let end = sectionPositions.find(
         (position) => {
-            let currLevel = document.lineAt(position.line).firstNonWhitespaceCharacterIndex;
-            return (position.isAfter(start) && currLevel <= level);
+            return (
+                position.isAfter(start)
+                && (ignoreLevel || position.character <= start.character));
         }
-    );
+    ) as vscode.Position;
 
-    if (belowIndex === -1) {
-        end = new vscode.Position(lastLine, lastLine);
-    } else {
-        end = positions[belowIndex];
+    if (end === undefined) {
+        // End of file
+        end = sectionPositions[sectionPositions.length - 1];
     }
-
     return new vscode.Range(start, end);
 }
 
@@ -176,13 +183,12 @@ export function getPythonEditor() {
 
 
 /**
- * Find section tag in current active text editor.
+ * Find section tag position in current active text editor.
  *
- * @returns positions of section tag in ascending order
+ * @returns positions of section tag in ascending order. Top and bottom of
+ * document are considered sections and are inclusive.
  */
-export function findSections() {
-    let editor = getPythonEditor() as vscode.TextEditor;
-    let document = editor.document;
+export function findSectionPosition(document: vscode.TextDocument) {
     let sectionFlag = util.getConfig("SectionTag") as string;
 
     // NOTE: find section tag without capture, gm: global, multiline
@@ -204,6 +210,17 @@ export function findSections() {
         );
         positions.push(position);
     }
+    let start = new vscode.Position(0, 0);
+    let end = document.lineAt(document.lineCount - 1).range.end;
+
+    if (start.line < positions[0].line) {
+        positions.unshift(start);
+    }
+
+    if (end.line > positions[positions.length - 1].line) {
+        positions.push(end);
+    }
+
     return positions;
 }
 
@@ -214,8 +231,21 @@ export function findSections() {
  * @returns - undefined when failed
  */
 export function decorateSection(editor: vscode.TextEditor) {
-    let positions = sectionCache.get(editor.document.fileName) as vscode.Position[];
+    let document = editor.document;
+
+    // NOTE: first and last items are beginning and end of file
+    let positions = sectionCache.get(document.fileName) as vscode.Position[];
+
     const decors: vscode.DecorationOptions[] = [];
+    // let top = new vscode.Position(0, 0);
+    // let bottom = document.lineAt(document.lineCount - 1).range.end;
+
+    // positions = positions.filter(
+    //     (position) => {
+    //         return position.isAfter(top) && position.isBefore(bottom);
+    //     }
+    // );
+
     for (let position of positions){
         decors.push({
             range: new vscode.Range(position, position),
@@ -233,13 +263,12 @@ export function removeSectionCache(fileName: string){
 }
 
 /**
- * Update section cache of active editor.document.
- * @param editor - an active python text editor
+ * Update section cache of document.
+ * @param document - a text file.
  */
-export function updateSectionCache(editor: vscode.TextEditor){
-    let positions = findSections();
-    let key = editor.document.fileName;
-    sectionCache.set(key, positions);
+export function updateSectionCache(document: vscode.TextDocument){
+    let positions = findSectionPosition(document);
+    sectionCache.set(document.fileName, positions);
 }
 
 /**
@@ -249,19 +278,21 @@ export function updateSectionCache(editor: vscode.TextEditor){
 export function moveCursorToSection(below: boolean) {
     let editor = getPythonEditor() as vscode.TextEditor;
 
-    let section = getSectionAt(editor, undefined, true);
+    let cursor = editor.selection.start;
+    let sectionPositions = sectionCache.get(editor.document.fileName) as vscode.Position[];
+    let section = getSectionAt(cursor, sectionPositions, true);
 
     if (below) {
         moveAndRevealCursor(editor, section.end.line, section.end.character);
         return;
     }
-    let cursor = editor.selection.start;
+
     if (cursor.line === section.start.line){
         let deltaLine = - 1;
         if (cursor.line + deltaLine < 0) {
             return;
         }
-        section = getSectionAt(editor, cursor.translate(deltaLine), true);
+        section = getSectionAt(cursor.translate(deltaLine), sectionPositions, true);
     }
     moveAndRevealCursor(editor, section.start.line, section.start.character);
     return;
@@ -272,10 +303,9 @@ export function moveCursorToSection(below: boolean) {
  * Update section decoration.
  * @param editor - current active python editor
  */
-export function updateSectionDecor() {
-    let editor = getPythonEditor() as vscode.TextEditor;
+export function updateSectionDecor(editor: vscode.TextEditor) {
 
-    updateSectionCache(editor);
+    updateSectionCache(editor.document);
 
     setTimeout(decorateSection, cst.MAX_TIMEOUT);
     decorateSection(editor);
@@ -315,6 +345,8 @@ export class SectionTreeProvider implements vscode.TreeDataProvider<SectionItem>
 
         // Get section positions and convert each to SectionItem
         if (!element.document.isClosed) {
+
+            // NOTE: assume first and last positions are top and bottom of document
             let positions = sectionCache.get(element.document.fileName) as vscode.Position[];
 
             let sections: SectionItem[] = [];
