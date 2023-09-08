@@ -386,7 +386,11 @@ export async function runSection(isNext: boolean) {
     let editor = getPythonEditor() as vscode.TextEditor;
 
     let cursor = editor.selection.start;
-    let sectionPositions = navi.sectionCache.get(editor.document.fileName) as vscode.Position[];
+    let sectionPositions = navi.sectionCache.get(editor.document.fileName);
+    if (sectionPositions === undefined) {
+        console.error('runSection::Something is wrong with sectionCache');
+        return;
+    }
     let section = navi.getSectionAt(cursor, sectionPositions, false);
 
     let start = new vscode.Position(section.start.line, 0);

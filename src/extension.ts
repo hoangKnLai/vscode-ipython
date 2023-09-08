@@ -22,6 +22,7 @@ export async function activate(context: vscode.ExtensionContext) {
     if (!pyExtension.isActive){
         await pyExtension.activate();
     }
+
     for (let document of vscode.workspace.textDocuments) {
         navi.updateSectionCache(document);
     }
@@ -33,37 +34,74 @@ export async function activate(context: vscode.ExtensionContext) {
     let navigator = vscode.window.createTreeView(
         'ipy-navigator',
         {
-            treeDataProvider: treeProvider
+            treeDataProvider: treeProvider,
+            showCollapseAll: true,
         },
     );
 
     // === CALLBACKS ===
+    vscode.workspace.onDidChangeConfiguration(
+        (event) => {
+            if (event.affectsConfiguration('ipython')) {
+                util.updateConfig();
+            }
+
+        }
+    );
+
+    vscode.workspace.onDidOpenTextDocument(
+        (document) => {
+            navi.updateSectionCache(document);
+            treeProvider.refresh();
+            // treeProvider.refreshDocument(document);
+        }
+    );
+
+    vscode.workspace.onDidCloseTextDocument(
+        document => {
+            navi.removeSectionCache(document.fileName);
+            treeProvider.refresh();
+            // treeProvider.refreshDocument(document);
+        },
+    );
+
+    // navigator.onDidChangeVisibility(
+    //     event => {
+    //         event.visible;
+    //     }
+    // );
+
+    navigator.onDidChangeSelection(
+        (event) => {
+            if (event.selection.length === 0) {
+                return;
+            }
+            treeProvider.jumpToSection(event.selection[0]);
+        },
+    );
+
     vscode.window.onDidChangeActiveTextEditor(
         (editor) => {
-            if (editor !== undefined) {
-                navi.updateSectionDecor(editor);
+            if (editor === undefined) {
+                return;
             }
+            navi.updateSectionDecor(editor);
+            // treeProvider.refreshDocument(editor.document);
             treeProvider.refresh();
         },
         null,
         context.subscriptions,
     );
 
-    vscode.workspace.onDidCloseTextDocument(
-        event => {
-            navi.removeSectionCache(event.fileName);
-            treeProvider.refresh();
-        },
-    );
 
     vscode.workspace.onDidChangeTextDocument(
         (event) => {
-            let sectionTag = util.getConfig('SectionTag') as string;
-            if (event.contentChanges.length >= sectionTag.length) {
+            if (event.contentChanges.length === 0) {
                 return;
             }
             navi.updateSectionCache(event.document);
             navi.updateSectionDecor(vscode.window.activeTextEditor as vscode.TextEditor);
+            // treeProvider.refreshDocument(event.document);
             treeProvider.refresh();
         },
         null,

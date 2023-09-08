@@ -4,6 +4,23 @@
 import * as vscode from "vscode";
 import * as cst from "./constants";
 
+
+export let config = vscode.workspace.getConfiguration('ipython');
+
+export function updateConfig() {
+    config = vscode.workspace.getConfiguration('ipython');
+}
+
+/**
+ * Get extension configuration.
+ *
+ * @param name - configuration name
+ * @returns - configuration value
+ */
+export function getConfig(name: string) {
+    return config.get(name);
+}
+
 /**
  * Log message to console.
  *
@@ -91,12 +108,3 @@ export function leftAdjustTrim(lines: string[]) {
 }
 
 
-/**
- * Get extension configuration.
- *
- * @param name - configuration name
- * @returns - configuration value
- */
-export function getConfig(name: string) {
-    return vscode.workspace.getConfiguration("ipython").get(name);
-}
