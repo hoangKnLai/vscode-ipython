@@ -413,13 +413,18 @@ export async function runSection(isNext: boolean) {
     let end = new vscode.Position(section.end.line, 0);
     let selection = new vscode.Selection(start, end);
 
-    let sectionName = '#';  // empty python comment
+    let sectionName = '#';  // python comment flag
     if (section.start.line > 0){
         sectionName = editor.document.lineAt(section.start.line).text.trim();
     }
 
-    // NOTE: editor is 1-indexing
-    let identity = `${sectionName} (Line ${section.start.line + 1}:${section.end.line + 1})`;
+    // Editor is 1-indexing
+    let sLine = section.start.line;
+    let sChar = section.start.character;
+    let eLine = section.end.line;
+    let eChar = section.end.character;
+    let lineMarker = `(Line.Char ${sLine + 1}.${sChar}-${eLine + 1}.${eChar})`;
+    let identity = `${sectionName} ${lineMarker}`;
     let code = formatCode(editor.document, selection);
 
     if (code !== "") {

@@ -30,21 +30,52 @@ export async function activate(context: vscode.ExtensionContext) {
 
     // === SECTION VIEWER ===
     let treeProvider = new navi.SectionTreeProvider();
-    let navigator = vscode.window.createTreeView(
-        'ipy-navigator',
+    let treeViewer = vscode.window.createTreeView(
+        'ipyNavigator',
         {
             treeDataProvider: treeProvider,
             showCollapseAll: true,
         },
     );
 
+    // navigator.onDidChangeVisibility(
+    //     event => {
+    //         event.visible;
+    //     }
+    // );
+
+    // NOTE: no apparent option found to jump to selection when click.
+    //  Only on change selection :(.
+    treeViewer.onDidChangeSelection(
+        (event) => {
+            if (event.selection.length === 0) {
+                return;
+            }
+            treeProvider.jumpToSection(event.selection[0]);
+        },
+    );
+
+
     // === CALLBACKS ===
+    vscode.workspace.onDidChangeTextDocument(
+        (event) => {
+            if (event.contentChanges.length === 0) {
+                return;
+            }
+            navi.updateSectionCache(event.document);
+            navi.updateSectionDecor(vscode.window.activeTextEditor as vscode.TextEditor);
+            // treeProvider.refreshDocument(event.document);
+            treeProvider.refresh();
+        },
+        null,
+        context.subscriptions,
+    );
+
     vscode.workspace.onDidChangeConfiguration(
         (event) => {
             if (event.affectsConfiguration('ipython')) {
                 util.updateConfig();
             }
-
         }
     );
 
@@ -64,21 +95,6 @@ export async function activate(context: vscode.ExtensionContext) {
         },
     );
 
-    // navigator.onDidChangeVisibility(
-    //     event => {
-    //         event.visible;
-    //     }
-    // );
-
-    navigator.onDidChangeSelection(
-        (event) => {
-            if (event.selection.length === 0) {
-                return;
-            }
-            treeProvider.jumpToSection(event.selection[0]);
-        },
-    );
-
     vscode.window.onDidChangeActiveTextEditor(
         (editor) => {
             if (editor === undefined) {
@@ -92,20 +108,6 @@ export async function activate(context: vscode.ExtensionContext) {
         context.subscriptions,
     );
 
-
-    vscode.workspace.onDidChangeTextDocument(
-        (event) => {
-            if (event.contentChanges.length === 0) {
-                return;
-            }
-            navi.updateSectionCache(event.document);
-            navi.updateSectionDecor(vscode.window.activeTextEditor as vscode.TextEditor);
-            // treeProvider.refreshDocument(event.document);
-            treeProvider.refresh();
-        },
-        null,
-        context.subscriptions,
-    );
 
     // == COMMANDS ==
     // NOTE: place in package.json:"command" section for testing
@@ -184,6 +186,17 @@ export async function activate(context: vscode.ExtensionContext) {
             ipy.runSection
         )
     );
+
+    // TODO: define navigation run section!
+    // context.subscriptions.push(
+    //     vscode.commands.registerCommand(
+    //         "ipython.naviRunSection",
+    //         (element) => {
+    //             ipy.runSection
+    //         }
+    //     )
+    // );
+
     context.subscriptions.push(
         vscode.commands.registerCommand(
             "ipython.runSectionAndMoveToNext",

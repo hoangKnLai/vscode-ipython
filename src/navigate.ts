@@ -6,6 +6,7 @@ import * as vscode from 'vscode';
 
 import * as cst from './constants';
 import * as util from './utility';
+import { getPythonEditor } from './ipython';
 
 
 // === CACHE ===
@@ -38,12 +39,15 @@ export class SectionItem extends vscode.TreeItem {
         public position: vscode.Position | undefined = undefined,
     ) {
         let label: string;
+        let tooltip = 'click to open';
         if (position === undefined) {
             label = path.basename(document.fileName);
+            tooltip = vscode.workspace.asRelativePath(document.uri);
         } else {
-            let tabSize = vscode.window.activeTextEditor?.options.tabSize;
-            if (tabSize === undefined || typeof tabSize === 'string') {
-                tabSize = 4;
+            let tabSize = 4;
+            let editorTabSize = vscode.window.activeTextEditor?.options.tabSize;
+            if (editorTabSize !== undefined && typeof editorTabSize === 'number') {
+                tabSize = editorTabSize;
             }
             let text = document.lineAt(position.line).text;
 
@@ -53,7 +57,7 @@ export class SectionItem extends vscode.TreeItem {
             if (level === 0) {
                 label = `|-${header}`;
             } else {
-                label = `|${'-- '.repeat(level)}${header}`;
+                label = `|${'--|'.repeat(level)}-${header}`;
             }
         }
 
@@ -61,8 +65,8 @@ export class SectionItem extends vscode.TreeItem {
 
         this.position = position;
         this.document = document;
-        // this.tooltip = `Line${position.line}, Col${position.character}`;
-        this.tooltip = 'click to open';
+        // this.resourceUri = document.uri;
+        this.tooltip = tooltip;
     }
 }
 
@@ -76,41 +80,6 @@ export function matchSectionTag(text: string) {
     let pattern = getSectionPattern();
     return text.match(pattern) !== null;
 }
-
-// function buildSectionTree(
-//     document: vscode.TextDocument,
-// ) {
-//     let lastLine = document.lineCount - 1;
-//     let positions = sectionCache.get(document.fileName) as vscode.Position[];
-//     let sections: SectionItem[] = [];
-//     positions.forEach(
-//         (position, index) => {
-//             let sectionPositions = positions.slice(index);
-
-//             // Check subsection
-//             let rangeSub = getSectionAt(position, sectionPositions, lastLine, true);
-//             let collapsibleState = vscode.TreeItemCollapsibleState.None;
-//             if (rangeSub.start.character !== rangeSub.end.character) {
-//                 collapsibleState =  vscode.TreeItemCollapsibleState.Expanded;
-//             }
-
-//             // Check for next secion
-//             let rangeNext = getSectionAt(position, sectionPositions, lastLine, false);
-
-
-//             sections.push(
-//                 new SectionItem(
-//                     document,
-//                     position,
-//                     subsect
-//                 )
-//             )
-
-//         },
-//     );
-// }
-
-
 
 // === FUNCTIONS ===
 /**
@@ -160,15 +129,32 @@ export function getSectionAt(
     sectionPositions: vscode.Position[],
     ignoreLevel: boolean = false,
 ) {
+    let startOfFile = new vscode.Position(0, 0);
+
+    let editor = getPythonEditor() as vscode.TextEditor;
+    let lineCount = editor.document.lineCount;
+    let endOfFile = editor.document.lineAt(lineCount - 1).range.end;
+
+    if (sectionPositions.length === 0) {
+        return new vscode.Range(startOfFile, endOfFile);
+    }
+
     // NOTE: Must find `start` before `end`
     // -- Start
-    // Exclude bottom of file to avoid being locked at bottom
-    let start = sectionPositions.slice(0, -1).reverse().find(
+    let start = sectionPositions.slice().reverse().find(
         (position) => {
         //    return position.isBeforeOrEqual(cursorPosition);
             return position.line <= cursorPosition.line;
         },
     ) as vscode.Position;
+
+    if (start === undefined) {
+        start = startOfFile;
+    }
+
+    if (start.line === endOfFile.line) {
+        return new vscode.Range(start, endOfFile);
+    }
 
     let end = sectionPositions.find(
         (position) => {
@@ -176,11 +162,10 @@ export function getSectionAt(
                 position.isAfter(start)
                 && (ignoreLevel || position.character <= start.character));
         }
-    ) as vscode.Position;
+    );
 
     if (end === undefined) {
-        // End of file
-        end = sectionPositions[sectionPositions.length - 1];
+        end = endOfFile;
     }
     return new vscode.Range(start, end);
 }
@@ -200,10 +185,6 @@ export function getEditor() {
  * document are considered sections and are inclusive.
  */
 export function findSectionPosition(document: vscode.TextDocument) {
-    // let sectionFlag = util.getConfig("SectionTag") as string;
-
-    // NOTE: find section tag without capture, gm: global, multiline
-    // let pattern = new RegExp(`(?:^[\\t ]*${sectionFlag.trim()})`, 'gm');
     let pattern = getSectionPattern();
 
     let text = document.getText();
@@ -224,7 +205,7 @@ export function findSectionPosition(document: vscode.TextDocument) {
     }
 
     if (positions.length === 0) {
-        return;
+        return positions;
     }
 
     let start = new vscode.Position(0, 0);
@@ -302,6 +283,7 @@ export function moveCursorToSection(below: boolean) {
 
     if (sectionPositions === undefined) {
         console.error('moveCursorToSection:: bad cache');
+        return;
     }
 
     let section = getSectionAt(cursor, sectionPositions, true);
@@ -353,7 +335,7 @@ export class SectionTreeProvider implements vscode.TreeDataProvider<SectionItem>
     getChildren(element?: SectionItem | undefined): vscode.ProviderResult<SectionItem[]> {
         if (element === undefined) {
 
-            // FIXME-HL:
+            // FIXME?!:
             //  Reduce to one tree
             //  in main, dynamically create the tree and store as new doc opens/close
 

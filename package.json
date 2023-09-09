@@ -138,6 +138,11 @@
             },
             {
                 "category": "IPython",
+                "command": "ipython.naviRunSection",
+                "title": "Run Selected Section From Navigation Tree."
+            },
+            {
+                "category": "IPython",
                 "command": "ipython.runSectionAndMoveToNext",
                 "title": "Run Section and Move to Next Section"
             },
@@ -216,10 +221,19 @@
         "views": {
             "ipy-navigator": [
                 {
-                    "id": "ipy-navigator",
+                    "id": "ipyNavigator",
                     "name": "Sections",
                     "icon": "media/sectioned_snake.svg",
                     "contextualTitle": "View and Navigation of Code Sections"
+                }
+            ]
+        },
+        "menus": {
+            "view/item/context": [
+                {
+                    "command": "ipython.naviRunSection",
+                    "when": "view == ipyNavigator && viewItem == runable",
+                    "group": "inline"
                 }
             ]
         }
