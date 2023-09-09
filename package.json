@@ -36,6 +36,11 @@
         "configuration": {
             "title": "IPython",
             "properties": {
+                "ipython.workFolder": {
+                    "type": "string",
+                    "default": "",
+                    "markdownDescription": "A work folder to be used by this extension. \nDefault: `${workspaceFolder}/.vscode/ipython/` if using one folder `workspace`, else `os.homedir()/.vscode/ipython/`."
+                },
                 "ipython.LaunchArguments": {
                     "type": "string",
                     "default": "--no-autoindent",
@@ -66,7 +71,7 @@
                         "%run -i"
                     ],
                     "default": "%run -i",
-                    "markdownDescription": "Write code block (section, multi-selections) to `.vscode/ipython/code.py`, then execute using `%run -i or %load code.py`. NOTE: open `code.py` to see exact code executed."
+                    "markdownDescription": "Write code block (section, multi-selections) to `{workFolder}/code.py`, then execute using `%run -i or %load code.py`. NOTE: open `code.py` to see exact code executed."
                 },
                 "ipython.RunArguments": {
                     "type": "string",

@@ -1,9 +1,8 @@
 /**
  * Convenient utility functions ONLY
  */
-import * as vscode from "vscode";
-import * as cst from "./constants";
-
+import * as vscode from 'vscode';
+import * as cst from './constants';
 
 export let config = vscode.workspace.getConfiguration('ipython');
 

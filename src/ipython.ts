@@ -1,8 +1,10 @@
 /**
  * IPython specifics
  */
-import * as vscode from "vscode";
+import {homedir} from 'os';
+
 import * as path from "path";
+import * as vscode from "vscode";
 
 import * as util from "./utility";
 import * as cst from "./constants";
@@ -37,25 +39,36 @@ export function getPythonEditor() {
  *
  * @param filename - name of file to write code to
  * @param code - properly formatted code
- * @returns workspace relative path to written file
+ * @returns URI to written file
  */
 export function writeCodeFile(filename: string, code: string) {
-    const folder = (
-        vscode.workspace.workspaceFolders
-        && vscode.workspace.workspaceFolders.length > 0
-        ? vscode.workspace.workspaceFolders[0].uri.fsPath : undefined
-    ) as string;
 
-    let relName = path.join(cst.WORK_FOLDER, filename);
-    let file = vscode.Uri.file(path.join(folder, relName));
+    let workFolder = util.getConfig('workFolder') as string;
+    if (!workFolder) {
+        let workspaceFolder = (
+            vscode.workspace.workspaceFolders
+            && vscode.workspace.workspaceFolders.length === 1
+            ? vscode.workspace.workspaceFolders[0].uri.fsPath : undefined
+        ) as string | undefined;
 
-    util.consoleLog(`Write File: ${file}`);
+        if (workspaceFolder === undefined) {
+            workFolder = path.join(homedir(), cst.WORK_FOLDER);
+        } else {
+            workFolder = path.join(workspaceFolder, cst.WORK_FOLDER);
+        }
+    }
+
+    let fullFileName = path.join(workFolder, filename);
+    let fileUri = vscode.Uri.file(fullFileName);
+
+    util.consoleLog(`Write File: ${fileUri.fsPath}`);
 
     // NOTE: extra newline for indented code at end of file
     let cmd = Buffer.from(code, "utf8");
-    vscode.workspace.fs.writeFile(file, cmd);
+    vscode.workspace.fs.writeFile(fileUri, cmd);
 
-    return relName;
+    // return fullFileName;
+    return fileUri;
 }
 
 
@@ -139,6 +152,9 @@ export async function createTerminal() {
     util.wait(500); // msec, to help with a race condition not naming terminal
 
     let terminal = vscode.window.activeTerminal as vscode.Terminal;
+    if (terminal === undefined) {
+        throw new Error('createTerminal: failed to create new ipython terminal');
+    }
 
     // Launch options
     let cmd = "ipython ";
@@ -212,10 +228,10 @@ export async function executeCodeBlock(
     identity: string = '',
 ) {
     let file = writeCodeFile(cst.CODE_FILE, code);
-
+    let path = vscode.workspace.asRelativePath(file);
     let nExec = 1;  // default to %run -i
     let execMethod = util.getConfig('RunCodeBlockMethod') as string;
-    let command = `${execMethod} "${file}"`;
+    let command = `${execMethod} "${path}"`;
 
     if (execMethod === '%run -i'){
         command += `  ${identity}`;

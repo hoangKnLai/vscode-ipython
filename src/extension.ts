@@ -1,10 +1,11 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
-import * as vscode from "vscode";
+import * as vscode from 'vscode';
 
-import * as util from "./utility";
-import * as ipy from "./ipython";
-import * as navi from "./navigate";
+import * as util from './utility';
+import * as ipy from './ipython';
+import * as navi from './navigate';
+
 
 export async function activate(context: vscode.ExtensionContext) {
 
@@ -12,12 +13,10 @@ export async function activate(context: vscode.ExtensionContext) {
     vscode.commands.executeCommand("setContext", "ipython.isUse", true);
 
     // Always make sure Python is available FIRST for creating terminal
-
     // FIXME: use official ms-python hook instead!?
     let pyExtension = vscode.extensions.getExtension("ms-python.python");
     if (pyExtension === undefined) {
-        console.error("Failed to get MS-Python Extension");
-        return;
+        throw new Error("Failed to activate MS-Python Extension");
     }
     if (!pyExtension.isActive){
         await pyExtension.activate();
@@ -27,7 +26,7 @@ export async function activate(context: vscode.ExtensionContext) {
         navi.updateSectionCache(document);
     }
     navi.updateSectionDecor(vscode.window.activeTextEditor as vscode.TextEditor);
-
+    util.updateConfig();
 
     // === SECTION VIEWER ===
     let treeProvider = new navi.SectionTreeProvider();
