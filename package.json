@@ -139,7 +139,23 @@
             {
                 "category": "IPython",
                 "command": "ipython.naviRunSection",
-                "title": "Run Selected Section From Navigation Tree."
+                "shortTitle": "Run",
+                "icon": "$(run)",
+                "title": "Run Section From Navigation Tree."
+            },
+            {
+                "category": "IPython",
+                "command": "ipython.naviRunFile",
+                "shortTitle": "Run File",
+                "icon": "$(run)",
+                "title": "Run File From Navigation Tree."
+            },
+            {
+                "category": "IPython",
+                "command": "ipython.naviJumpToSection",
+                "shortTitle": "Jump",
+                "icon": "$(arrow-circle-right)",
+                "title": "Jump Cursor to Section"
             },
             {
                 "category": "IPython",
@@ -232,7 +248,17 @@
             "view/item/context": [
                 {
                     "command": "ipython.naviRunSection",
-                    "when": "view == ipyNavigator && viewItem == runable",
+                    "when": "view == ipyNavigator && viewItem == runableSection",
+                    "group": "inline"
+                },
+                {
+                    "command": "ipython.naviRunFile",
+                    "when": "view == ipyNavigator && viewItem == runableFile",
+                    "group": "inline"
+                },
+                {
+                    "command": "ipython.naviJumpToSection",
+                    "when": "view == ipyNavigator",
                     "group": "inline"
                 }
             ]

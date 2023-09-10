@@ -301,22 +301,24 @@ async function execute(
 /**
  * Run a python file in an ipython terminal.
  *
- * @param isReset - with reset command to terminal
  * @param isWithArgs - with specific run arguments
  * @param isWithCli - run with command line interface arguments
  * @returns Promise - is ran in terminal
  */
 export async function runFile(
+    document: vscode.TextDocument | undefined,
     isWithArgs: boolean = false,
-    isWithCli: boolean = false
+    isWithCli: boolean = false,
 ) {
-    util.consoleLog("IPython run file...");
-    let editor = getPythonEditor() as vscode.TextEditor;
-    await editor.document.save();
+    if (document === undefined) {
+        let editor = getPythonEditor() as vscode.TextEditor;
+        await editor.document.save();
+        document = editor.document;
+    }
 
     let terminal = await getTerminal() as vscode.Terminal;
 
-    let file = editor.document.fileName;
+    let file = document.fileName;
     let cmd = `"${file}"`;
     if (isWithCli) {
         let args = util.getConfig("CommandLineArguments") as string;
@@ -327,7 +329,7 @@ export async function runFile(
         cmd = `${args} ` + cmd;
     }
     cmd = `%run ` + cmd;
-    util.consoleLog("IPython Run File Command: " + cmd);
+
     await executeSingleLine(terminal, cmd);
 }
 
@@ -389,6 +391,53 @@ export async function runLine() {
 
     let line = editor.selection.start.line + 1;
     navi.moveAndRevealCursor(editor, line);
+}
+
+/**
+ * Run current section of python code in an ipython terminal.
+ *
+ * @param isNext - move cursor to next section if any
+ * @returns Promise - is ran in terminal
+ */
+export async function runDocumentSection(
+    document: vscode.TextDocument,
+    cursor: vscode.Position,
+) {
+    let sectionPositions = navi.sectionCache.get(document.fileName);
+    if (sectionPositions === undefined) {
+        console.error('runSection::Something is wrong with sectionCache');
+        return;
+    }
+    let section = navi.getSectionAt(cursor, sectionPositions, false);
+
+    let start = new vscode.Position(section.start.line, 0);
+    let end = new vscode.Position(section.end.line, 0);
+    let selection = new vscode.Selection(start, end);
+
+    let sectionName = '#';  // python comment flag
+    if (section.start.line > 0){
+        sectionName = document.lineAt(section.start.line).text.trim();
+    }
+
+    // Editor is 1-indexing
+    let sLine = section.start.line;
+    let sChar = section.start.character;
+    let eLine = section.end.line;
+    let eChar = section.end.character;
+    let lineMarker = `(Line.Col:${sLine + 1}.${sChar}-${eLine + 1}.${eChar})`;
+    let identity = `${sectionName} ${lineMarker}`;
+    let code = formatCode(document, selection);
+
+    if (code !== "") {
+        let terminal = await getTerminal();
+        if (terminal === undefined) {
+            console.error("Unable to get an IPython Terminal");
+            return;
+        }
+
+        util.consoleLog("IPython Run Section: \n" + code);
+        await executeCodeBlock(terminal, code, identity);
+    }
 }
 
 /**

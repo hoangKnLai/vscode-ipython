@@ -30,12 +30,13 @@ export async function activate(context: vscode.ExtensionContext) {
 
     // === SECTION VIEWER ===
     let treeProvider = new navi.SectionTreeProvider();
-    let treeViewer = vscode.window.createTreeView(
+    let treeOptions: vscode.TreeViewOptions<navi.SectionItem> = {
+        treeDataProvider: treeProvider,
+        showCollapseAll: true,
+    };
+    vscode.window.createTreeView(
         'ipyNavigator',
-        {
-            treeDataProvider: treeProvider,
-            showCollapseAll: true,
-        },
+        treeOptions,
     );
 
     // navigator.onDidChangeVisibility(
@@ -45,18 +46,20 @@ export async function activate(context: vscode.ExtensionContext) {
     // );
 
     // NOTE: no apparent option found to jump to selection when click.
-    //  Only on change selection :(.
-    treeViewer.onDidChangeSelection(
-        (event) => {
-            if (event.selection.length === 0) {
-                return;
-            }
-            treeProvider.jumpToSection(event.selection[0]);
-        },
-    );
+    //  Only on change selection :(. FIXED using context option.
+    // treeViewer.onDidChangeSelection(
+    //     (event) => {
+    //         if (event.selection.length === 0) {
+    //             return;
+    //         }
+    //         event.selection[0].jumpToSection();
+    //     },
+    // );
 
 
     // === CALLBACKS ===
+    // FIXME: treeProvider caches section for each document rather than recreate
+    //  everything for every small changes
     vscode.workspace.onDidChangeTextDocument(
         (event) => {
             if (event.contentChanges.length === 0) {
@@ -64,7 +67,6 @@ export async function activate(context: vscode.ExtensionContext) {
             }
             navi.updateSectionCache(event.document);
             navi.updateSectionDecor(vscode.window.activeTextEditor as vscode.TextEditor);
-            // treeProvider.refreshDocument(event.document);
             treeProvider.refresh();
         },
         null,
@@ -152,19 +154,19 @@ export async function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(
         vscode.commands.registerCommand(
             "ipython.runFileWithArgs",
-            () => ipy.runFile(true, false)
+            () => ipy.runFile(undefined, true, false)
         )
     );
     context.subscriptions.push(
         vscode.commands.registerCommand(
             "ipython.runFileWithCli",
-            () => ipy.runFile(false, true)
+            () => ipy.runFile(undefined, true)
         )
     );
     context.subscriptions.push(
         vscode.commands.registerCommand(
             "ipython.runFileWithArgsCli",
-            () => ipy.runFile(true, true)
+            () => ipy.runFile(undefined, true, true)
         )
     );
 
@@ -187,20 +189,39 @@ export async function activate(context: vscode.ExtensionContext) {
         )
     );
 
-    // TODO: define navigation run section!
-    // context.subscriptions.push(
-    //     vscode.commands.registerCommand(
-    //         "ipython.naviRunSection",
-    //         (element) => {
-    //             ipy.runSection
-    //         }
-    //     )
-    // );
+    context.subscriptions.push(
+        vscode.commands.registerCommand(
+            "ipython.naviRunSection",
+            (item: navi.SectionItem) => {
+                if(item.position !== undefined && item.document.languageId === 'python'){
+                    ipy.runDocumentSection(item.document, item.position);
+                }
+            },
+        ),
+    );
+
+    context.subscriptions.push(
+        vscode.commands.registerCommand(
+            "ipython.naviRunFile",
+            (item: navi.SectionItem) => {
+                if (item.document.languageId === 'python') {
+                    ipy.runFile(item.document);
+                }
+            },
+        ),
+    );
+
+    context.subscriptions.push(
+        vscode.commands.registerCommand(
+            "ipython.naviJumpToSection",
+            (item: navi.SectionItem) => item.jumpToSection(),
+        ),
+    );
 
     context.subscriptions.push(
         vscode.commands.registerCommand(
             "ipython.runSectionAndMoveToNext",
-             () => ipy.runSection(true)
+             () => ipy.runSection(true),
         )
     );
     context.subscriptions.push(
