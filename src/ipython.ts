@@ -47,6 +47,7 @@ export function writeCodeFile(filename: string, code: string) {
     let fileUri = vscode.Uri.file(fullFileName);
 
     util.consoleLog(`Write File: ${fileUri.fsPath}`);
+    util.tempfiles.add(fileUri);
 
     // NOTE: extra newline for indented code at end of file
     let cmd = Buffer.from(code, "utf8");

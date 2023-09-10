@@ -209,4 +209,9 @@ export async function activate(context: vscode.ExtensionContext) {
 }
 
 // this method is called when extension is deactivated
-export function deactivate() {}
+export function deactivate() {
+    // Remove temporary file used
+    for (let uri of util.tempfiles) {
+        vscode.workspace.fs.delete(uri);
+    }
+}

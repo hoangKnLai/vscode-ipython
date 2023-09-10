@@ -11,6 +11,8 @@ import * as cst from './constants';
 export let config = vscode.workspace.getConfiguration('ipython');
 export let WORKFOLDER:string = '';
 
+export let tempfiles = new Set<vscode.Uri>();
+
 
 export function updateConfig() {
     config = vscode.workspace.getConfiguration('ipython');
@@ -29,12 +31,6 @@ export function updateConfig() {
         workFolder = path.join(baseDir, cst.RELATIVE_WORKFOLDER);
     }
 
-    // if (WORKFOLDER !== '' || WORKFOLDER !== workFolder) {
-    //     vscode.workspace.fs.delete(
-    //         vscode.Uri.file(WORKFOLDER),
-    //         {recursive: true, useTrash: false},
-    //     );
-    // }
     WORKFOLDER = workFolder;
 }
 
