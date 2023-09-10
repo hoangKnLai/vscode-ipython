@@ -34,12 +34,15 @@ export async function activate(context: vscode.ExtensionContext) {
         treeDataProvider: treeProvider,
         showCollapseAll: true,
     };
+
+    // FUTURE: potential enhancement of tree drag/drop of sections
     vscode.window.createTreeView(
         'ipyNavigator',
         treeOptions,
     );
 
     // === CALLBACKS ===
+    // TODO: move callbacks to various module registerCallbacks()
     vscode.workspace.onDidChangeConfiguration(
         (event) => {
             if (event.affectsConfiguration('ipython')) {
@@ -89,6 +92,7 @@ export async function activate(context: vscode.ExtensionContext) {
     );
 
     // === COMMANDS: TREEVIEW ===
+    // TODO: move command registration to various module registerCommands()
     context.subscriptions.push(
         vscode.commands.registerCommand(
             "ipython.naviRunSection",
@@ -205,14 +209,4 @@ export async function activate(context: vscode.ExtensionContext) {
 }
 
 // this method is called when extension is deactivated
-export function deactivate() {
-    // let wsFolders = vscode.workspace.workspaceFolders;  // Assume single workspace
-    //   if (wsFolders === undefined){
-    //     console.error("Workspace folder not found");
-    //     return;
-    //   }
-    // let ws = wsFolders[0].uri.fsPath;
-    // let folder = path.join(ws, ".vscode", "ipython");
-    // let uri = vscode.Uri.file(folder);
-    // vscode.workspace.fs.delete(uri, {recursive: true, useTrash: false});
-}
+export function deactivate() {}

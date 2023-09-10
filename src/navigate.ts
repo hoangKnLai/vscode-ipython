@@ -31,92 +31,7 @@ const sectionDecorType = vscode.window.createTextEditorDecorationType({
 });
 
 
-/**
- * Section in file.
- */
-export class SectionItem extends vscode.TreeItem {
-    constructor(
-        public document: vscode.TextDocument,
-        public collapsibleState: vscode.TreeItemCollapsibleState,
-        public position: vscode.Position | undefined = undefined,
-    ) {
-        let label: string;
-        let runable: string | undefined = undefined;
-        let tooltip: string | undefined = undefined;
-        let uri: vscode.Uri | undefined = undefined;
-        let icon: vscode.ThemeIcon | undefined;
-        if (position === undefined) {
-            label = path.basename(document.fileName);
-            tooltip = 'Click to Expand/Collapse';
-            uri = document.uri;
-            if (document.languageId === 'python') {
-                runable = 'runableFile';
-            }
-            icon = new vscode.ThemeIcon('file');
-        } else {
-            // FIXME: enumerate these
-            if (document.languageId === 'python') {
-                runable = 'runableSection';
-            }
-
-            // icon = new vscode.ThemeIcon('bookmark');
-
-            let tabSize = 4;
-            let editorTabSize = vscode.window.activeTextEditor?.options.tabSize;
-            if (editorTabSize !== undefined && typeof editorTabSize === 'number') {
-                tabSize = editorTabSize;
-            }
-            let text = document.lineAt(position.line).text;
-
-            let pattern = getSectionPattern();
-
-            let startOfFile = new vscode.Position(0, 0);
-            let header = '';
-            if (matchSectionTag(text)){
-                header = text.trim().replace(pattern, '');
-            } else {
-                header = (startOfFile.isEqual(position))? ' (First Section)': '(Unknown)';
-            }
-
-            let level = position.character / tabSize;
-            let front: string;
-            if (level === 0) {
-                front = `|-`;
-            } else {
-                front = `|${'--|'.repeat(level)}-`;
-            }
-            let lineMarker = `  (L:${position.line}, C:${position.character})`;
-            label = front + header + lineMarker;
-        }
-
-        super(label, collapsibleState);
-
-        this.position = position;
-        this.document = document;
-        this.contextValue = runable;
-        this.resourceUri = uri;
-        this.iconPath = icon;
-        this.tooltip = tooltip;
-    }
-
-    public async jumpToSection() {
-        let range: vscode.Range | undefined = undefined;
-        if (this.position !== undefined) {
-            range = new vscode.Range(this.position, this.position);
-        }
-
-        let showOptions: vscode.TextDocumentShowOptions = {
-            preserveFocus: false,
-            preview: false,
-            selection: range,
-        };
-        await vscode.window.showTextDocument(
-            this.document,
-            showOptions,
-        );
-    }
-}
-
+// === FUNCTIONS: ===
 
 /**
  * Match section pattern against text.
@@ -128,7 +43,6 @@ export function matchSectionTag(text: string) {
     return text.match(pattern) !== null;
 }
 
-// === FUNCTIONS ===
 /**
  * Move the cursor to location and reveal its editor
  *
@@ -153,8 +67,8 @@ export function moveAndRevealCursor(
 /**
  * Pattern to look for code section.
  *
- * @returns pattern - regular expression to find section tag capture tab and space
- * before it in a line
+ * @returns regular expression to find section tag and capture tab and space
+ * before tag in a line.
  */
 export function getSectionPattern() {
     let sectionFlag = util.getConfig("SectionTag") as string;
@@ -167,7 +81,7 @@ export function getSectionPattern() {
 /**
  * Section containing cursor position in document.
  * @param cursorPosition - default to `editor.selection.start`
- * @param sectionPositions - ascending positions of section tag in document
+ * @param sectionPositions - top to bottom positions of section tag in document
  * @param ignoreLevel - `end` position allows to be of a lower level than `start`
  * @returns range with `start` and `end` of section
  */
@@ -190,7 +104,7 @@ export function getSectionAt(
     // -- Start
     let start = sectionPositions.slice().reverse().find(
         (position) => {
-        //    return position.isBeforeOrEqual(cursorPosition);
+            //    return position.isBeforeOrEqual(cursorPosition);
             return position.line <= cursorPosition.line;
         },
     ) as vscode.Position;
@@ -219,11 +133,6 @@ export function getSectionAt(
 
 
 // === SECTION ===
-export function getEditor() {
-    return vscode.window.activeTextEditor;
-    // return vscode.window.visibleTextEditors;
-}
-
 
 /**
  * Find section tag position in current active text editor.
@@ -270,7 +179,7 @@ export function findSectionPosition(document: vscode.TextDocument) {
 }
 
 /**
- * Decorate section with divider.
+ * Decorate section found.
  *
  * @param editor - current active python editor
  * @returns - undefined when failed
@@ -280,12 +189,13 @@ export function decorateSection(editor: vscode.TextEditor) {
     let decors: vscode.DecorationOptions[] = [];
 
     let positions = sectionCache.get(document.fileName) as vscode.Position[];
+
     if (positions === undefined) {
         editor.setDecorations(sectionDecorType, decors);
         return;
     }
 
-    for (let position of positions){
+    for (let position of positions) {
         let text = document.lineAt(position.line).text;
         if (!matchSectionTag(text)) {
             continue;
@@ -301,7 +211,7 @@ export function decorateSection(editor: vscode.TextEditor) {
  * Remove section position cache.
  * @param fileName - a vscode document.fileName
  */
-export function removeSectionCache(fileName: string){
+export function removeSectionCache(fileName: string) {
     sectionCache.delete(fileName);
 }
 
@@ -309,7 +219,7 @@ export function removeSectionCache(fileName: string){
  * Update section cache of document.
  * @param document - a text file.
  */
-export function updateSectionCache(document: vscode.TextDocument){
+export function updateSectionCache(document: vscode.TextDocument) {
     let positions = findSectionPosition(document);
     if (positions === undefined) {
         sectionCache.delete(document.fileName);
@@ -323,13 +233,16 @@ export function updateSectionCache(document: vscode.TextDocument){
  * @param below - move below or above
  */
 export function moveCursorToSection(below: boolean) {
-    let editor = getEditor() as vscode.TextEditor;
+    let editor = vscode.window.activeTextEditor;
+    if (editor === undefined) {
+        return;
+    }
 
     let cursor = editor.selection.start;
-    let sectionPositions = sectionCache.get(editor.document.fileName) as vscode.Position[];
+    let sectionPositions = sectionCache.get(editor.document.fileName);
 
     if (sectionPositions === undefined) {
-        console.error('moveCursorToSection:: bad cache');
+        console.error('moveCursorToSection:: bad sectionCache');
         return;
     }
 
@@ -340,7 +253,7 @@ export function moveCursorToSection(below: boolean) {
         return;
     }
 
-    if (cursor.line === section.start.line){
+    if (cursor.line === section.start.line) {
         let deltaLine = - 1;
         if (cursor.line + deltaLine < 0) {
             return;
@@ -366,19 +279,116 @@ export function updateSectionDecor(editor: vscode.TextEditor) {
 
 
 // === TREE PROVIDER ===
+
+/**
+ * Section Item for use with TreeProvider
+ * @document the text file section is found in
+ * @position the starting position of a section in document
+ */
+export class SectionItem extends vscode.TreeItem {
+    constructor(
+        public document: vscode.TextDocument,
+        public collapsibleState: vscode.TreeItemCollapsibleState,
+        public position: vscode.Position | undefined = undefined,
+    ) {
+        let label: string;
+        let runable: string | undefined = undefined;
+        let tooltip: string | undefined = undefined;
+        let uri: vscode.Uri | undefined = undefined;
+        let icon: vscode.ThemeIcon | undefined;
+        if (position === undefined) {
+            label = path.basename(document.fileName);
+            tooltip = 'Click to Expand/Collapse';
+            uri = document.uri;
+            if (document.languageId === 'python') {
+                runable = 'runableFile';
+            }
+            icon = new vscode.ThemeIcon('file');
+        } else {
+            // FIXME: enumerate these
+            if (document.languageId === 'python') {
+                runable = 'runableSection';
+            }
+
+            // icon = new vscode.ThemeIcon('bookmark');
+
+            let tabSize = 4;
+            let editorTabSize = vscode.window.activeTextEditor?.options.tabSize;
+            if (editorTabSize !== undefined && typeof editorTabSize === 'number') {
+                tabSize = editorTabSize;
+            }
+            let text = document.lineAt(position.line).text;
+
+            let pattern = getSectionPattern();
+
+            let startOfFile = new vscode.Position(0, 0);
+            let header = '';
+            if (matchSectionTag(text)) {
+                header = text.trim().replace(pattern, '');
+            } else {
+                header = (startOfFile.isEqual(position)) ? ' (First Section)' : '(Unknown)';
+            }
+
+            let level = position.character / tabSize;
+            let front: string;
+            if (level === 0) {
+                front = `|-`;
+            } else {
+                front = `|${'--|'.repeat(level)}-`;
+            }
+            let lineMarker = `  (L:${position.line}, C:${position.character})`;
+            label = front + header + lineMarker;
+        }
+
+        super(label, collapsibleState);
+
+        this.position = position;
+        this.document = document;
+        this.contextValue = runable;
+        this.resourceUri = uri;
+        this.iconPath = icon;
+        this.tooltip = tooltip;
+    }
+
+    /**
+     * Jump active editor to document section. If document not opened,
+     * open then jump.
+     */
+    public async jumpToSection() {
+        let range: vscode.Range | undefined = undefined;
+        if (this.position !== undefined) {
+            range = new vscode.Range(this.position, this.position);
+        }
+
+        let showOptions: vscode.TextDocumentShowOptions = {
+            preserveFocus: false,
+            preview: false,
+            selection: range,
+        };
+        await vscode.window.showTextDocument(
+            this.document,
+            showOptions,
+        );
+    }
+}
+
+
+/**
+ * Section TreeProvider for text files in workspace
+ */
 export class SectionTreeProvider implements vscode.TreeDataProvider<SectionItem> {
     private _onDidChangeTreeDataEmitter: vscode.EventEmitter<SectionItem | undefined | void> = new vscode.EventEmitter<SectionItem | undefined | void>();
-	readonly onDidChangeTreeData: vscode.Event<SectionItem | undefined | void> = this._onDidChangeTreeDataEmitter.event;
+    readonly onDidChangeTreeData: vscode.Event<SectionItem | undefined | void> = this._onDidChangeTreeDataEmitter.event;
+
+    private documentNodes = new Map<string, SectionItem>;
+    private itemCache = new Map<string, SectionItem[]>;
 
     constructor() {
         this.cacheSection(undefined);
     }
 
-	refresh(): void {
-		this._onDidChangeTreeDataEmitter.fire();
-	}
+    // == Abstraction ==
 
-    // NOTE: adhering to abstract
     getTreeItem(element: SectionItem): vscode.TreeItem | Thenable<vscode.TreeItem> {
         return element;
     }
@@ -396,16 +406,13 @@ export class SectionTreeProvider implements vscode.TreeDataProvider<SectionItem>
         return Promise.resolve([]);
     }
 
-    public refreshDocument(document: vscode.TextDocument) {
-        this.cacheSection([document]);
-        this.refresh();
-    }
-
-    // FIXME: reorganize class
-    public documentNodes = new Map<string, SectionItem>;
-    public itemCache = new Map<string, SectionItem[]>;
-
-    public createDocumentNode(document: vscode.TextDocument) {
+    // == Functions ==
+    /**
+     * Create a view node document.
+     * @param document a text document
+     * @returns a document view node
+     */
+    private createDocumentNode(document: vscode.TextDocument) {
         return new SectionItem(
             document,
             vscode.TreeItemCollapsibleState.Expanded,
@@ -413,18 +420,16 @@ export class SectionTreeProvider implements vscode.TreeDataProvider<SectionItem>
         );
     }
 
-    public removeDocument(document: vscode.TextDocument) {
-        this.documentNodes.delete(document.fileName);
-        this.itemCache.delete(document.fileName);
-        this.refresh();
-    }
-
-    public cacheSection(documents: readonly vscode.TextDocument[] | undefined) {
+    /**
+     * Find section in documents and cache the results.
+     * @param documents a set of text file
+     */
+    private cacheSection(documents: readonly vscode.TextDocument[] | undefined) {
         if (documents === undefined) {
             documents = vscode.workspace.textDocuments;
         }
         for (let document of documents) {
-            if (!matchSectionTag(document.getText())){
+            if (!matchSectionTag(document.getText())) {
                 continue;
             }
             let docNode = this.createDocumentNode(document);
@@ -433,18 +438,20 @@ export class SectionTreeProvider implements vscode.TreeDataProvider<SectionItem>
         }
     }
 
-    public cacheItem(documentNode: SectionItem){
-        let sectionNodes: SectionItem[] = [];
-
+    /**
+     * Cache the section nodes of a document.
+     * @param documentNode a node representing a document with sections
+     */
+    private cacheItem(documentNode: SectionItem) {
         let document = documentNode.document;
 
         let positions = sectionCache.get(document.fileName);
         if (positions === undefined) {
-            return sectionNodes;
+            return;
         }
         let endOfFile = document.lineAt(document.lineCount - 1).range.end;
         let sections: SectionItem[] = [];
-        for(let position of positions) {
+        for (let position of positions) {
             if (position.isEqual(endOfFile)) {
                 continue;
             }
@@ -457,8 +464,32 @@ export class SectionTreeProvider implements vscode.TreeDataProvider<SectionItem>
             );
         }
         this.itemCache.set(document.fileName, sections);
-        return (sectionNodes);
+        return;
     }
 
+    /**
+     * Refresh the tree view from root.
+     */
+    refresh(): void {
+        this._onDidChangeTreeDataEmitter.fire();
+    }
 
+    /**
+     * Refresh the view of a document.
+     * @param document in view
+     */
+    public refreshDocument(document: vscode.TextDocument) {
+        this.cacheSection([document]);
+        this.refresh();
+    }
+
+    /**
+     * Remove a document from view.
+     * @param document in view
+     */
+    public removeDocument(document: vscode.TextDocument) {
+        this.documentNodes.delete(document.fileName);
+        this.itemCache.delete(document.fileName);
+        this.refresh();
+    }
 }
