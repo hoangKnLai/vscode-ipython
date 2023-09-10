@@ -3,13 +3,12 @@
     "displayName": "ipython",
     "description": "IPython integration supporting direct interactive usage and commands.",
     "icon": "md_img/icon.png",
-    "version": "2023.9.0",
+    "version": "2023.9.10",
     "publisher": "HoangKimLai",
     "repository": {
         "type": "git",
         "url": "https://github.com/hoangKnLai/vscode-ipython"
     },
-
     "engines": {
         "vscode": "^1.81.0"
     },
@@ -37,6 +36,11 @@
         "configuration": {
             "title": "IPython",
             "properties": {
+                "ipython.workFolderBase": {
+                    "type": "string",
+                    "default": "",
+                    "markdownDescription": "A folder to be used by this extension. \nDefault: `${HOME}`. NOTE: temporary `files` are placed in `${workFolderBase}/.vscode/ipython/` and are deleted once extension is deactivated."
+                },
                 "ipython.LaunchArguments": {
                     "type": "string",
                     "default": "--no-autoindent",
@@ -67,7 +71,7 @@
                         "%run -i"
                     ],
                     "default": "%run -i",
-                    "markdownDescription": "Write code block (section, multi-selections) to `.vscode/ipython/code.py`, then execute using `%run -i or %load code.py`. NOTE: open `code.py` to see exact code executed."
+                    "markdownDescription": "Write code block (section, multi-selections) to `{workFolder}/code.py`, then execute using `%run -i or %load code.py`. NOTE: open `code.py` to see exact code executed."
                 },
                 "ipython.RunArguments": {
                     "type": "string",
@@ -131,6 +135,27 @@
                 "category": "IPython",
                 "command": "ipython.runSection",
                 "title": "Run Section Block of Code"
+            },
+            {
+                "category": "IPython",
+                "command": "ipython.naviRunSection",
+                "shortTitle": "Run",
+                "icon": "$(run)",
+                "title": "Run Section From Navigation Tree."
+            },
+            {
+                "category": "IPython",
+                "command": "ipython.naviRunFile",
+                "shortTitle": "Run File",
+                "icon": "$(run-all)",
+                "title": "Run File From Navigation Tree."
+            },
+            {
+                "category": "IPython",
+                "command": "ipython.naviJumpToSection",
+                "shortTitle": "Jump",
+                "icon": "$(arrow-circle-right)",
+                "title": "Jump to ..."
             },
             {
                 "category": "IPython",
@@ -198,16 +223,63 @@
                 "command": "ipython.runFromLine",
                 "key": "ctrl+shift+i shift+l",
                 "when": "ipython.isUse && !inDebugMode && editorTextFocus && !notebookEditorFocused && editorLangId == python"
+            },
+            {
+                "command": "workbench.view.extension.ipy-navigator",
+                "key": "ctrl+shift+i b",
+                "when": "ipython.isUse"
             }
-        ]
+        ],
+        "viewsContainers": {
+            "activitybar": [
+                {
+                    "id": "ipy-navigator",
+                    "title": "Code Navigator",
+                    "icon": "icons/sectioned_snake.svg"
+                }
+            ]
+        },
+        "views": {
+            "ipy-navigator": [
+                {
+                    "id": "ipyNavigator",
+                    "name": "Sections",
+                    "icon": "media/sectioned_snake.svg",
+                    "contextualTitle": "Navigation and Execution"
+                }
+            ]
+        },
+        "menus": {
+            "view/item/context": [
+                {
+                    "command": "ipython.naviRunSection",
+                    "when": "view == ipyNavigator && viewItem == runableSection",
+                    "group": "inline"
+                },
+                {
+                    "command": "ipython.naviRunFile",
+                    "when": "view == ipyNavigator && viewItem == runableFile",
+                    "group": "inline"
+                },
+                {
+                    "command": "ipython.naviJumpToSection",
+                    "when": "view == ipyNavigator",
+                    "group": "inline"
+                }
+            ]
+        }
     },
     "scripts": {
-        "vscode:prepublish": "npm run compile",
+        "vscode:prepublish": "npm run esbuild-base -- --minify",
         "compile": "tsc -p ./",
         "watch": "tsc -watch -p ./",
         "pretest": "npm run compile && npm run lint",
         "lint": "eslint src --ext ts",
-        "test": "node ./out/test/runTest.js"
+        "test": "node ./out/test/runTest.js",
+        "esbuild-base": "esbuild ./src/extension.ts --bundle --outfile=out/main.js --external:vscode --format=cjs --platform=node",
+        "esbuild": "npm run esbuild-base -- --sourcemap",
+        "esbuild-watch": "npm run esbuild-base -- --sourcemap --watch",
+        "test-compile": "tsc -p ./"
     },
     "devDependencies": {
         "@types/glob": "^7.2.0",
@@ -217,12 +289,10 @@
         "@typescript-eslint/eslint-plugin": "^4.33.0",
         "@typescript-eslint/parser": "^4.33.0",
         "@vscode/test-electron": "^1.6.2",
+        "esbuild": "^0.19.2",
         "eslint": "^7.32.0",
         "glob": "^7.2.3",
         "mocha": "^9.2.2",
         "typescript": "^4.9.5"
-    },
-    "dependencies": {
-        "python": "0.0.4"
     }
 }

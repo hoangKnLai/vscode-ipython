@@ -1,8 +1,48 @@
 /**
  * Convenient utility functions ONLY
  */
-import * as vscode from "vscode";
-import * as cst from "./constants";
+import * as vscode from 'vscode';
+import * as path from 'path';
+import * as fs from 'fs';
+import { homedir } from 'os';
+
+import * as cst from './constants';
+
+export let config = vscode.workspace.getConfiguration('ipython');
+export let WORKFOLDER:string = '';
+
+export let tempfiles = new Set<vscode.Uri>();
+
+
+export function updateConfig() {
+    config = vscode.workspace.getConfiguration('ipython');
+
+    let baseDir = config.get('workFolderBase') as string;
+
+    if (baseDir === '') {
+        baseDir = homedir();
+    }
+
+    let workFolder: string;
+    if (!fs.existsSync(baseDir)) {
+        workFolder = path.join(homedir(), cst.RELATIVE_WORKFOLDER);
+        vscode.window.showWarningMessage(`ipython: invalid workFolder, default to ${workFolder}`);
+    } else {
+        workFolder = path.join(baseDir, cst.RELATIVE_WORKFOLDER);
+    }
+
+    WORKFOLDER = workFolder;
+}
+
+/**
+ * Get extension configuration.
+ *
+ * @param name - configuration name
+ * @returns - configuration value
+ */
+export function getConfig(name: string) {
+    return config.get(name);
+}
 
 /**
  * Log message to console.
@@ -56,3 +96,38 @@ export function replaceTabWithSpace(str: string, n = 4) {
 export function wait(msec: number) {
     return new Promise((resolve) => setTimeout(resolve, msec));
 }
+
+
+/**
+ * Remove empty lines, left trim greatest common spaces, trim ends.
+ *
+ * @param lines - of strings
+ * @returns trimLines - trimmed line of string
+ */
+export function leftAdjustTrim(lines: string[]) {
+    lines = lines.filter((item) => item.trim().length > 0);
+
+    let start = 0;
+    let isFirst = true;
+    let isNewBlock = true;
+    let trimLines: string[] = new Array();
+    for (let line of lines) {
+        // Ensure tab are handled
+        line = replaceTabWithSpace(line);
+        let begin = line.search(/\S|$/); // index of first non-whitespace
+        isNewBlock = begin < start;
+        if (isFirst) {
+            // First line has hanging spaces
+            start = begin;
+            isFirst = false;
+        }
+        if (isNewBlock && !isFirst) {
+            start = begin;
+        }
+
+        trimLines.push(line.substring(start).trimEnd());
+    }
+    return trimLines;
+}
+
+
