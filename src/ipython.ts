@@ -43,23 +43,7 @@ export function getPythonEditor() {
  * @returns URI to written file
  */
 export function writeCodeFile(filename: string, code: string) {
-
-    let workFolder = util.getConfig('workFolder') as string;
-    if (!workFolder) {
-        let workspaceFolder = (
-            vscode.workspace.workspaceFolders
-            && vscode.workspace.workspaceFolders.length === 1
-            ? vscode.workspace.workspaceFolders[0].uri.fsPath : undefined
-        ) as string | undefined;
-
-        if (workspaceFolder === undefined) {
-            workFolder = path.join(homedir(), cst.WORK_FOLDER);
-        } else {
-            workFolder = path.join(workspaceFolder, cst.WORK_FOLDER);
-        }
-    }
-
-    let fullFileName = path.join(workFolder, filename);
+    let fullFileName = path.join(util.WORKFOLDER, filename);
     let fileUri = vscode.Uri.file(fullFileName);
 
     util.consoleLog(`Write File: ${fileUri.fsPath}`);

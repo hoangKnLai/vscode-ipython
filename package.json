@@ -36,10 +36,10 @@
         "configuration": {
             "title": "IPython",
             "properties": {
-                "ipython.workFolder": {
+                "ipython.workFolderBase": {
                     "type": "string",
                     "default": "",
-                    "markdownDescription": "A work folder to be used by this extension. \nDefault: `${workspaceFolder}/.vscode/ipython/` if using one folder `workspace`, else `os.homedir()/.vscode/ipython/`."
+                    "markdownDescription": "A folder to be used by this extension. \nDefault: `${HOME}`. NOTE: it creates a temporary `${workFolderBase}/.vscode/ipython/`"
                 },
                 "ipython.LaunchArguments": {
                     "type": "string",

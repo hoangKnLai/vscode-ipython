@@ -2,12 +2,40 @@
  * Convenient utility functions ONLY
  */
 import * as vscode from 'vscode';
+import * as path from 'path';
+import * as fs from 'fs';
+import { homedir } from 'os';
+
 import * as cst from './constants';
 
 export let config = vscode.workspace.getConfiguration('ipython');
+export let WORKFOLDER:string = '';
+
 
 export function updateConfig() {
     config = vscode.workspace.getConfiguration('ipython');
+
+    let baseDir = config.get('workFolder') as string;
+
+    if (baseDir === '') {
+        baseDir = homedir();
+    }
+
+    let workFolder: string;
+    if (!fs.existsSync(baseDir)) {
+        workFolder = path.join(homedir(), cst.RELATIVE_WORKFOLDER);
+        vscode.window.showWarningMessage(`ipython: invalid workFolder, default to ${workFolder}`);
+    } else {
+        workFolder = path.join(baseDir, cst.RELATIVE_WORKFOLDER);
+    }
+
+    // if (WORKFOLDER !== '' || WORKFOLDER !== workFolder) {
+    //     vscode.workspace.fs.delete(
+    //         vscode.Uri.file(WORKFOLDER),
+    //         {recursive: true, useTrash: false},
+    //     );
+    // }
+    WORKFOLDER = workFolder;
 }
 
 /**
