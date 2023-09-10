@@ -147,7 +147,7 @@
                 "category": "IPython",
                 "command": "ipython.naviRunFile",
                 "shortTitle": "Run File",
-                "icon": "$(run)",
+                "icon": "$(run-all)",
                 "title": "Run File From Navigation Tree."
             },
             {
@@ -155,7 +155,7 @@
                 "command": "ipython.naviJumpToSection",
                 "shortTitle": "Jump",
                 "icon": "$(arrow-circle-right)",
-                "title": "Jump Cursor to Section"
+                "title": "Jump to ..."
             },
             {
                 "category": "IPython",
@@ -240,7 +240,7 @@
                     "id": "ipyNavigator",
                     "name": "Sections",
                     "icon": "media/sectioned_snake.svg",
-                    "contextualTitle": "View and Navigation of Code Sections"
+                    "contextualTitle": "Navigation and Execution"
                 }
             ]
         },

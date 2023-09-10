@@ -39,40 +39,7 @@ export async function activate(context: vscode.ExtensionContext) {
         treeOptions,
     );
 
-    // navigator.onDidChangeVisibility(
-    //     event => {
-    //         event.visible;
-    //     }
-    // );
-
-    // NOTE: no apparent option found to jump to selection when click.
-    //  Only on change selection :(. FIXED using context option.
-    // treeViewer.onDidChangeSelection(
-    //     (event) => {
-    //         if (event.selection.length === 0) {
-    //             return;
-    //         }
-    //         event.selection[0].jumpToSection();
-    //     },
-    // );
-
-
     // === CALLBACKS ===
-    // FIXME: treeProvider caches section for each document rather than recreate
-    //  everything for every small changes
-    vscode.workspace.onDidChangeTextDocument(
-        (event) => {
-            if (event.contentChanges.length === 0) {
-                return;
-            }
-            navi.updateSectionCache(event.document);
-            navi.updateSectionDecor(vscode.window.activeTextEditor as vscode.TextEditor);
-            treeProvider.refresh();
-        },
-        null,
-        context.subscriptions,
-    );
-
     vscode.workspace.onDidChangeConfiguration(
         (event) => {
             if (event.affectsConfiguration('ipython')) {
@@ -81,19 +48,30 @@ export async function activate(context: vscode.ExtensionContext) {
         }
     );
 
+    vscode.workspace.onDidChangeTextDocument(
+        (event) => {
+            if (event.contentChanges.length === 0) {
+                return;
+            }
+            navi.updateSectionCache(event.document);
+            navi.updateSectionDecor(vscode.window.activeTextEditor as vscode.TextEditor);
+            treeProvider.refreshDocument(event.document);
+        },
+        null,
+        context.subscriptions,
+    );
+
     vscode.workspace.onDidOpenTextDocument(
         (document) => {
             navi.updateSectionCache(document);
-            treeProvider.refresh();
-            // treeProvider.refreshDocument(document);
+            treeProvider.refreshDocument(document);
         }
     );
 
     vscode.workspace.onDidCloseTextDocument(
         document => {
             navi.removeSectionCache(document.fileName);
-            treeProvider.refresh();
-            // treeProvider.refreshDocument(document);
+            treeProvider.removeDocument(document);
         },
     );
 
@@ -104,26 +82,43 @@ export async function activate(context: vscode.ExtensionContext) {
             }
             navi.updateSectionDecor(editor);
             // treeProvider.refreshDocument(editor.document);
-            treeProvider.refresh();
+            // treeProvider.refresh();
         },
         null,
         context.subscriptions,
     );
 
+    // === COMMANDS: TREEVIEW ===
+    context.subscriptions.push(
+        vscode.commands.registerCommand(
+            "ipython.naviRunSection",
+            (item: navi.SectionItem) => {
+                if(item.position !== undefined && item.document.languageId === 'python'){
+                    ipy.runDocumentSection(item.document, item.position);
+                }
+            },
+        ),
+    );
 
-    // == COMMANDS ==
-    // NOTE: place in package.json:"command" section for testing
-    // {
-    //   "category": "IPython",
-    //   "command": "ipython._ipytest",
-    //   "title": "Testing CODE. DEV ONLY."
-    // },
-    // context.subscriptions.push(
-    //   vscode.commands.registerCommand("ipython._ipytest", () =>
-    //     updateSectionDecor(getPythonEditor())
-    //   )
-    // );
+    context.subscriptions.push(
+        vscode.commands.registerCommand(
+            "ipython.naviRunFile",
+            (item: navi.SectionItem) => {
+                if (item.document.languageId === 'python') {
+                    ipy.runFile(item.document);
+                }
+            },
+        ),
+    );
 
+    context.subscriptions.push(
+        vscode.commands.registerCommand(
+            "ipython.naviJumpToSection",
+            (item: navi.SectionItem) => item.jumpToSection(),
+        ),
+    );
+
+    // === COMMANDS: EDITOR  ===
     context.subscriptions.push(
         vscode.commands.registerCommand(
             "ipython.moveToSectionTagAbove",
@@ -187,35 +182,6 @@ export async function activate(context: vscode.ExtensionContext) {
             "ipython.runSection",
             ipy.runSection
         )
-    );
-
-    context.subscriptions.push(
-        vscode.commands.registerCommand(
-            "ipython.naviRunSection",
-            (item: navi.SectionItem) => {
-                if(item.position !== undefined && item.document.languageId === 'python'){
-                    ipy.runDocumentSection(item.document, item.position);
-                }
-            },
-        ),
-    );
-
-    context.subscriptions.push(
-        vscode.commands.registerCommand(
-            "ipython.naviRunFile",
-            (item: navi.SectionItem) => {
-                if (item.document.languageId === 'python') {
-                    ipy.runFile(item.document);
-                }
-            },
-        ),
-    );
-
-    context.subscriptions.push(
-        vscode.commands.registerCommand(
-            "ipython.naviJumpToSection",
-            (item: navi.SectionItem) => item.jumpToSection(),
-        ),
     );
 
     context.subscriptions.push(

@@ -55,7 +55,11 @@ export class SectionItem extends vscode.TreeItem {
             icon = new vscode.ThemeIcon('file');
         } else {
             // FIXME: enumerate these
-            runable = 'runableSection';
+            if (document.languageId === 'python') {
+                runable = 'runableSection';
+            }
+
+            // icon = new vscode.ThemeIcon('bookmark');
 
             let tabSize = 4;
             let editorTabSize = vscode.window.activeTextEditor?.options.tabSize;
@@ -71,7 +75,7 @@ export class SectionItem extends vscode.TreeItem {
             if (matchSectionTag(text)){
                 header = text.trim().replace(pattern, '');
             } else {
-                header = (startOfFile.isEqual(position))? '(First Section)': '(Unknown)';
+                header = (startOfFile.isEqual(position))? ' (First Section)': '(Unknown)';
             }
 
             let level = position.character / tabSize;
@@ -366,8 +370,12 @@ export class SectionTreeProvider implements vscode.TreeDataProvider<SectionItem>
     private _onDidChangeTreeDataEmitter: vscode.EventEmitter<SectionItem | undefined | void> = new vscode.EventEmitter<SectionItem | undefined | void>();
 	readonly onDidChangeTreeData: vscode.Event<SectionItem | undefined | void> = this._onDidChangeTreeDataEmitter.event;
 
-	refresh(element: SectionItem | undefined = undefined): void {
-		this._onDidChangeTreeDataEmitter.fire(element);
+    constructor() {
+        this.cacheSection(undefined);
+    }
+
+	refresh(): void {
+		this._onDidChangeTreeDataEmitter.fire();
 	}
 
     // NOTE: adhering to abstract
@@ -377,63 +385,79 @@ export class SectionTreeProvider implements vscode.TreeDataProvider<SectionItem>
 
     getChildren(element?: SectionItem | undefined): vscode.ProviderResult<SectionItem[]> {
         if (element === undefined) {
-
-            // FIXME?!:
-            //  Reduce to one tree
-            //  in main, dynamically create the tree and store as new doc opens/close
-
-            let sections: SectionItem[] = [];
-            for (let document of vscode.workspace.textDocuments) {
-                if (!matchSectionTag(document.getText())){
-                    continue;
-                }
-
-                sections.push(
-                    this.createRoot(document)
-                );
-            }
-
-            return Promise.resolve(sections);
+            let nodes = Array.from(this.documentNodes.values());
+            return Promise.resolve(nodes);
         }
 
-        // Get section positions and convert each to SectionItem
         if (!element.document.isClosed) {
-
-            // NOTE: assume first and last positions are top and bottom of document
-            let positions = sectionCache.get(element.document.fileName);
-            if (positions === undefined) {
-                return Promise.resolve([]);
-            }
-            let document = element.document;
-            let endOfFile = document.lineAt(document.lineCount - 1).range.end;
-            let sections: SectionItem[] = [];
-            for(let position of positions) {
-                if (position.isEqual(endOfFile)) {
-                    continue;
-                }
-                sections.push(
-                    new SectionItem(
-                        document,
-                        vscode.TreeItemCollapsibleState.None,
-                        position,
-                    )
-                );
-            }
+            let sections = this.itemCache.get(element.document.fileName);
             return Promise.resolve(sections);
         }
         return Promise.resolve([]);
     }
 
     public refreshDocument(document: vscode.TextDocument) {
-        this.refresh(this.createRoot(document));
+        this.cacheSection([document]);
+        this.refresh();
     }
 
-    public createRoot(document: vscode.TextDocument) {
+    // FIXME: reorganize class
+    public documentNodes = new Map<string, SectionItem>;
+    public itemCache = new Map<string, SectionItem[]>;
+
+    public createDocumentNode(document: vscode.TextDocument) {
         return new SectionItem(
             document,
             vscode.TreeItemCollapsibleState.Expanded,
             undefined,
         );
+    }
+
+    public removeDocument(document: vscode.TextDocument) {
+        this.documentNodes.delete(document.fileName);
+        this.itemCache.delete(document.fileName);
+        this.refresh();
+    }
+
+    public cacheSection(documents: readonly vscode.TextDocument[] | undefined) {
+        if (documents === undefined) {
+            documents = vscode.workspace.textDocuments;
+        }
+        for (let document of documents) {
+            if (!matchSectionTag(document.getText())){
+                continue;
+            }
+            let docNode = this.createDocumentNode(document);
+            this.documentNodes.set(document.fileName, docNode);
+            this.cacheItem(docNode);
+        }
+    }
+
+    public cacheItem(documentNode: SectionItem){
+        let sectionNodes: SectionItem[] = [];
+
+        let document = documentNode.document;
+
+        let positions = sectionCache.get(document.fileName);
+        if (positions === undefined) {
+            return sectionNodes;
+        }
+        let endOfFile = document.lineAt(document.lineCount - 1).range.end;
+        let sections: SectionItem[] = [];
+        for(let position of positions) {
+            if (position.isEqual(endOfFile)) {
+                continue;
+            }
+            sections.push(
+                new SectionItem(
+                    document,
+                    vscode.TreeItemCollapsibleState.None,
+                    position,
+                )
+            );
+        }
+        this.itemCache.set(document.fileName, sections);
+        return (sectionNodes);
     }
 
 
