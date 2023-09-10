@@ -17,7 +17,7 @@ export let tempfiles = new Set<vscode.Uri>();
 export function updateConfig() {
     config = vscode.workspace.getConfiguration('ipython');
 
-    let baseDir = config.get('workFolder') as string;
+    let baseDir = config.get('workFolderBase') as string;
 
     if (baseDir === '') {
         baseDir = homedir();

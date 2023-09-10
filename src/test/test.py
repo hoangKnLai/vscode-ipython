@@ -1,6 +1,8 @@
 import os
 import sys
-import test_module as module
+import test_module as m
+
+m.hello_world()
 
 print(f'{os.cpu_count() = }')
 print(f'{sys.argv=}')
@@ -23,10 +25,16 @@ if number % 2 == 1:
 else:
     print('Why Even?')
 
-if number == 11:
-    # %% SECTION 2.1
+for _ in range(3):
+    # %% This Section Include 'Another Section?'
     print('It is what it says it is!')
-else:
+    if (number < 5):
+        print('It is less than something')
+        # %% Subsection Run to Beginning of The Next Higher Section
+        print('Or is it?')
+
+    print('It includes the sub section!')
+
     # %% Just Want to Check
     print('If it did fooled you')
 

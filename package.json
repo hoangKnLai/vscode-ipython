@@ -39,7 +39,7 @@
                 "ipython.workFolderBase": {
                     "type": "string",
                     "default": "",
-                    "markdownDescription": "A folder to be used by this extension. \nDefault: `${HOME}`. NOTE: it creates a temporary `${workFolderBase}/.vscode/ipython/`"
+                    "markdownDescription": "A folder to be used by this extension. \nDefault: `${HOME}`. NOTE: temporary `files` are placed in `${workFolderBase}/.vscode/ipython/` and are deleted once extension is deactivated."
                 },
                 "ipython.LaunchArguments": {
                     "type": "string",

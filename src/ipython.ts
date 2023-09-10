@@ -1,8 +1,6 @@
 /**
  * IPython specifics
  */
-import {homedir} from 'os';
-import * as fs from 'fs';
 
 import * as path from "path";
 import * as vscode from "vscode";
@@ -181,24 +179,24 @@ export async function createTerminal() {
  * @returns terminal - an ipython terminal
  */
 export async function getTerminal() {
-    let terminal = vscode.window.activeTerminal as vscode.Terminal;
-
-    // FIXME: use RegExp for terminalName
-    if (terminal.name === terminalName) {
+    let terminal = vscode.window.activeTerminal;
+    if (terminal !== undefined && terminal.name === terminalName) {
         return terminal;
     }
 
-    let terminals = vscode.window.terminals;
-    if (terminals.length > 1) {
-        for (let i = terminals.length - 1; i >= 0; i--) {
-            if (terminals[i].name === terminalName) {
-                return terminals[i];
-            }
+    // FIXME: cache ipython terminal and manage its creation / deletion
+    // Might already been created
+    terminal = vscode.window.terminals.find(
+        (aTerminal) => {
+            return aTerminal.name === terminalName;
         }
-    }
+    );
 
     // No valid terminal exists
-    return await createTerminal();
+    if (terminal === undefined) {
+        terminal = await createTerminal();
+    }
+    return terminal;
 }
 
 /**
@@ -364,10 +362,6 @@ export async function runLine() {
     }
 
     let terminal = await getTerminal();
-    if (terminal === undefined) {
-        console.error("Unable to get an IPython Terminal");
-        return;
-    }
 
     let cmd = formatCode(editor.document, editor.selection);
     if (cmd !== "") {
@@ -416,11 +410,6 @@ export async function runDocumentSection(
 
     if (code !== "") {
         let terminal = await getTerminal();
-        if (terminal === undefined) {
-            console.error("Unable to get an IPython Terminal");
-            return;
-        }
-
         util.consoleLog("IPython Run Section: \n" + code);
         await executeCodeBlock(terminal, code, identity);
     }
