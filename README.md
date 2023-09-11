@@ -22,11 +22,12 @@ Key features tagged with `IPython`:
 - Useful command to run `python` code interactively
   - E.g., run a file, selection(s) of code, code section, run to line, run from line, ...
 - Code formatting for visualizing section blocks (#25)
+- Code section tree view and navigation (#30)
 
 See `ipython: Feature Contribution` tab in VSCode Extension (Ctrl + Shift + X)
 panel for latest features and details.
 
-![feature X](md_img/vscode-ipython.png)
+![feature X](md_img/vscode-ipython-v2023x.png)
 
 ## Requirements
 
@@ -47,8 +48,15 @@ panel for latest features and details.
   - Added option to use `code.py` to run code sections with `%run -i` or `%load`
     - Recommend `%run -i` for speed and clarity
     - NOTE: likely to deprecated usage of `%load` in a future release
+
 - Removed usage of `clipboard` option for sending code to terminal
   - It was hacky and intrusive
+
+- Added tree view for file section (indicated by `cellTag` such as `# %%`)
+  - `jumpToSection`: jump to section in text editor and focus on it
+    - Support any text files with `cellTag`
+  - `runFile, runSection`: excution interaction on tree view
+    - Support `python` `.py` files
 
 ### 2023.8.x
 
