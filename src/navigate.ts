@@ -39,7 +39,8 @@ const sectionDecorType = vscode.window.createTextEditorDecorationType({
  * @returns true when section pattern found in text.
  */
 export function matchSectionTag(text: string) {
-    let pattern = getSectionPattern();
+    let pattern = util.SECTION_TAG;
+    // let pattern = getSectionPattern();
     return text.match(pattern) !== null;
 }
 
@@ -72,10 +73,10 @@ export function moveAndRevealCursor(
  */
 export function getSectionPattern() {
     let sectionFlag = util.getConfig("SectionTag") as string;
+    return new RegExp(`(?:^[\\t ]*${sectionFlag.trim()})`, 'gm');
     // NOTE: find section tag, capture tab and space before tag in a line
     // return new RegExp(`(?:^([\\t ]*)${sectionFlag.trim()})`);
     // NOTE: find section tag without capture, gm: global, multiline
-    return new RegExp(`(?:^[\\t ]*${sectionFlag.trim()})`, 'gm');
 }
 
 /**
@@ -141,9 +142,8 @@ export function getSectionAt(
  * document are considered sections and are inclusive.
  */
 export function findSectionPosition(document: vscode.TextDocument) {
-    let pattern = getSectionPattern();
-
     let text = document.getText();
+    let pattern = util.SECTION_TAG;
     let matches = text.matchAll(pattern);
 
     let positions: vscode.Position[] = [];
@@ -220,6 +220,10 @@ export function removeSectionCache(fileName: string) {
  * @param document - a text file.
  */
 export function updateSectionCache(document: vscode.TextDocument) {
+    let matchExt = document.fileName.search(util.FILE_EXT);
+    if (matchExt === -1) {
+        return;
+    }
     let positions = findSectionPosition(document);
     if (positions === undefined) {
         sectionCache.delete(document.fileName);
@@ -319,7 +323,8 @@ export class SectionItem extends vscode.TreeItem {
             }
             let text = document.lineAt(position.line).text;
 
-            let pattern = getSectionPattern();
+            // let pattern = getSectionPattern();
+            let pattern = util.SECTION_TAG;
 
             let startOfFile = new vscode.Position(0, 0);
             let header = '';
@@ -388,7 +393,6 @@ export class SectionTreeProvider implements vscode.TreeDataProvider<SectionItem>
     }
 
     // == Abstraction ==
-
     getTreeItem(element: SectionItem): vscode.TreeItem | Thenable<vscode.TreeItem> {
         return element;
     }
@@ -429,6 +433,11 @@ export class SectionTreeProvider implements vscode.TreeDataProvider<SectionItem>
             documents = vscode.workspace.textDocuments;
         }
         for (let document of documents) {
+            let matchExt = document.fileName.search(util.FILE_EXT);
+            if (matchExt === -1) {
+                continue;
+            }
+
             if (!matchSectionTag(document.getText())) {
                 continue;
             }
@@ -470,8 +479,15 @@ export class SectionTreeProvider implements vscode.TreeDataProvider<SectionItem>
     /**
      * Refresh the tree view from root.
      */
-    refresh(): void {
+    public refresh(): void {
         this._onDidChangeTreeDataEmitter.fire();
+    }
+
+    public expandDocument(document: vscode.TextDocument) {
+        let docNode = this.documentNodes.get(document.fileName);
+        if (docNode !== undefined) {
+            docNode.collapsibleState = vscode.TreeItemCollapsibleState.Expanded;
+        }
     }
 
     /**
@@ -480,6 +496,7 @@ export class SectionTreeProvider implements vscode.TreeDataProvider<SectionItem>
      */
     public refreshDocument(document: vscode.TextDocument) {
         this.cacheSection([document]);
+        this.expandDocument(document);
         this.refresh();
     }
 
