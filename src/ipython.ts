@@ -295,12 +295,15 @@ export async function runFile(
     isWithCli: boolean = false,
 ) {
     if (document === undefined) {
-        let editor = getPythonEditor() as vscode.TextEditor;
+        let editor = getPythonEditor();
+        if (editor === undefined) {
+            return;
+        }
         await editor.document.save();
         document = editor.document;
     }
 
-    let terminal = await getTerminal() as vscode.Terminal;
+    let terminal = await getTerminal();
 
     let file = document.fileName;
     let cmd = `"${file}"`;
@@ -324,7 +327,10 @@ export async function runFile(
  */
 export async function runSelections() {
     util.consoleLog("IPython run selection...");
-    let editor = getPythonEditor() as vscode.TextEditor;
+    let editor = getPythonEditor();
+    if (editor === undefined) {
+        return;
+    }
     let terminal = await getTerminal() as vscode.Terminal;
 
     let codes:string[] = [];
@@ -354,7 +360,10 @@ export async function runSelections() {
  */
 export async function runLine() {
     util.consoleLog("IPython run a line...");
-    let editor = getPythonEditor() as vscode.TextEditor;
+    let editor = getPythonEditor();
+    if (editor === undefined) {
+        return;
+    }
 
     if (!editor.selection.isSingleLine && !editor.selection.isEmpty) {
         runSelections();
@@ -389,6 +398,9 @@ export async function runDocumentSection(
         return;
     }
     let section = navi.getSectionAt(cursor, sectionPositions, false);
+    if (section === undefined) {
+        return;
+    }
 
     let start = new vscode.Position(section.start.line, 0);
     let end = new vscode.Position(section.end.line, 0);
@@ -423,7 +435,10 @@ export async function runDocumentSection(
  */
 export async function runSection(isNext: boolean) {
     util.consoleLog("IPython run section...");
-    let editor = getPythonEditor() as vscode.TextEditor;
+    let editor = getPythonEditor();
+    if (editor === undefined) {
+        return;
+    }
 
     let cursor = editor.selection.start;
     let sectionPositions = navi.sectionCache.get(editor.document.fileName);
@@ -432,6 +447,9 @@ export async function runSection(isNext: boolean) {
         return;
     }
     let section = navi.getSectionAt(cursor, sectionPositions, false);
+    if (section === undefined) {
+        return;
+    }
 
     let start = new vscode.Position(section.start.line, 0);
     let end = new vscode.Position(section.end.line, 0);

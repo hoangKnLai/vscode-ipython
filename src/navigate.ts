@@ -93,7 +93,10 @@ export function getSectionAt(
 ) {
     let startOfFile = new vscode.Position(0, 0);
 
-    let editor = getPythonEditor() as vscode.TextEditor;
+    let editor = getPythonEditor();
+    if (editor === undefined) {
+        return;
+    }
     let lineCount = editor.document.lineCount;
     let endOfFile = editor.document.lineAt(lineCount - 1).range.end;
 
@@ -251,6 +254,9 @@ export function moveCursorToSection(below: boolean) {
     }
 
     let section = getSectionAt(cursor, sectionPositions, true);
+    if (section === undefined) {
+        return;
+    }
 
     if (below) {
         moveAndRevealCursor(editor, section.end.line, section.end.character);
@@ -263,6 +269,9 @@ export function moveCursorToSection(below: boolean) {
             return;
         }
         section = getSectionAt(cursor.translate(deltaLine), sectionPositions, true);
+        if (section === undefined) {
+            return;
+        }
     }
     moveAndRevealCursor(editor, section.start.line, section.start.character);
     return;
