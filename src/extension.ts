@@ -27,7 +27,9 @@ export async function activate(context: vscode.ExtensionContext) {
     for (let document of vscode.workspace.textDocuments) {
         navi.updateSectionCache(document);
     }
-    navi.updateSectionDecor(vscode.window.activeTextEditor as vscode.TextEditor);
+    if (vscode.window.activeTextEditor) {
+        navi.updateSectionDecor(vscode.window.activeTextEditor);
+    }
 
 
     // === SECTION VIEWER ===
@@ -68,7 +70,9 @@ export async function activate(context: vscode.ExtensionContext) {
                 return;
             }
             navi.updateSectionCache(event.document);
-            navi.updateSectionDecor(vscode.window.activeTextEditor as vscode.TextEditor);
+            if (vscode.window.activeTextEditor) {
+                navi.updateSectionDecor(vscode.window.activeTextEditor);
+            }
             treeProvider.refreshDocument(event.document);
         },
         null,
@@ -83,18 +87,18 @@ export async function activate(context: vscode.ExtensionContext) {
     );
 
     vscode.workspace.onDidCloseTextDocument(
-        document => {
+        (document) => {
             navi.removeSectionCache(document.fileName);
             treeProvider.removeDocument(document);
+            treeProvider.refresh();
         },
     );
 
     vscode.window.onDidChangeActiveTextEditor(
         (editor) => {
-            if (editor === undefined) {
-                return;
+            if (editor) {
+                navi.updateSectionDecor(editor);
             }
-            navi.updateSectionDecor(editor);
             // treeProvider.refreshDocument(editor.document);
             // treeProvider.refresh();
         },

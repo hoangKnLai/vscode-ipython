@@ -106,15 +106,15 @@ export function getSectionAt(
 
     // NOTE: Must find `start` before `end`
     // -- Start
-    let start = sectionPositions.slice().reverse().find(
+    let start = startOfFile;
+    let found = sectionPositions.slice().reverse().find(
         (position) => {
-            //    return position.isBeforeOrEqual(cursorPosition);
             return position.line <= cursorPosition.line;
         },
-    ) as vscode.Position;
+    );
 
-    if (start === undefined) {
-        start = startOfFile;
+    if (found !== undefined) {
+        start = found;
     }
 
     if (start.line === endOfFile.line) {
@@ -191,7 +191,7 @@ export function decorateSection(editor: vscode.TextEditor) {
     let document = editor.document;
     let decors: vscode.DecorationOptions[] = [];
 
-    let positions = sectionCache.get(document.fileName) as vscode.Position[];
+    let positions = sectionCache.get(document.fileName);
 
     if (positions === undefined) {
         editor.setDecorations(sectionDecorType, decors);

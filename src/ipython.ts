@@ -24,9 +24,8 @@ export const terminalName = "IPython";
  * @returns active python text editor
  */
 export function getPythonEditor() {
-    let editor = vscode.window.activeTextEditor as vscode.TextEditor;
-
-    if (editor.document.languageId !== "python") {
+    let editor = vscode.window.activeTextEditor;
+    if (editor && editor.document.languageId !== "python") {
         return;
     }
     return editor;
@@ -135,9 +134,10 @@ export async function createTerminal() {
     );
     util.wait(500); // msec, to help with a race condition not naming terminal
 
-    let terminal = vscode.window.activeTerminal as vscode.Terminal;
+    let terminal = vscode.window.activeTerminal;
     if (terminal === undefined) {
-        throw new Error('createTerminal: failed to create new ipython terminal');
+        console.error('createTerminal: failed to create new ipython terminal');
+        return;
     }
 
     // Launch options
@@ -297,6 +297,7 @@ export async function runFile(
     if (document === undefined) {
         let editor = getPythonEditor();
         if (editor === undefined) {
+            console.error('runFile: Failed to get a python editor');
             return;
         }
         await editor.document.save();
@@ -304,6 +305,10 @@ export async function runFile(
     }
 
     let terminal = await getTerminal();
+    if (terminal === undefined) {
+        console.error('runFile: Failed to get a Terminal');
+        return;
+    }
 
     let file = document.fileName;
     let cmd = `"${file}"`;
@@ -329,9 +334,14 @@ export async function runSelections() {
     util.consoleLog("IPython run selection...");
     let editor = getPythonEditor();
     if (editor === undefined) {
+        console.error('runFile: Failed to get an editor');
         return;
     }
-    let terminal = await getTerminal() as vscode.Terminal;
+    let terminal = await getTerminal();
+    if (terminal === undefined) {
+        console.error('runFile: Failed to get a Terminal');
+        return;
+    }
 
     let codes:string[] = [];
     for (let select of editor.selections) {
@@ -362,6 +372,7 @@ export async function runLine() {
     util.consoleLog("IPython run a line...");
     let editor = getPythonEditor();
     if (editor === undefined) {
+        console.error('runFile: Failed to get an editor');
         return;
     }
 
@@ -371,6 +382,10 @@ export async function runLine() {
     }
 
     let terminal = await getTerminal();
+    if (terminal === undefined) {
+        console.error('runFile: Failed to get a Terminal');
+        return;
+    }
 
     let cmd = formatCode(editor.document, editor.selection);
     if (cmd !== "") {
@@ -422,8 +437,10 @@ export async function runDocumentSection(
 
     if (code !== "") {
         let terminal = await getTerminal();
-        util.consoleLog("IPython Run Section: \n" + code);
-        await executeCodeBlock(terminal, code, identity);
+        if (terminal) {
+            util.consoleLog("IPython Run Section: \n" + code);
+            await executeCodeBlock(terminal, code, identity);
+        }
     }
 }
 
@@ -437,6 +454,7 @@ export async function runSection(isNext: boolean) {
     util.consoleLog("IPython run section...");
     let editor = getPythonEditor();
     if (editor === undefined) {
+        console.error('runFile: Failed to get an editor');
         return;
     }
 
@@ -492,7 +510,11 @@ export async function runSection(isNext: boolean) {
  * @returns Promise - is ran in terminal
  */
 export async function runCursor(toEnd: boolean) {
-    let editor = getPythonEditor() as vscode.TextEditor;
+    let editor = getPythonEditor();
+    if (editor === undefined) {
+        console.error('runFile: Failed to get an editor');
+        return;
+    }
 
     let startLine = 0;
     let stopLine = editor.selection.start.line;
@@ -514,7 +536,9 @@ export async function runCursor(toEnd: boolean) {
 
     let code = formatCode(editor.document, selection);
     if (code !== "") {
-        let terminal = await getTerminal() as vscode.Terminal;
-        await executeCodeBlock(terminal, code, identity);
+        let terminal = await getTerminal();
+        if (terminal) {
+            await executeCodeBlock(terminal, code, identity);
+        }
     }
 }
