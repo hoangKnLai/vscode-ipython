@@ -8,10 +8,24 @@ import { homedir } from 'os';
 
 import * as cst from './constants';
 
+
+// FIXME: as configuration grow, might be worth to create a config.ts
 export let config = vscode.workspace.getConfiguration('ipython');
-export let WORKFOLDER:string = '';
+export let WORK_FOLDER:string = '';
+export let SECTION_TAG: RegExp = RegExp('');
+export let FILE_EXT: RegExp = RegExp('');
 
 export let tempfiles = new Set<vscode.Uri>();
+
+
+/**
+ * Add escape characters to string for use with regular expression.
+ * @param str a string intended for use in a regular expression
+ * @returns string with regular expression special character escaped
+ */
+export function escapeRegex(str: string) {
+    return str.replace(/[/\-\\^$*+?.()|[\]{}]/g, '\\$&');
+}
 
 
 export function updateConfig() {
@@ -19,6 +33,7 @@ export function updateConfig() {
 
     let baseDir = config.get('workFolderBase') as string;
 
+    // -- Base directory of work folder
     if (baseDir === '') {
         baseDir = homedir();
     }
@@ -30,8 +45,34 @@ export function updateConfig() {
     } else {
         workFolder = path.join(baseDir, cst.RELATIVE_WORKFOLDER);
     }
+    WORK_FOLDER = workFolder;
 
-    WORKFOLDER = workFolder;
+    // -- Section Regular Expression
+    let tags = config.get('SectionTag') as string[];
+    tags = tags.map(
+        (item) => {
+            // Capture the expression inside /{expression}/, exclude //
+            let match = item.match('\/(.+)\/');
+            if (match !== null) {
+                let expression = match[1];  // captured expression
+                return `(${expression})`;
+            }
+            let literal = escapeRegex(item);
+            return `(^[\\t ]*(${literal}))`;
+        }
+    );
+    // NOTE: should be non-capture matching alternates
+    //  (^[\\t ]*(literal))|(...)|(expression)|...
+    let pattern = tags.join('|');
+    SECTION_TAG = RegExp(pattern, 'gm');
+
+    // -- File Extension Regular Expression
+    let extensions = config.get('navigatorFileExtension') as string[];
+    tags = extensions.map(
+        (ext) => `(${escapeRegex(ext)})$`  // end of path string
+    );
+    pattern = '(?:' + tags.join('|') + ')';
+    FILE_EXT = RegExp(pattern);
 }
 
 /**

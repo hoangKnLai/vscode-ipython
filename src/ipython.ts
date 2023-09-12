@@ -41,7 +41,7 @@ export function getPythonEditor() {
  * @returns URI to written file
  */
 export function writeCodeFile(filename: string, code: string) {
-    let fullFileName = path.join(util.WORKFOLDER, filename);
+    let fullFileName = path.join(util.WORK_FOLDER, filename);
     let fileUri = vscode.Uri.file(fullFileName);
 
     util.consoleLog(`Write File: ${fileUri.fsPath}`);

@@ -11,7 +11,6 @@ export async function activate(context: vscode.ExtensionContext) {
 
     // FIXME: Keybinding `when clause`
     vscode.commands.executeCommand("setContext", "ipython.isUse", true);
-
     // Always make sure Python is available FIRST for creating terminal
     // FIXME: use official ms-python hook instead!?
     let pyExtension = vscode.extensions.getExtension("ms-python.python");
@@ -22,11 +21,14 @@ export async function activate(context: vscode.ExtensionContext) {
         await pyExtension.activate();
     }
 
+    // NOTE: make sure all configuration are loaded and mapping are done FIRST!
+    util.updateConfig();
+
     for (let document of vscode.workspace.textDocuments) {
         navi.updateSectionCache(document);
     }
     navi.updateSectionDecor(vscode.window.activeTextEditor as vscode.TextEditor);
-    util.updateConfig();
+
 
     // === SECTION VIEWER ===
     let treeProvider = new navi.SectionTreeProvider();
@@ -51,9 +53,18 @@ export async function activate(context: vscode.ExtensionContext) {
         }
     );
 
+    vscode.window.onDidChangeActiveTextEditor(
+        (editor) => {
+            if (editor !== undefined) {
+                treeProvider.expandDocument(editor.document);
+            }
+        }
+    );
+
     vscode.workspace.onDidChangeTextDocument(
         (event) => {
             if (event.contentChanges.length === 0) {
+                treeProvider.expandDocument(event.document);
                 return;
             }
             navi.updateSectionCache(event.document);
