@@ -187,7 +187,7 @@ export function findSectionPosition(document: vscode.TextDocument) {
 export function decorateSection(editor: vscode.TextEditor) {
 
     if (editor === undefined || editor.document === undefined) {
-        util.consoleLog('decorateSection: found invalid editor!!');
+        console.error('decorateSection: found invalid editor!!');
         return;
     }
 
@@ -293,10 +293,7 @@ export function updateSectionDecor(editor: vscode.TextEditor) {
         util.consoleLog('updateSectionDecor: found invalid editor!!');
         return;
     }
-
     updateSectionCache(editor.document);
-
-    setTimeout(decorateSection, cst.MAX_TIMEOUT);
     decorateSection(editor);
 }
 
