@@ -15,9 +15,9 @@ export async function activate(context: vscode.ExtensionContext) {
     // FIXME: use official ms-python hook instead!?
     let pyExtension = vscode.extensions.getExtension("ms-python.python");
     if (pyExtension === undefined) {
-        throw new Error("Failed to activate MS-Python Extension");
+        console.error("Failed to activate MS-Python Extension");
     }
-    if (!pyExtension.isActive){
+    if (pyExtension && !pyExtension.isActive){
         await pyExtension.activate();
     }
 
@@ -40,7 +40,7 @@ export async function activate(context: vscode.ExtensionContext) {
     };
 
     // FUTURE: potential enhancement of tree drag/drop of sections
-    vscode.window.createTreeView(
+    let treeView = vscode.window.createTreeView(
         'ipyNavigator',
         treeOptions,
     );
@@ -51,14 +51,6 @@ export async function activate(context: vscode.ExtensionContext) {
         (event) => {
             if (event.affectsConfiguration('ipython')) {
                 util.updateConfig();
-            }
-        }
-    );
-
-    vscode.window.onDidChangeActiveTextEditor(
-        (editor) => {
-            if (editor !== undefined) {
-                treeProvider.expandDocument(editor.document);
             }
         }
     );
@@ -98,9 +90,19 @@ export async function activate(context: vscode.ExtensionContext) {
         (editor) => {
             if (editor) {
                 navi.updateSectionDecor(editor);
+                treeProvider.refreshDocument(editor.document);
+                let docNode = treeProvider.getDocumentNode(editor.document);
+                if (docNode) {
+                    treeView.reveal(
+                        docNode,
+                        {
+                            select: false,
+                            focus: true,
+                            expand: true,
+                        }
+                    );
+                }
             }
-            // treeProvider.refreshDocument(editor.document);
-            // treeProvider.refresh();
         },
         null,
         context.subscriptions,

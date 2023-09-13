@@ -242,6 +242,7 @@ export function updateSectionCache(document: vscode.TextDocument) {
 export function moveCursorToSection(below: boolean) {
     let editor = vscode.window.activeTextEditor;
     if (editor === undefined) {
+        console.error('moveCursorToSection: Failed to get an editor');
         return;
     }
 
@@ -249,12 +250,13 @@ export function moveCursorToSection(below: boolean) {
     let sectionPositions = sectionCache.get(editor.document.fileName);
 
     if (sectionPositions === undefined) {
-        console.error('moveCursorToSection:: bad sectionCache');
+        console.error('moveCursorToSection: bad sectionCache');
         return;
     }
 
     let section = getSectionAt(cursor, sectionPositions, true);
     if (section === undefined) {
+        console.error('moveCursorToSection: Failed to getSectionAt');
         return;
     }
 
@@ -388,7 +390,7 @@ export class SectionItem extends vscode.TreeItem {
 
 
 /**
- * Section TreeProvider for text files in workspace
+ * Section TreeProvider for text files in editors
  */
 export class SectionTreeProvider implements vscode.TreeDataProvider<SectionItem> {
     private _onDidChangeTreeDataEmitter: vscode.EventEmitter<SectionItem | undefined | void> = new vscode.EventEmitter<SectionItem | undefined | void>();
@@ -404,6 +406,14 @@ export class SectionTreeProvider implements vscode.TreeDataProvider<SectionItem>
     // == Abstraction ==
     getTreeItem(element: SectionItem): vscode.TreeItem | Thenable<vscode.TreeItem> {
         return element;
+    }
+
+    getParent(element: SectionItem): vscode.ProviderResult<SectionItem> {
+        if (element.position === undefined) {  // it is a document node
+            return undefined;
+        }
+        let document = element.document;
+        return this.documentNodes.get(document.fileName);
     }
 
     getChildren(element?: SectionItem | undefined): vscode.ProviderResult<SectionItem[]> {
@@ -439,19 +449,20 @@ export class SectionTreeProvider implements vscode.TreeDataProvider<SectionItem>
      */
     private cacheSection(documents: readonly vscode.TextDocument[] | undefined) {
         if (documents === undefined) {
-            documents = vscode.workspace.textDocuments;
+            let editors = vscode.window.visibleTextEditors;
+            documents = editors.map(item => item.document);
         }
         for (let document of documents) {
             let matchExt = document.fileName.search(util.FILE_EXT);
-            if (matchExt === -1) {
+            if (matchExt === -1 || !matchSectionTag(document.getText())) {
                 continue;
             }
 
-            if (!matchSectionTag(document.getText())) {
-                continue;
+            let docNode = this.documentNodes.get(document.fileName);
+            if (docNode === undefined) {
+                docNode = this.createDocumentNode(document);
+                this.documentNodes.set(document.fileName, docNode);
             }
-            let docNode = this.createDocumentNode(document);
-            this.documentNodes.set(document.fileName, docNode);
             this.cacheItem(docNode);
         }
     }
@@ -492,15 +503,29 @@ export class SectionTreeProvider implements vscode.TreeDataProvider<SectionItem>
         this._onDidChangeTreeDataEmitter.fire();
     }
 
-    public expandDocument(document: vscode.TextDocument) {
-        let docNode = this.documentNodes.get(document.fileName);
-        if (docNode !== undefined) {
-            docNode.collapsibleState = vscode.TreeItemCollapsibleState.Expanded;
-        }
+    /**
+     * Get a cached document node in tree view
+     * @param document a text editor document
+     * @returns cached document node
+     */
+    public getDocumentNode(document: vscode.TextDocument) {
+        return this.documentNodes.get(document.fileName);
     }
 
     /**
-     * Refresh the view of a document.
+     * WIP: Expand the collapsible document node
+     * @param document a text editor document
+     */
+    public expandDocument(document: vscode.TextDocument) {
+        let docNode = this.documentNodes.get(document.fileName);
+        if (docNode) {
+            docNode.collapsibleState = vscode.TreeItemCollapsibleState.Expanded;
+        }
+        this.refresh();
+    }
+
+    /**
+     * Refresh the view of a document. If not cached, caches it and update view.
      * @param document in view
      */
     public refreshDocument(document: vscode.TextDocument) {
