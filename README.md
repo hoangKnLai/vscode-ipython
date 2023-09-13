@@ -16,7 +16,8 @@ Key features tagged with `IPython`:
   - Launch argument (e.g., `--matplotlib=qt`)
   - Start up command (e.g., `["%load_ext autoreload", %autoreload 2]`)
 - Configurable:
-  - Code section tag (e.g., `# %%`)
+  - Multiple code section tags (e.g., `# %%`, `// ==`, or regular expression)
+  - Code section tag applies to a list of file extensions (e.g., `.py, .ts, .md`)
   - `%run` arguments (e.g., `-t` print timing info)
   - Command line arguments (e.g., `sys.argv` parameters)
 - Useful command to run `python` code interactively
@@ -52,11 +53,11 @@ panel for latest features and details.
 - Removed usage of `clipboard` option for sending code to terminal
   - It was hacky and intrusive
 
-- Added tree view for file section (indicated by `cellTag` such as `# %%`)
+- Added tree view for file section (indicated by a set of `cellTag` such as `# %%`)
   - `jumpToSection`: jump to section in text editor and focus on it
     - Support any text files with `cellTag`
   - `runFile, runSection`: excution interaction on tree view
-    - Support `python` `.py` files
+    - Support a configurable set of file extensions such as `.py, .ts, .md`
 
 ### 2023.8.x
 
