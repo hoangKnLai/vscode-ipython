@@ -24,15 +24,11 @@ export async function activate(context: vscode.ExtensionContext) {
     // NOTE: make sure all configuration are loaded and mapping are done FIRST!
     util.updateConfig();
 
-    for (let document of vscode.workspace.textDocuments) {
-        navi.updateSectionCache(document);
-    }
-    if (vscode.window.activeTextEditor) {
-        navi.updateSectionDecor(vscode.window.activeTextEditor);
-    }
-
-
     // === SECTION VIEWER ===
+    for (let editor of vscode.window.visibleTextEditors) {
+        navi.updateSectionDecor(editor);
+    }
+
     let treeProvider = new navi.SectionTreeProvider();
     let treeOptions: vscode.TreeViewOptions<navi.SectionItem> = {
         treeDataProvider: treeProvider,
@@ -89,6 +85,8 @@ export async function activate(context: vscode.ExtensionContext) {
     vscode.window.onDidChangeActiveTextEditor(
         (editor) => {
             if (editor) {
+                if (editor.document === undefined) {return;}
+
                 navi.updateSectionDecor(editor);
                 treeProvider.refreshDocument(editor.document);
                 let docNode = treeProvider.getDocumentNode(editor.document);
@@ -114,7 +112,10 @@ export async function activate(context: vscode.ExtensionContext) {
         vscode.commands.registerCommand(
             "ipython.naviRunSection",
             (item: navi.SectionItem) => {
-                if(item.position !== undefined && item.document.languageId === 'python'){
+                if (item === undefined) {
+                    util.consoleLog('naviRunSection: Found undefined item');
+                }
+                if(item && item.position !== undefined && item.document.languageId === 'python'){
                     ipy.runDocumentSection(item.document, item.position);
                 }
             },
@@ -125,7 +126,10 @@ export async function activate(context: vscode.ExtensionContext) {
         vscode.commands.registerCommand(
             "ipython.naviRunFile",
             (item: navi.SectionItem) => {
-                if (item.document.languageId === 'python') {
+                if (item === undefined) {
+                    util.consoleLog('naviRunSection: Found undefined item');
+                }
+                if (item && item.document && item.document.languageId === 'python') {
                     ipy.runFile(item.document);
                 }
             },
@@ -135,7 +139,14 @@ export async function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(
         vscode.commands.registerCommand(
             "ipython.naviJumpToSection",
-            (item: navi.SectionItem) => item.jumpToSection(),
+            (item: navi.SectionItem) => {
+                if (item === undefined) {
+                    util.consoleLog('naviRunSection: Found undefined item');
+                }
+                if (item) {
+                    item.jumpToSection();
+                }
+            },
         ),
     );
 
