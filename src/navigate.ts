@@ -312,13 +312,19 @@ export class SectionItem extends vscode.TreeItem {
         public position: vscode.Position | undefined = undefined,
     ) {
         let label: string;
+        let description: string = '';
         let runable: string | undefined = undefined;
         let tooltip: string | undefined = undefined;
         let uri: vscode.Uri | undefined = undefined;
         let icon: vscode.ThemeIcon | undefined;
         if (position === undefined) {
             label = path.basename(document.fileName);
-            tooltip = `Jump to ${vscode.workspace.asRelativePath(document.fileName)}`;
+            let dir = path.dirname(document.uri.path);
+            description = vscode.workspace.asRelativePath(dir);
+            if (description === dir) {
+                description = '';
+            }
+            tooltip = `Jump to File`;
             uri = document.uri;
             if (document.languageId === 'python') {
                 runable = 'runableFile';
@@ -346,17 +352,21 @@ export class SectionItem extends vscode.TreeItem {
             let startOfFile = new vscode.Position(0, 0);
             let header = '';
             if (matchSectionTag(text)) {
-                header = text.trim().replace(pattern, '');
+                header = text.replace(pattern, '').trim();
             } else {
-                header = (startOfFile.isEqual(position)) ? ' (First Section)' : '(Unknown)';
+                header = (startOfFile.isEqual(position)) ? '(First Section)' : '(Unknown)';
             }
 
             let level = position.character / tabSize;
+
+            // Unicode: https://en.wikibooks.org/wiki/Unicode/List_of_useful_symbols
             let front: string;
             if (level === 0) {
-                front = `|-`;
+                // \u{2937}: right arrow curving down
+                front = `\u{00A6}\u{22C5} `;
             } else {
-                front = `|${'--|'.repeat(level)}-`;
+                // \u{2192}: right arrow unicode
+                front = `\u{00A6}${'\u{22EF} '.repeat(level)}`;
             }
             label = front + header;
 
@@ -371,6 +381,7 @@ export class SectionItem extends vscode.TreeItem {
         this.resourceUri = uri;
         this.iconPath = icon;
         this.tooltip = tooltip;
+        this.description = description;
         this.command = {
             command: 'ipython.naviJumpToSection',
             arguments: [this],
