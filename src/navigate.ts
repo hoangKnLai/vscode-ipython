@@ -363,10 +363,12 @@ export class SectionItem extends vscode.TreeItem {
             let front: string;
             if (level === 0) {
                 // \u{2937}: right arrow curving down
-                front = `\u{00A6}\u{22C5} `;
+                // \u{00A6}: vertical dashed
+                // \u{22C5}: middle dot
+                front = `\u{00A7} `;
             } else {
                 // \u{2192}: right arrow unicode
-                front = `\u{00A6}${'\u{22EF} '.repeat(level)}`;
+                front = `\u{00A7} ${'\u{22EF} '.repeat(level)}`;
             }
             label = front + header;
 
