@@ -311,12 +311,6 @@ export class SectionItem extends vscode.TreeItem {
         public collapsibleState: vscode.TreeItemCollapsibleState,
         public position: vscode.Position | undefined = undefined,
     ) {
-
-        if (document === undefined) {
-            util.consoleLog('SectionItem: Found undefined');
-            return;
-        }
-
         let label: string;
         let runable: string | undefined = undefined;
         let tooltip: string | undefined = undefined;
@@ -324,7 +318,7 @@ export class SectionItem extends vscode.TreeItem {
         let icon: vscode.ThemeIcon | undefined;
         if (position === undefined) {
             label = path.basename(document.fileName);
-            tooltip = 'Click to Expand/Collapse';
+            tooltip = `Jump to ${vscode.workspace.asRelativePath(document.fileName)}`;
             uri = document.uri;
             if (document.languageId === 'python') {
                 runable = 'runableFile';
@@ -336,16 +330,17 @@ export class SectionItem extends vscode.TreeItem {
                 runable = 'runableSection';
             }
 
-            // icon = new vscode.ThemeIcon('bookmark');
-
             let tabSize = 4;
-            let editorTabSize = vscode.window.activeTextEditor?.options.tabSize;
+            let editor = vscode.window.activeTextEditor;
+            let editorTabSize: string | number | undefined = undefined;
+            if (editor) {
+                editorTabSize = editor.options.tabSize;
+            }
             if (editorTabSize !== undefined && typeof editorTabSize === 'number') {
                 tabSize = editorTabSize;
             }
             let text = document.lineAt(position.line).text;
 
-            // let pattern = getSectionPattern();
             let pattern = util.SECTION_TAG;
 
             let startOfFile = new vscode.Position(0, 0);
@@ -363,8 +358,9 @@ export class SectionItem extends vscode.TreeItem {
             } else {
                 front = `|${'--|'.repeat(level)}-`;
             }
-            let lineMarker = `  (L:${position.line}, C:${position.character})`;
-            label = front + header + lineMarker;
+            label = front + header;
+
+            tooltip = `Jump to Section at L:${position.line}, C:${position.character}`;
         }
 
         super(label, collapsibleState);
@@ -375,11 +371,16 @@ export class SectionItem extends vscode.TreeItem {
         this.resourceUri = uri;
         this.iconPath = icon;
         this.tooltip = tooltip;
+        this.command = {
+            command: 'ipython.naviJumpToSection',
+            arguments: [this],
+            title: 'Jump to ...',
+        };
     }
 
     /**
      * Jump active editor to document section. If document not opened,
-     * open then jump.
+     * open document then jump.
      */
     public async jumpToSection() {
         let range: vscode.Range | undefined = undefined;

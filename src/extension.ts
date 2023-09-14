@@ -84,18 +84,18 @@ export async function activate(context: vscode.ExtensionContext) {
 
     vscode.window.onDidChangeActiveTextEditor(
         (editor) => {
-            if (editor) {
-                if (editor.document === undefined) {return;}
-
+            if (editor && editor.document !== undefined) {
                 navi.updateSectionDecor(editor);
                 treeProvider.refreshDocument(editor.document);
                 let docNode = treeProvider.getDocumentNode(editor.document);
-                if (docNode) {
+                // NOTE: only change view when `visible` so to avoid hijacking
+                //  current view
+                if (docNode && treeView.visible) {
                     treeView.reveal(
                         docNode,
                         {
                             select: false,
-                            focus: true,
+                            focus: false,  // NEVER set to true to not hijack!
                             expand: true,
                         }
                     );
@@ -126,9 +126,6 @@ export async function activate(context: vscode.ExtensionContext) {
         vscode.commands.registerCommand(
             "ipython.naviRunFile",
             (item: navi.SectionItem) => {
-                if (item === undefined) {
-                    util.consoleLog('naviRunSection: Found undefined item');
-                }
                 if (item && item.document && item.document.languageId === 'python') {
                     ipy.runFile(item.document);
                 }
@@ -140,9 +137,6 @@ export async function activate(context: vscode.ExtensionContext) {
         vscode.commands.registerCommand(
             "ipython.naviJumpToSection",
             (item: navi.SectionItem) => {
-                if (item === undefined) {
-                    util.consoleLog('naviRunSection: Found undefined item');
-                }
                 if (item) {
                     item.jumpToSection();
                 }

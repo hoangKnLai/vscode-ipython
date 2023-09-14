@@ -3,7 +3,7 @@
     "displayName": "ipython",
     "description": "IPython integration supporting direct interactive usage and commands.",
     "icon": "md_img/icon.png",
-    "version": "2023.9.13",
+    "version": "2023.9.14",
     "publisher": "HoangKimLai",
     "repository": {
         "type": "git",
@@ -267,11 +267,6 @@
                 {
                     "command": "ipython.naviRunFile",
                     "when": "view == ipyNavigator && viewItem == runableFile",
-                    "group": "inline"
-                },
-                {
-                    "command": "ipython.naviJumpToSection",
-                    "when": "view == ipyNavigator",
                     "group": "inline"
                 }
             ]
