@@ -299,6 +299,32 @@ export function updateSectionDecor(editor: vscode.TextEditor) {
 
 
 // === TREE PROVIDER ===
+/**
+ * Get the section header from document.
+ * @param sectionStart position in document
+ * @param document where section is found
+ * @returns section header (i.e., text immediately after section tag and
+ * whitespace trimmed)
+ */
+export function getSectionHeader(
+    sectionStart: vscode.Position,
+    document: vscode.TextDocument,
+) {
+
+    let text = document.lineAt(sectionStart.line).text;
+
+    let pattern = util.SECTION_TAG;
+
+    let startOfFile = new vscode.Position(0, 0);
+    let header = '';
+    if (matchSectionTag(text)) {
+        header = text.replace(pattern, '').trim();
+    } else {
+        header = (startOfFile.isEqual(sectionStart)) ? '(First Section)' : '(Unknown)';
+    }
+    return header;
+}
+
 
 /**
  * Section Item for use with TreeProvider
@@ -335,42 +361,29 @@ export class SectionItem extends vscode.TreeItem {
             if (document.languageId === 'python') {
                 runable = 'runableSection';
             }
+            let header = getSectionHeader(
+                position,
+                document,
+            );
 
-            let tabSize = 4;
-            let editor = vscode.window.activeTextEditor;
-            let editorTabSize: string | number | undefined = undefined;
-            if (editor) {
-                editorTabSize = editor.options.tabSize;
-            }
-            if (editorTabSize !== undefined && typeof editorTabSize === 'number') {
-                tabSize = editorTabSize;
-            }
-            let text = document.lineAt(position.line).text;
-
-            let pattern = util.SECTION_TAG;
-
-            let startOfFile = new vscode.Position(0, 0);
-            let header = '';
-            if (matchSectionTag(text)) {
-                header = text.replace(pattern, '').trim();
-            } else {
-                header = (startOfFile.isEqual(position)) ? '(First Section)' : '(Unknown)';
-            }
-
+            let tabSize = util.getTabSize();
             let level = position.character / tabSize;
 
             // Unicode: https://en.wikibooks.org/wiki/Unicode/List_of_useful_symbols
             let front: string;
+            let sectionSymbol = '\u{00A7}';
+            let verticalDash = '\u{00A6}';
+            let middleDotDot = '\u{22C5}\u{22C5}';
             if (level === 0) {
                 // \u{2937}: right arrow curving down
-                // \u{00A6}: vertical dashed
-                // \u{22C5}: middle dot
-                front = `\u{00A7} `;
+                // \u{22EF}: horz ellipses
+                front = `${sectionSymbol} `;
             } else {
                 // \u{2192}: right arrow unicode
-                front = `\u{00A7} ${'\u{22EF} '.repeat(level)}`;
+                let subLevel = `${middleDotDot} `.repeat(level);
+                front = `${verticalDash} ${subLevel} ${sectionSymbol}`;
             }
-            label = front + header;
+            label = `${front} ${header}`;
 
             tooltip = `Jump to Section at L:${position.line}, C:${position.character}`;
         }

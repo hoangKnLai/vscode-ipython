@@ -115,6 +115,24 @@ export function getNewLine() {
     return newLine;
 }
 
+/**
+ *
+ * @returns tabSize in number of spaces of active editor.
+ * Default is 4, if unresolved.
+ */
+export function getTabSize() {
+    let tabSize = 4;  // spaces
+
+    let editor = vscode.window.activeTextEditor;
+    let editorTabSize: string | number | undefined = undefined;
+    if (editor) {
+        editorTabSize = editor.options.tabSize;
+    }
+    if (editorTabSize !== undefined && typeof editorTabSize === 'number') {
+        tabSize = editorTabSize;
+    }
+    return tabSize;
+}
 
 /**
  * Replace tab with space.

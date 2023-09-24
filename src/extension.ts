@@ -110,10 +110,38 @@ export async function activate(context: vscode.ExtensionContext) {
     // TODO: move command registration to various module registerCommands()
     context.subscriptions.push(
         vscode.commands.registerCommand(
+            "ipython.naviRunToSection",
+            (item: navi.SectionItem) => {
+                if (item === undefined) {
+                    console.error('naviRunToSection: found undefined item');
+                }
+                if(item && item.position !== undefined && item.document.languageId === 'python'){
+                    ipy.runDocumentSection(item.document, item.position, false);
+                }
+            },
+        ),
+    );
+
+    context.subscriptions.push(
+        vscode.commands.registerCommand(
+            "ipython.naviRunFromSection",
+            (item: navi.SectionItem) => {
+                if (item === undefined) {
+                    console.error('naviRunFromSection: found undefined item');
+                }
+                if(item && item.position !== undefined && item.document.languageId === 'python'){
+                    ipy.runDocumentSection(item.document, item.position, true);
+                }
+            },
+        ),
+    );
+
+    context.subscriptions.push(
+        vscode.commands.registerCommand(
             "ipython.naviRunSection",
             (item: navi.SectionItem) => {
                 if (item === undefined) {
-                    util.consoleLog('naviRunSection: Found undefined item');
+                    console.error('naviRunSection: Found undefined item');
                 }
                 if(item && item.position !== undefined && item.document.languageId === 'python'){
                     ipy.runDocumentSection(item.document, item.position);
@@ -226,6 +254,32 @@ export async function activate(context: vscode.ExtensionContext) {
         vscode.commands.registerCommand(
             "ipython.runFromLine",
             () => ipy.runCursor(true)
+        )
+    );
+    context.subscriptions.push(
+        vscode.commands.registerCommand(
+            "ipython.runToSection",
+            () => {
+                let editor = vscode.window.activeTextEditor;
+                if (editor) {
+                    let document = editor.document;
+                    let cursor = editor.selection.start;
+                    ipy.runDocumentSection(document, cursor, false);
+                }
+            }
+        )
+    );
+    context.subscriptions.push(
+        vscode.commands.registerCommand(
+            "ipython.runFromSection",
+            () => {
+                let editor = vscode.window.activeTextEditor;
+                if (editor) {
+                    let document = editor.document;
+                    let cursor = editor.selection.start;
+                    ipy.runDocumentSection(document, cursor, true);
+                }
+            }
         )
     );
 }
