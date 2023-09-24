@@ -40,24 +40,34 @@ panel for latest features and details.
 
 ### 2023.9.x
 
+- Added new commands and keybinds
+  - `runToSection (ctrl+shift+i k)` run code from top of file to end of section
+  at cursor
+  - `runFromSection (ctrl+shift shift+k)` run code from start of section at
+  cursor to end file
+
+- Improved section navigator
+  - General formatting of section label to be less noisy
+  - Added button for `runToSection(), runFromSection()`
+
+- Added tree view for file section (indicated by a set of `sectionTag` such as `# %%`)
+  - `jumpToSection`: jump to section in text editor and focus on it
+    - Support any text files with `sectionTag`
+  - `runFile, runSection`: excution interaction on tree view
+    - Support a configurable set of file extensions such as `.py, .ts, .md`
+
 - Refactored cell of code to section of code for clarity
 - Refactored run options:
   - Removed `reset` and then `run` options since `%run` does this by default
   - Run section is defaulted to use `.vscode/ipython/code.py` with
     identification
-    - E.g., `%run -i ".vscode/ipython/code.py"  # %% Section A (Line 1:10)`
+    - E.g., `%run -i ".vscode/ipython/code.py"  # Section A (Line 1:10)`
   - Added option to use `code.py` to run code sections with `%run -i` or `%load`
     - Recommend `%run -i` for speed and clarity
     - NOTE: likely to deprecated usage of `%load` in a future release
 
 - Removed usage of `clipboard` option for sending code to terminal
   - It was hacky and intrusive
-
-- Added tree view for file section (indicated by a set of `cellTag` such as `# %%`)
-  - `jumpToSection`: jump to section in text editor and focus on it
-    - Support any text files with `cellTag`
-  - `runFile, runSection`: excution interaction on tree view
-    - Support a configurable set of file extensions such as `.py, .ts, .md`
 
 ### 2023.8.x
 
