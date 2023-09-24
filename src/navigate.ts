@@ -383,7 +383,7 @@ export class SectionItem extends vscode.TreeItem {
                 let subLevel = `${middleDotDot} `.repeat(level);
                 front = `${verticalDash} ${subLevel} ${sectionSymbol}`;
             }
-            label = `${front} ${header}`;
+            label = `${front} ${header}` ;
 
             tooltip = `Jump to Section at L:${position.line}, C:${position.character}`;
         }
