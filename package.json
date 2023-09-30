@@ -3,7 +3,7 @@
     "displayName": "ipython",
     "description": "IPython integration supporting direct interactive usage and commands.",
     "icon": "md_img/icon.png",
-    "version": "2023.9.10",
+    "version": "2023.9.24",
     "publisher": "HoangKimLai",
     "repository": {
         "type": "git",
@@ -36,10 +36,20 @@
         "configuration": {
             "title": "IPython",
             "properties": {
+                "ipython.navigatorFileExtension": {
+                    "type": "array",
+                    "default": [".py", ".ts", ".js", ".md"],
+                    "markdownDescription": "File extensions for use with navigator"
+                },
+                "ipython.SectionTag": {
+                    "type": "array",
+                    "default": ["# %%", "// ==", "/(^(#)#+)+/"],
+                    "markdownDescription": "A section is a line that starts with whitespaces and a tag. Regular expression can also be used (e.g., `(^(#)#+)+` for markdown 2nd level heading and lower) "
+                },
                 "ipython.workFolderBase": {
                     "type": "string",
                     "default": "",
-                    "markdownDescription": "A folder to be used by this extension. \nDefault: `${HOME}`. NOTE: temporary `files` are placed in `${workFolderBase}/.vscode/ipython/` and are deleted once extension is deactivated."
+                    "markdownDescription": "A folder to be used by this extension. \nDefault: `${HOME}`. NOTE: temporary `files` are placed in `${workFolderBase}/.vscode/ipython/`."
                 },
                 "ipython.LaunchArguments": {
                     "type": "string",
@@ -54,14 +64,10 @@
                     ],
                     "markdownDescription": "List of commands to execute line-by-line after launching IPython terminal (e.g., `['%load_ext autoreload', '%autoreload 2']`)."
                 },
-                "ipython.SectionTag": {
-                    "type": "string",
-                    "default": "# %%",
-                    "markdownDescription": "Tag indicating a section block"
-                },
+
                 "ipython.ExecutionLagMilliSec": {
                     "type": "number",
-                    "default": 128,
+                    "default": 64,
                     "markdownDescription": "Millisecond delay between each code execution. Helps with race condition when sending text to IPython `stdin` shell."
                 },
                 "ipython.RunCodeBlockMethod": {
@@ -139,16 +145,34 @@
             {
                 "category": "IPython",
                 "command": "ipython.naviRunSection",
+                "enablement": "view == ipyNavigator && viewItem == runableSection",
                 "shortTitle": "Run",
                 "icon": "$(run)",
-                "title": "Run Section From Navigation Tree."
+                "title": "Run Section"
+            },
+            {
+                "category": "IPython",
+                "command": "ipython.naviRunToSection",
+                "enablement": "view == ipyNavigator && viewItem == runableSection",
+                "shortTitle": "Run to",
+                "icon": "$(run-above)",
+                "title": "Run All Above Sections and this Section"
+            },
+            {
+                "category": "IPython",
+                "command": "ipython.naviRunFromSection",
+                "enablement": "view == ipyNavigator && viewItem == runableSection",
+                "shortTitle": "Run from",
+                "icon": "$(run-below)",
+                "title": "Run this Section and All Sections Below"
             },
             {
                 "category": "IPython",
                 "command": "ipython.naviRunFile",
                 "shortTitle": "Run File",
+                "enablement": "view == ipyNavigator && viewItem == runableFile",
                 "icon": "$(run-all)",
-                "title": "Run File From Navigation Tree."
+                "title": "Run File"
             },
             {
                 "category": "IPython",
@@ -171,6 +195,16 @@
                 "category": "IPython",
                 "command": "ipython.runFromLine",
                 "title": "Run From Current Line to Last Line"
+            },
+            {
+                "category": "IPython",
+                "command": "ipython.runToSection",
+                "title": "Run From Line 1 to End of Current Section"
+            },
+            {
+                "category": "IPython",
+                "command": "ipython.runFromLine",
+                "title": "Run From Start of Current Section to End of File"
             }
         ],
         "keybindings": [
@@ -225,6 +259,16 @@
                 "when": "ipython.isUse && !inDebugMode && editorTextFocus && !notebookEditorFocused && editorLangId == python"
             },
             {
+                "command": "ipython.runToSection",
+                "key": "ctrl+shift+i k",
+                "when": "ipython.isUse && !inDebugMode && editorTextFocus && !notebookEditorFocused && editorLangId == python"
+            },
+            {
+                "command": "ipython.runFromSection",
+                "key": "ctrl+shift+i shift+k",
+                "when": "ipython.isUse && !inDebugMode && editorTextFocus && !notebookEditorFocused && editorLangId == python"
+            },
+            {
                 "command": "workbench.view.extension.ipy-navigator",
                 "key": "ctrl+shift+i b",
                 "when": "ipython.isUse"
@@ -254,16 +298,21 @@
                 {
                     "command": "ipython.naviRunSection",
                     "when": "view == ipyNavigator && viewItem == runableSection",
-                    "group": "inline"
+                    "group": "inline@1"
+                },
+                {
+                    "command": "ipython.naviRunToSection",
+                    "when": "view == ipyNavigator && viewItem == runableSection",
+                    "group": "inline@2"
+                },
+                {
+                    "command": "ipython.naviRunFromSection",
+                    "when": "view == ipyNavigator && viewItem == runableSection",
+                    "group": "inline@3"
                 },
                 {
                     "command": "ipython.naviRunFile",
                     "when": "view == ipyNavigator && viewItem == runableFile",
-                    "group": "inline"
-                },
-                {
-                    "command": "ipython.naviJumpToSection",
-                    "when": "view == ipyNavigator",
                     "group": "inline"
                 }
             ]

@@ -7,6 +7,16 @@ m.hello_world()
 print(f'{os.cpu_count() = }')
 print(f'{sys.argv=}')
 
+# Comment
+
+## Markdown Style
+
+# print(
+#     '''
+#     // == A TYPESCRIPT or JAVASCRIPT SECTION
+#     '''
+# )
+
 # %% SECTION 1
 for ii in range(10):
     print(f'{ii = }')
