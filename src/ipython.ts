@@ -118,7 +118,14 @@ export function formatCode(
 
 
 // == TERMINAL
+/**
+ * Set of created IPython terminals
+ */
 export let TERMINALS = new Set<vscode.Terminal>();
+
+/**
+ * Current active IPython terminal
+ */
 export let ACTIVE_TERMINAL: vscode.Terminal | undefined;
 
 export function registerTerminalCallbacks(context: vscode.ExtensionContext) {
@@ -577,3 +584,106 @@ export async function runCursor(toEnd: boolean) {
         }
     }
 }
+
+
+/**
+ * Register commands
+ * @param context of extension
+ */
+export function registerCommands(context: vscode.ExtensionContext) {
+    context.subscriptions.push(
+        vscode.commands.registerCommand(
+            "ipython.createTerminal",
+            createTerminal,
+        )
+    );
+
+    context.subscriptions.push(
+        vscode.commands.registerCommand(
+            "ipython.runFile",
+            runFile,
+        )
+    );
+    context.subscriptions.push(
+        vscode.commands.registerCommand(
+            "ipython.runFileWithArgs",
+            () => runFile(undefined, true, false),
+        )
+    );
+    context.subscriptions.push(
+        vscode.commands.registerCommand(
+            "ipython.runFileWithCli",
+            () => runFile(undefined, true),
+        )
+    );
+    context.subscriptions.push(
+        vscode.commands.registerCommand(
+            "ipython.runFileWithArgsCli",
+            () => runFile(undefined, true, true),
+        )
+    );
+    context.subscriptions.push(
+        vscode.commands.registerCommand(
+            "ipython.runLineAndAdvance",
+            runLine,
+        )
+    );
+    context.subscriptions.push(
+        vscode.commands.registerCommand(
+            "ipython.runSelections",
+            runSelections
+        )
+    );
+    context.subscriptions.push(
+        vscode.commands.registerCommand(
+            "ipython.runSection",
+            runSection,
+        )
+    );
+
+    context.subscriptions.push(
+        vscode.commands.registerCommand(
+            "ipython.runSectionAndMoveToNext",
+             () => runSection(true),
+        )
+    );
+    context.subscriptions.push(
+        vscode.commands.registerCommand(
+            "ipython.runToLine",
+            () => runCursor(false),
+        )
+    );
+    context.subscriptions.push(
+        vscode.commands.registerCommand(
+            "ipython.runFromLine",
+            () => runCursor(true),
+        )
+    );
+    context.subscriptions.push(
+        vscode.commands.registerCommand(
+            "ipython.runToSection",
+            () => {
+                let editor = vscode.window.activeTextEditor;
+                if (editor) {
+                    let document = editor.document;
+                    let cursor = editor.selection.start;
+                    runDocumentSection(document, cursor, false);
+                }
+            },
+        )
+    );
+    context.subscriptions.push(
+        vscode.commands.registerCommand(
+            "ipython.runFromSection",
+            () => {
+                let editor = vscode.window.activeTextEditor;
+                if (editor) {
+                    let document = editor.document;
+                    let cursor = editor.selection.start;
+                    runDocumentSection(document, cursor, true);
+                }
+            },
+        )
+    );
+}
+

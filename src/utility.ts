@@ -37,7 +37,9 @@ export function escapeRegex(str: string) {
     return str.replace(/[/\-\\^$*+?.()|[\]{}]/g, '\\$&');
 }
 
-
+/**
+ * Update configuration per changes in user settings.json of extension
+ */
 export function updateConfig() {
     config = vscode.workspace.getConfiguration('ipython');
 
@@ -94,6 +96,24 @@ export function updateConfig() {
 export function getConfig(name: string) {
     return config.get(name);
 }
+
+
+/**
+ * Register configuration handling.
+ * @param context of extension
+ */
+export function registerConfigCallbacks(context: vscode.ExtensionContext) {
+    context.subscriptions.push(
+        vscode.workspace.onDidChangeConfiguration(
+            (event) => {
+                if (event.affectsConfiguration('ipython')) {
+                    updateConfig();
+                }
+            }
+        )
+    );
+}
+
 
 /**
  * Log message to console.
