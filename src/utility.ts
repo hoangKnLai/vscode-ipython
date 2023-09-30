@@ -15,8 +15,18 @@ export let WORK_FOLDER:string = '';
 export let SECTION_TAG: RegExp = RegExp('');
 export let FILE_EXT: RegExp = RegExp('');
 
+// TODO: store temporary files for deletion when deactivated
 export let tempfiles = new Set<vscode.Uri>();
 
+/**
+ * @returns a unique identifier
+ */
+export function createUniqueId() {
+    let suffix = Math.floor(4294967296 * Math.random()).toString(36);
+    let prefix = Date.now().toString(36);
+    let uid =  prefix + suffix;
+    return uid;
+}
 
 /**
  * Add escape characters to string for use with regular expression.
@@ -152,8 +162,13 @@ export function replaceTabWithSpace(str: string, n = 4) {
  * @param msec - milliseconds
  * @returns Promise - system waited
  */
-export function wait(msec: number) {
-    return new Promise((resolve) => setTimeout(resolve, msec));
+export function wait(msec: number = 1000) {
+    return new Promise<boolean>(
+        (resolve) => setTimeout(
+            () => resolve(true),
+            msec,
+        )
+    );
 }
 
 

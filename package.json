@@ -38,12 +38,21 @@
             "properties": {
                 "ipython.navigatorFileExtension": {
                     "type": "array",
-                    "default": [".py", ".ts", ".js", ".md"],
+                    "default": [
+                        ".py",
+                        ".ts",
+                        ".js",
+                        ".md"
+                    ],
                     "markdownDescription": "File extensions for use with navigator"
                 },
                 "ipython.SectionTag": {
                     "type": "array",
-                    "default": ["# %%", "// ==", "/(^(#)#+)+/"],
+                    "default": [
+                        "# %%",
+                        "// ==",
+                        "/(^(#)#+)+/"
+                    ],
                     "markdownDescription": "A section is a line that starts with whitespaces and a tag. Regular expression can also be used (e.g., `(^(#)#+)+` for markdown 2nd level heading and lower) "
                 },
                 "ipython.workFolderBase": {
@@ -64,7 +73,6 @@
                     ],
                     "markdownDescription": "List of commands to execute line-by-line after launching IPython terminal (e.g., `['%load_ext autoreload', '%autoreload 2']`)."
                 },
-
                 "ipython.ExecutionLagMilliSec": {
                     "type": "number",
                     "default": 64,
@@ -329,6 +337,10 @@
         "esbuild": "npm run esbuild-base -- --sourcemap",
         "esbuild-watch": "npm run esbuild-base -- --sourcemap --watch",
         "test-compile": "tsc -p ./"
+    },
+    "dependencies": {
+        "@types/vscode": "^1.81.0",
+        "@vscode/python-extension": "^1.0.5"
     },
     "devDependencies": {
         "@types/glob": "^7.2.0",

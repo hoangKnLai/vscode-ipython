@@ -15,7 +15,6 @@ let newLine = util.getNewLine();
 //FIXME: consider making configurable?!
 export const terminalName = "IPython";
 
-
 // === FUNCTIONS ===
 
 /**
@@ -70,11 +69,11 @@ export function formatCode(
     document: vscode.TextDocument,
     selection: vscode.Selection
 ) {
-    let code = "";
+    let code = '';
     document.save(); // force saving to properly get text
 
     if (selection.isSingleLine) {
-        let text: string = "";
+        let text: string = '';
         if (selection.isEmpty) {
             // Support run line at cursor when empty selection
             text = document.lineAt(selection.start.line).text;
@@ -93,7 +92,7 @@ export function formatCode(
     if (startIndex !== -1) {
         startLine += startIndex;
     } else {  // all lines and partial lines are whitespaces
-        code = "" + newLine;
+        code = '' + newLine;
         return code;
     }
 
@@ -117,6 +116,38 @@ export function formatCode(
     return code + newLine;
 }
 
+
+// == TERMINAL
+export let TERMINALS = new Set<vscode.Terminal>();
+export let ACTIVE_TERMINAL: vscode.Terminal | undefined;
+
+export function registerTerminalCallbacks(context: vscode.ExtensionContext) {
+    context.subscriptions.push(
+        vscode.window.onDidChangeActiveTerminal(
+            (terminal) => {
+                if (terminal && TERMINALS.has(terminal)) {
+                    ACTIVE_TERMINAL = terminal;
+                }
+            }
+        )
+    );
+
+    context.subscriptions.push(
+        vscode.window.onDidCloseTerminal(
+            (terminal) => {
+                if (terminal) {
+                    TERMINALS.delete(terminal);
+
+                    if (ACTIVE_TERMINAL === terminal) {
+                        ACTIVE_TERMINAL = undefined;
+                    }
+                }
+            }
+        )
+    );
+}
+
+
 /**
  * Create an ipython terminal.
  *
@@ -128,11 +159,6 @@ export async function createTerminal() {
     // -- Create and Tag IPython Terminal
     await vscode.commands.executeCommand("python.createTerminal");
     util.wait(500); // msec, to help with a race condition of not naming terminal
-    await vscode.commands.executeCommand(
-        "workbench.action.terminal.renameWithArg",
-        { name: terminalName }
-    );
-    util.wait(500); // msec, to help with a race condition not naming terminal
 
     let terminal = vscode.window.activeTerminal;
     if (terminal === undefined) {
@@ -156,7 +182,7 @@ export async function createTerminal() {
     // Startup options
     // REF: https://ipython.readthedocs.io/en/stable/config/intro.html#command-line-arguments
     let cmds = util.getConfig("StartupCommands") as string[];
-    let startupCmd = "";
+    let startupCmd = '';
 
     for (let c of cmds) {
         let s = c.trim();
@@ -169,35 +195,44 @@ export async function createTerminal() {
 
     util.consoleLog(`Startup Command: ${startupCmd}`);
     await executeSingleLine(terminal, cmd);
-    await util.wait(500);  // may take awhile to startup ipython
+    await util.wait(1000);  // may take awhile to startup ipython
+
+    await vscode.commands.executeCommand(
+        "workbench.action.terminal.renameWithArg",
+        { name: terminalName }
+    );
+
+    TERMINALS.add(terminal);
+    ACTIVE_TERMINAL = terminal;
+
     return terminal;
 }
 
 /**
  * Get a created ipython terminal.
- *
- * @returns terminal - an ipython terminal
  */
 export async function getTerminal() {
+    if (ACTIVE_TERMINAL) {
+        return ACTIVE_TERMINAL;
+    }
+
     let terminal = vscode.window.activeTerminal;
-    if (terminal !== undefined && terminal.name === terminalName) {
+    if (terminal !== undefined && TERMINALS.has(terminal)) {
         return terminal;
     }
 
-    // FIXME: cache ipython terminal and manage its creation / deletion
-    // Might already been created
-    terminal = vscode.window.terminals.find(
-        (aTerminal) => {
-            return aTerminal.name === terminalName;
-        }
-    );
-
-    // No valid terminal exists
-    if (terminal === undefined) {
-        terminal = await createTerminal();
+    if (TERMINALS.size > 0) {
+        terminal = TERMINALS.values().next().value as vscode.Terminal;
+        return terminal;
     }
+
+    // No ipython terminal exists
+    terminal = await createTerminal();
+    ACTIVE_TERMINAL = terminal;
     return terminal;
 }
+
+// == CODE EXECUTION
 
 /**
  * Execute a block of code.
@@ -388,7 +423,7 @@ export async function runLine() {
     }
 
     let cmd = formatCode(editor.document, editor.selection);
-    if (cmd !== "") {
+    if (cmd !== '') {
         util.consoleLog(`IPython Run Line :${cmd}`);
         await executeSingleLine(terminal, cmd);
     }
@@ -535,7 +570,7 @@ export async function runCursor(toEnd: boolean) {
     let identity = `# ${name} Line ${start}:${end}`;
 
     let code = formatCode(editor.document, selection);
-    if (code !== "") {
+    if (code !== '') {
         let terminal = await getTerminal();
         if (terminal) {
             await executeCodeBlock(terminal, code, identity);

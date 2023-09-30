@@ -1,6 +1,7 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
+// import {PythonExtension} from '@vscode/python-extension';
 
 import * as util from './utility';
 import * as ipy from './ipython';
@@ -10,7 +11,8 @@ import * as navi from './navigate';
 export async function activate(context: vscode.ExtensionContext) {
 
     // FIXME: Keybinding `when clause`
-    vscode.commands.executeCommand("setContext", "ipython.isUse", true);
+    await vscode.commands.executeCommand("setContext", "ipython.isUse", true);
+
     // Always make sure Python is available FIRST for creating terminal
     // FIXME: use official ms-python hook instead!?
     let pyExtension = vscode.extensions.getExtension("ms-python.python");
@@ -42,6 +44,9 @@ export async function activate(context: vscode.ExtensionContext) {
     );
 
     // === CALLBACKS ===
+    ipy.registerTerminalCallbacks(context);
+
+    // FIXME: push callbacks to context subscription
     // TODO: move callbacks to various module registerCallbacks()
     vscode.workspace.onDidChangeConfiguration(
         (event) => {
