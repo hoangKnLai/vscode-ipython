@@ -15,18 +15,21 @@ Key features tagged with `IPython`:
 - Creation and handling of IPython terminals
   - Launch argument (e.g., `--matplotlib=qt`)
   - Start up command (e.g., `["%load_ext autoreload", %autoreload 2]`)
+  - Dedicated terminal linked to a file (`ctrl+shift+i f5`) (issue #33). When linked,
+    - The terminal has the `file.py` name
+    - Running the `file.py` with `f5` always run it in the dedicated terminal
 - Run `python` code interactively on IPython terminal
   - E.g., run a file, selection(s) of code, code section, run to line, run from line, ...
 - Settings for code custom sectioning and execution
   - Support multiple code section tags (e.g., `# %%`, `// ==`, or regular expression)
   - Code section tag assocation option to a list of file extensions (e.g., `.py, .ts, .md`)
   - `%run` arguments (e.g., `-t` print timing info when running a `script.py`)
-  - Command line arguments equivalent to `sys.argv` of `python foo.py -argv`)
-- Editor visualization of code section blocks (#25)
+  - Command line argument equivalent to `sys.argv` of `python foo.py argv`
+- Editor visualization of code section blocks (issue #25)
   - Horizontal line divider and bolder text indicating each section starting line
-- Code section navigation and execution (#30)
+- Code section navigation and execution (issue #30)
   - A view in the primary sidebar providing section heading layout of associated files
-  - Use `Cltr+Shift+i b` to open `Code Section Navigator`
+  - Use `cltr+shift+i b` to open `Code Section Navigator`
   - Click on a heading focus the active editor to the section
   - Various execution buttons are provided for file and section code execution
 
@@ -56,8 +59,11 @@ panel for latest features and details.
 
 ### 2023.10.x
 
-- Enhanced IPython terminal handling allowing user to custom name the terminal as needed
-  - Removed a bug with `IPython` tag in terminal name sometime fails to change
+- Enhanced IPython terminal handling
+  - Allow user to custom name the terminal as needed
+  - Added dedicated terminal feature (issue #33)
+  - Fixed a bug with `IPython` tag in terminal name sometime fails to change
+  causing failure in identifying `IPython` enabled terminal
 - Other general fixes and minor changes
 
 ### 2023.9.x
