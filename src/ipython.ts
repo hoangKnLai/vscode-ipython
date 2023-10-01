@@ -459,7 +459,7 @@ export async function runDocumentSection(
     cursor: vscode.Position,
     toEnd: boolean | undefined = undefined,
 ) {
-    let sectionPositions = navi.sectionCache.get(document.fileName);
+    let sectionPositions = navi.SECTIONS.get(document.fileName);
     if (sectionPositions === undefined) {
         console.error('runDocumentSection: failed to retrieve cache');
         return;

@@ -4,12 +4,12 @@
 import * as path from 'path';
 import * as vscode from 'vscode';
 
-import * as cst from './constants';
+// import * as cst from './constants';
 import * as util from './utility';
 
 
 // === CACHE ===
-export let sectionCache = new Map<string, vscode.Position[]>();
+export let SECTIONS = new Map<string, vscode.Position[]>();
 
 
 // TODO: add foldable to section
@@ -194,7 +194,7 @@ export function decorateSection(editor: vscode.TextEditor) {
     let document = editor.document;
     let decors: vscode.DecorationOptions[] = [];
 
-    let positions = sectionCache.get(document.fileName);
+    let positions = SECTIONS.get(document.fileName);
 
     if (positions === undefined) {
         editor.setDecorations(sectionDecorType, decors);
@@ -218,7 +218,7 @@ export function decorateSection(editor: vscode.TextEditor) {
  * @param fileName - a vscode document.fileName
  */
 export function removeSectionCache(fileName: string) {
-    sectionCache.delete(fileName);
+    SECTIONS.delete(fileName);
 }
 
 /**
@@ -232,10 +232,10 @@ export function updateSectionCache(document: vscode.TextDocument) {
     }
     let positions = findSectionPosition(document);
     if (positions === undefined) {
-        sectionCache.delete(document.fileName);
+        SECTIONS.delete(document.fileName);
         return;
     }
-    sectionCache.set(document.fileName, positions);
+    SECTIONS.set(document.fileName, positions);
 }
 
 /**
@@ -250,7 +250,7 @@ export function moveCursorToSection(below: boolean) {
     }
 
     let cursor = editor.selection.start;
-    let sectionPositions = sectionCache.get(editor.document.fileName);
+    let sectionPositions = SECTIONS.get(editor.document.fileName);
 
     if (sectionPositions === undefined) {
         console.error('moveCursorToSection: bad sectionCache');
@@ -519,7 +519,7 @@ export class SectionTreeProvider implements vscode.TreeDataProvider<SectionItem>
     private cacheItem(documentNode: SectionItem): void {
         let document = documentNode.document;
 
-        let positions = sectionCache.get(document.fileName);
+        let positions = SECTIONS.get(document.fileName);
         if (positions === undefined) {
             return;
         }
