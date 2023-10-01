@@ -27,9 +27,9 @@ export async function activate(context: vscode.ExtensionContext) {
     }
 
     // === CALLBACKS ===
-    ipy.registerTerminalCallbacks(context);
     util.registerConfigCallbacks(context);
     navi.registerSectionNavigator(context);
+    ipy.registerTerminalCallbacks(context);
 
     // === COMMANDS ===
     ipy.registerCommands(context);
