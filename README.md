@@ -44,9 +44,9 @@ panel for latest features and details.
  environment such as `virtualenv`). Here are some info:
 
 - Install `python` from [python.org](https://www.python.org/downloads/)
-- Create a virtual environment [guides](https://packaging.python.org/en/latest/guides/installing-using-pip-and-virtual-environments/)
+- Create a virtual environment. See [guides](https://packaging.python.org/en/latest/guides/installing-using-pip-and-virtual-environments/).
 - Activate your virtual environment
-- Install `ipython`. See [ipython.org install guide](https://ipython.org/install.html)
+- Install `ipython`. See [ipython.org install guide](https://ipython.org/install.html).
 - Should be good to go when your VSCode terminal with the activated virtual environment can execute `ipython --version` to check for the IPython version number
 
 [Microsoft Python Extension](https://marketplace.visualstudio.com/items?itemName=ms-python.python)
