@@ -122,6 +122,11 @@
             },
             {
                 "category": "IPython",
+                "command": "ipython.runFileInDedicatedTerminal",
+                "title": "Create Dedicated Terminal and Run File"
+            },
+            {
+                "category": "IPython",
                 "command": "ipython.runFileWithArgs",
                 "title": "Run File with Run Arguments"
             },
@@ -234,6 +239,11 @@
             {
                 "command": "ipython.runFileWithCli",
                 "key": "f5",
+                "when": "ipython.isUse && !inDebugMode && editorTextFocus && editorLangId == python"
+            },
+            {
+                "command": "ipython.runFileInDedicatedTerminal",
+                "key": "ctrl+shift+i f5",
                 "when": "ipython.isUse && !inDebugMode && editorTextFocus && editorLangId == python"
             },
             {
