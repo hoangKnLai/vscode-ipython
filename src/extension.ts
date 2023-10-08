@@ -92,6 +92,11 @@ export async function activate(context: vscode.ExtensionContext) {
 
 // this method is called when extension is deactivated
 export function deactivate() {
+    // NOTE: vscode tear down at closing is along this line
+    //  - Immediately stop rendering and attempt tear down in 5secs or less
+    //  - No guarantee that any extension deactivate() will be called immediately
+    //  or at all at session closure
+
     // Remove temporary file used
     for (let uri of util.tempfiles) {
         vscode.workspace.fs.delete(uri);
