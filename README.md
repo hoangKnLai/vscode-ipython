@@ -1,7 +1,7 @@
 # ipython
 
-Enable IPython Terminal creation and direct execution of `python` code from
-editor.
+Enable [IPython Terminal](https://ipython.org/) creation and direct execution of
+`python` code from `.py` in editor.
 
 ## Features
 
