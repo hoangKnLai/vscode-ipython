@@ -160,14 +160,13 @@ class IpyTerminal {
 // export let TERMINALS = new Set<vscode.Terminal>();
 export let TERMINALS = new Map<vscode.Terminal, IpyTerminal>();
 
-
 /**
  * Current active IPython terminal
  */
 export let ACTIVE_TERMINAL: vscode.Terminal | undefined;
 
 /**
- * Python unqiue file identifier for use with terminal linkage
+ * Python unique file identifier for use with terminal linkage
  */
 export let FILE_UID = new Map<string, string>();
 
@@ -353,7 +352,7 @@ export async function executeCodeBlock(
     } else {  // assume %load
         nExec = 2;
     }
-    terminal.sendText(command, false); // false: no append `newline`
+    terminal.sendText(command, false);  // false: no append `newline`
     await execute(terminal, nExec);
 }
 

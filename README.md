@@ -3,31 +3,29 @@
 Enable IPython Terminal creation and direct execution of `python` code from
 editor.
 
-If you find the extension useful, it would be awesome if you can leave a comment and/or a suggestion on GitHub!!
-
-- What feature you like and use the most?
-- What other feature(s) you would like to have?
-
 ## Features
 
 Key features tagged with `IPython`:
 
-- Creation and handling of IPython terminals
+- **Creating and handling of IPython terminals**
   - Launch argument (e.g., `--matplotlib=qt`)
   - Start up command (e.g., `["%load_ext autoreload", %autoreload 2]`)
   - Dedicated terminal linked to a file (`ctrl+shift+i f5`) (issue #33). When linked,
     - The terminal has the `file.py` name
     - Running the `file.py` with `f5` always run it in the dedicated terminal
-- Run `python` code interactively on IPython terminal
+    - NOTE: consider setting `"terminal.integrated.enablePersistentSessions": false` so
+    so that the created terminals are removed at end of a session and this feature
+    working properly for the next session.
+- **Run `python` code interactively on IPython terminal**
   - E.g., run a file, selection(s) of code, code section, run to line, run from line, ...
-- Settings for code custom sectioning and execution
+- **Settings for code custom sectioning and execution**
   - Support multiple code section tags (e.g., `# %%`, `// ==`, or regular expression)
   - Code section tag assocation option to a list of file extensions (e.g., `.py, .ts, .md`)
   - `%run` arguments (e.g., `-t` print timing info when running a `script.py`)
   - Command line argument equivalent to `sys.argv` of `python foo.py argv`
-- Editor visualization of code section blocks (issue #25)
+- **Editor visualization of code section blocks (issue #25)**
   - Horizontal line divider and bolder text indicating each section starting line
-- Code section navigation and execution (issue #30)
+- **Code section navigation and execution (issue #30)**
   - A view in the primary sidebar providing section heading layout of associated files
   - Use `cltr+shift+i b` to open `Code Section Navigator`
   - Click on a heading focus the active editor to the section
@@ -36,24 +34,57 @@ Key features tagged with `IPython`:
 See `ipython: Feature Contribution` tab in VSCode Extension (Ctrl + Shift + X)
 panel for latest features and details.
 
+If you find the extension useful, it would be awesome if you can leave a comment
+and/or a suggestion on GitHub!!
+
+- What feature you like and use the most?
+- What other feature(s) you would like to have?
+
 ![feature X](md_img/vscode-ipython-v2023x.png)
 
 ## Requirements
 
-`python.exe` with `ipython` package installed (recommend using virtual
- environment such as `virtualenv`). Here are some info:
+`python.exe` with `ipython.exe` package installed (recommend using virtual
+environment such as `virtualenv, venv`). Here are some info:
 
 - Install `python` from [python.org](https://www.python.org/downloads/)
-- Create a virtual environment. See [guides](https://packaging.python.org/en/latest/guides/installing-using-pip-and-virtual-environments/).
-- Activate your virtual environment
+  - Create a virtual environment. See [install guides](https://packaging.python.org/en/latest/guides/installing-using-pip-and-virtual-environments/).
+  - Activate your virtual environment
 - Install `ipython`. See [ipython.org install guide](https://ipython.org/install.html).
-- Should be good to go when your VSCode terminal with the activated virtual environment can execute `ipython --version` to check for the IPython version number
+  - Should be good to go when your VSCode terminal with the activated virtual environment can execute `ipython --version` which echos the IPython version number
+
+More on vscode handling of `python` virtual environment can be found in [vscode python documentation](https://code.visualstudio.com/docs/python/environments)
 
 [Microsoft Python Extension](https://marketplace.visualstudio.com/items?itemName=ms-python.python)
 
 - This should automatically installed with when this extension is installed
 
-**Strongly recommend setting `Git Bash` as default terminal on Window to properly launch an IPython terminal.**
+## Settings
+
+Here are some recommended VSCode settings (`settings.json`) to get started:
+
+- Open command pallet (`ctrl+shift+p`)
+- Type in `Open User Settings (JSON)` and `Enter` to open your user `settings.json`
+- Merge the following settings with your current settings
+
+```jsonc
+{
+  // On Window, strongly recommend using Git Bash as default to launch IPython terminal
+  // On Linux, most terminal type should work
+  "terminal.integrated.defaultProfile.windows": "Git Bash",
+
+  // IPython terminal is non-recoverable and cannot persists between sessions.
+  // These settings tells vscode to stop attempting and fail to recover the
+  // last session terminals.
+  "terminal.integrated.persistentSessionReviveProcess": "never",
+  "terminal.integrated.enablePersistentSessions": false
+}
+```
+
+Dependent on your project, you might:
+
+- Customize [`PYTHONPATH`](https://code.visualstudio.com/docs/python/environments#_use-of-the-pythonpath-variable)
+- Customize [settings specific context such as language](https://code.visualstudio.com/docs/getstarted/settings#_language-specific-editor-settings)
 
 ## Release Notes
 
@@ -64,6 +95,7 @@ panel for latest features and details.
   - Added dedicated terminal feature (issue #33)
   - Fixed a bug with `IPython` tag in terminal name sometime fails to change
   causing failure in identifying `IPython` enabled terminal
+- Updated this README.md with more introductory info
 - Other general fixes and minor changes
 
 ### 2023.9.x
