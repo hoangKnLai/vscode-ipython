@@ -77,8 +77,69 @@ export function getSectionPattern() {
 }
 
 /**
- * Section containing cursor position in document.
- * @param cursorPosition - default to `editor.selection.start`
+ * Get the section heading position at or above a position.
+ * @param cursorPosition somewhere in a document with `sectionPositions`
+ * @param sectionPositions section heading positions in document
+ * @returns heading position above `cursorPosition` or start of file position
+ */
+export function getSectionStart(
+    cursorPosition: vscode.Position,
+    sectionPositions: vscode.Position[],
+) {
+    let startOfFile = new vscode.Position(0, 0);
+    let found = sectionPositions.slice().reverse().find(
+        (position) => {
+            return position.line <= cursorPosition.line;
+        },
+    );
+
+    let start = startOfFile;
+    if (found !== undefined) {
+        start = found;
+    }
+    return start;
+}
+
+
+/**
+ * Get the section ending position.
+ * @param start - a document section start position
+ * @param sectionPositions - top to bottom positions of section tag in document
+ * @param ignoreLevel - `end` position allows to be of a lower level than `start`
+ * @returns `end` position of the section or end of file
+ */
+export function getSectionEnd(
+    start: vscode.Position,
+    sectionPositions: vscode.Position[],
+    document: vscode.TextDocument,
+    ignoreLevel: boolean = false,
+) {
+    let lineCount = document.lineCount;
+    let endOfFile = document.lineAt(lineCount - 1).range.end;
+    if (start.line === endOfFile.line) {
+        return endOfFile;
+    }
+
+    let next = sectionPositions.find(
+        (position) => {
+            return (
+                position.isAfter(start)
+                && ((position.character <= start.character) || ignoreLevel)
+            );
+        }
+    );
+
+    let end = endOfFile;
+    if (next !== undefined) {
+        end = document.lineAt(next.line - 1).range.end;
+    }
+    return end;
+}
+
+
+/**
+ * Wrapper to get section enclosing a position in document.
+ * @param cursorPosition - a position in document
  * @param sectionPositions - top to bottom positions of section tag in document
  * @param ignoreLevel - `end` position allows to be of a lower level than `start`
  * @returns range with `start` and `end` of section
@@ -86,49 +147,30 @@ export function getSectionPattern() {
 export function getSectionAt(
     cursorPosition: vscode.Position,
     sectionPositions: vscode.Position[],
+    document: vscode.TextDocument,
     ignoreLevel: boolean = false,
 ) {
+
+    let lineCount = document.lineCount;
+    let endOfFile = document.lineAt(lineCount - 1).range.end;
+
     let startOfFile = new vscode.Position(0, 0);
-
-    let editor = vscode.window.activeTextEditor;
-    if (editor === undefined) {
-        return;
-    }
-    let lineCount = editor.document.lineCount;
-    let endOfFile = editor.document.lineAt(lineCount - 1).range.end;
-
     if (sectionPositions.length === 0) {
         return new vscode.Range(startOfFile, endOfFile);
     }
 
     // NOTE: Must find `start` before `end`
-    // -- Start
-    let start = startOfFile;
-    let found = sectionPositions.slice().reverse().find(
-        (position) => {
-            return position.line <= cursorPosition.line;
-        },
+    let start = getSectionStart(
+        cursorPosition,
+        sectionPositions,
     );
 
-    if (found !== undefined) {
-        start = found;
-    }
-
-    if (start.line === endOfFile.line) {
-        return new vscode.Range(start, endOfFile);
-    }
-
-    let end = sectionPositions.find(
-        (position) => {
-            return (
-                position.isAfter(start)
-                && (ignoreLevel || position.character <= start.character));
-        }
+    let end = getSectionEnd(
+        start,
+        sectionPositions,
+        document,
+        ignoreLevel,
     );
-
-    if (end === undefined) {
-        end = endOfFile;
-    }
     return new vscode.Range(start, end);
 }
 
@@ -226,8 +268,9 @@ export function removeSectionCache(fileName: string) {
  * @param document - a text file.
  */
 export function updateSectionCache(document: vscode.TextDocument) {
-    let matchExt = document.fileName.search(util.FILE_EXT);
-    if (matchExt === -1) {
+    // let match = document.fileName.search(util.LANGUAGE);
+    let match = document.languageId.search(util.LANGUAGE_EXPR);
+    if (match === -1) {
         return;
     }
     let positions = findSectionPosition(document);
@@ -257,7 +300,7 @@ export function moveCursorToSection(below: boolean) {
         return;
     }
 
-    let section = getSectionAt(cursor, sectionPositions, true);
+    let section = getSectionAt(cursor, sectionPositions, editor.document, true);
     if (section === undefined) {
         console.error('moveCursorToSection: Failed to getSectionAt');
         return;
@@ -273,7 +316,12 @@ export function moveCursorToSection(below: boolean) {
         if (cursor.line + deltaLine < 0) {
             return;
         }
-        section = getSectionAt(cursor.translate(deltaLine), sectionPositions, true);
+        section = getSectionAt(
+            cursor.translate(deltaLine),
+            sectionPositions,
+            editor.document,
+            true,
+        );
         if (section === undefined) {
             return;
         }
@@ -498,7 +546,7 @@ export class SectionTreeProvider implements vscode.TreeDataProvider<SectionItem>
             documents = editors.map(item => item.document);
         }
         for (let document of documents) {
-            let matchExt = document.fileName.search(util.FILE_EXT);
+            let matchExt = document.languageId.search(util.LANGUAGE_EXPR);
             if (matchExt === -1 || !matchSectionTag(document.getText())) {
                 continue;
             }
@@ -554,10 +602,6 @@ export class SectionTreeProvider implements vscode.TreeDataProvider<SectionItem>
      * @returns cached document node
      */
     public getDocumentNode(document: vscode.TextDocument) {
-        if (document === undefined) {
-            util.consoleLog('SectionItem: Found undefined');
-            return;
-        }
         return this.documentNodes.get(document.fileName);
     }
 
@@ -724,3 +768,61 @@ export function registerSectionNavigator(context: vscode.ExtensionContext) {
     );
 }
 
+
+// == CODE FOLDING
+/**
+ * Section folding.
+ */
+export class SectionRangeProvider implements vscode.FoldingRangeProvider {
+
+    provideFoldingRanges(
+        document: vscode.TextDocument,
+        context: vscode.FoldingContext,  // ok to ignore
+        token: vscode.CancellationToken,  // ok to ignore
+    ): vscode.ProviderResult<vscode.FoldingRange[]> {
+
+        let sections = SECTIONS.get(document.fileName);
+
+        if (sections === undefined) {
+            return;
+        }
+
+        let ranges: vscode.FoldingRange[] = [];
+        for (let start of sections) {
+            let end = getSectionEnd(start, sections, document, false);
+
+            if (start.line === end.line) {
+                continue;
+            }
+            // NOTE: folding resolution when there is a criss-crossed fold,
+            //  then the higher level fold absorb the lower fold
+            let range = new vscode.FoldingRange(
+                start.line,
+                end.line,
+                vscode.FoldingRangeKind.Region,
+            );
+            ranges.push(range);
+        }
+        return ranges;
+    }
+}
+
+/**
+ * Create the section navigator and register callbacks to the extension
+ * @param context of extension
+ */
+export function registerSectionFolding(context: vscode.ExtensionContext) {
+
+    for (let language of util.LANGUAGES) {
+        let selector: vscode.DocumentSelector = {
+            scheme: 'file',
+            language: language,
+        };
+
+        let provider = new SectionRangeProvider();
+        vscode.languages.registerFoldingRangeProvider(
+            selector,
+            provider,
+        );
+    }
+}

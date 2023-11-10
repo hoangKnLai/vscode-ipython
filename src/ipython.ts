@@ -581,7 +581,7 @@ export async function runDocumentSection(
         console.error('runDocumentSection: failed to retrieve cache');
         return;
     }
-    let section = navi.getSectionAt(cursor, sectionPositions, false);
+    let section = navi.getSectionAt(cursor, sectionPositions, document, false);
     if (section === undefined) {
         console.error('runDocumentSection: failed to find section');
         return;
