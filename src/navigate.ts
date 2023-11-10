@@ -4,12 +4,12 @@
 import * as path from 'path';
 import * as vscode from 'vscode';
 
-import * as cst from './constants';
+// import * as cst from './constants';
 import * as util from './utility';
 
 
 // === CACHE ===
-export let sectionCache = new Map<string, vscode.Position[]>();
+export let SECTIONS = new Map<string, vscode.Position[]>();
 
 
 // TODO: add foldable to section
@@ -194,7 +194,7 @@ export function decorateSection(editor: vscode.TextEditor) {
     let document = editor.document;
     let decors: vscode.DecorationOptions[] = [];
 
-    let positions = sectionCache.get(document.fileName);
+    let positions = SECTIONS.get(document.fileName);
 
     if (positions === undefined) {
         editor.setDecorations(sectionDecorType, decors);
@@ -218,7 +218,7 @@ export function decorateSection(editor: vscode.TextEditor) {
  * @param fileName - a vscode document.fileName
  */
 export function removeSectionCache(fileName: string) {
-    sectionCache.delete(fileName);
+    SECTIONS.delete(fileName);
 }
 
 /**
@@ -232,10 +232,10 @@ export function updateSectionCache(document: vscode.TextDocument) {
     }
     let positions = findSectionPosition(document);
     if (positions === undefined) {
-        sectionCache.delete(document.fileName);
+        SECTIONS.delete(document.fileName);
         return;
     }
-    sectionCache.set(document.fileName, positions);
+    SECTIONS.set(document.fileName, positions);
 }
 
 /**
@@ -250,7 +250,7 @@ export function moveCursorToSection(below: boolean) {
     }
 
     let cursor = editor.selection.start;
-    let sectionPositions = sectionCache.get(editor.document.fileName);
+    let sectionPositions = SECTIONS.get(editor.document.fileName);
 
     if (sectionPositions === undefined) {
         console.error('moveCursorToSection: bad sectionCache');
@@ -519,7 +519,7 @@ export class SectionTreeProvider implements vscode.TreeDataProvider<SectionItem>
     private cacheItem(documentNode: SectionItem): void {
         let document = documentNode.document;
 
-        let positions = sectionCache.get(document.fileName);
+        let positions = SECTIONS.get(document.fileName);
         if (positions === undefined) {
             return;
         }
@@ -605,3 +605,122 @@ export class SectionTreeProvider implements vscode.TreeDataProvider<SectionItem>
         this.refresh();
     }
 }
+
+
+/**
+ * Register navigator commands
+ * @param context of extension
+ */
+export function registerCommands(context: vscode.ExtensionContext) {
+    context.subscriptions.push(
+        vscode.commands.registerCommand(
+            "ipython.naviJumpToSection",
+            (item: SectionItem) => {
+                if (item) {
+                    item.jumpToSection();
+                }
+            },
+        ),
+    );
+
+    context.subscriptions.push(
+        vscode.commands.registerCommand(
+            "ipython.moveToSectionTagAbove",
+            () => moveCursorToSection(false)
+        )
+    );
+
+    context.subscriptions.push(
+        vscode.commands.registerCommand(
+            "ipython.moveToSectionTagBelow",
+            () => moveCursorToSection(true)
+        )
+    );
+}
+
+
+/**
+ * Create the section navigator and register callbacks to the extension
+ * @param context of extension
+ */
+export function registerSectionNavigator(context: vscode.ExtensionContext) {
+    for (let editor of vscode.window.visibleTextEditors) {
+        updateSectionDecor(editor);
+    }
+
+    let treeProvider = new SectionTreeProvider();
+    let treeOptions: vscode.TreeViewOptions<SectionItem> = {
+        treeDataProvider: treeProvider,
+        showCollapseAll: true,
+    };
+
+    // FUTURE: potential enhancement of tree drag/drop of sections
+    let treeView = vscode.window.createTreeView(
+        'ipyNavigator',
+        treeOptions,
+    );
+
+    context.subscriptions.push(
+        vscode.workspace.onDidChangeTextDocument(
+            (event) => {
+                if (event.contentChanges.length === 0) {
+                    treeProvider.expandDocument(event.document);
+                    return;
+                }
+                updateSectionCache(event.document);
+                if (vscode.window.activeTextEditor) {
+                    updateSectionDecor(vscode.window.activeTextEditor);
+                }
+                treeProvider.refreshDocument(event.document);
+            },
+            null,
+            context.subscriptions,
+        )
+    );
+
+    context.subscriptions.push(
+        vscode.workspace.onDidOpenTextDocument(
+            (document) => {
+                updateSectionCache(document);
+                treeProvider.refreshDocument(document);
+            }
+        )
+    );
+
+    context.subscriptions.push(
+        vscode.workspace.onDidCloseTextDocument(
+            (document) => {
+                removeSectionCache(document.fileName);
+                treeProvider.removeDocument(document);
+                treeProvider.refresh();
+            },
+        )
+    );
+
+    context.subscriptions.push(
+        vscode.window.onDidChangeActiveTextEditor(
+            (editor) => {
+                if (editor && editor.document !== undefined) {
+                    updateSectionDecor(editor);
+                    treeProvider.refreshDocument(editor.document);
+                    let docNode = treeProvider.getDocumentNode(editor.document);
+                    // NOTE: only change view when `visible` so to avoid hijacking
+                    //  current view
+                    if (docNode && treeView.visible) {
+                        treeView.reveal(
+                            docNode,
+                            {
+                                select: false,
+                                focus: false,  // NEVER set to true to not hijack!
+                                expand: true,
+                            }
+                        );
+                    }
+                }
+            },
+            null,
+            context.subscriptions,
+        )
+    );
+}
+

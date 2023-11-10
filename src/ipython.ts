@@ -15,7 +15,6 @@ let newLine = util.getNewLine();
 //FIXME: consider making configurable?!
 export const terminalName = "IPython";
 
-
 // === FUNCTIONS ===
 
 /**
@@ -70,11 +69,11 @@ export function formatCode(
     document: vscode.TextDocument,
     selection: vscode.Selection
 ) {
-    let code = "";
+    let code = '';
     document.save(); // force saving to properly get text
 
     if (selection.isSingleLine) {
-        let text: string = "";
+        let text: string = '';
         if (selection.isEmpty) {
             // Support run line at cursor when empty selection
             text = document.lineAt(selection.start.line).text;
@@ -93,7 +92,7 @@ export function formatCode(
     if (startIndex !== -1) {
         startLine += startIndex;
     } else {  // all lines and partial lines are whitespaces
-        code = "" + newLine;
+        code = '' + newLine;
         return code;
     }
 
@@ -117,22 +116,128 @@ export function formatCode(
     return code + newLine;
 }
 
+
+// == TERMINAL
+/**
+ * IPython wrapper on vscode.Terminal
+ */
+class IpyTerminal {
+    readonly terminal: vscode.Terminal;
+    readonly name: string;
+    readonly uid: string;
+
+    /**
+     *
+     * @param terminal a terminal with IPython console activated
+     * @param name of the terminal. Should be same as terminal.name if change
+     * name command successfully executed.
+     * @param uid is the unique identity of the terminal
+     */
+    constructor(
+        terminal:vscode.Terminal,
+        name: string,
+        uid: string
+    ) {
+        this.terminal = terminal;
+        this.name = name;
+        this.uid = uid;
+    }
+
+    /**
+     *
+     * @param ipyTerminal
+     * @returns True when uid are the same
+     */
+    public isEqual(ipyTerminal: IpyTerminal) {
+        return this.uid === ipyTerminal.uid;
+    }
+}
+
+
+/**
+ * Set of created IPython terminals
+ */
+// export let TERMINALS = new Set<vscode.Terminal>();
+export let TERMINALS = new Map<vscode.Terminal, IpyTerminal>();
+
+/**
+ * Current active IPython terminal
+ */
+export let ACTIVE_TERMINAL: vscode.Terminal | undefined;
+
+/**
+ * Python unique file identifier for use with terminal linkage
+ */
+export let FILE_UID = new Map<string, string>();
+
+
+/**
+ * Register terminal related callbacks.
+ * @param context of extension
+ */
+export function registerTerminalCallbacks(context: vscode.ExtensionContext) {
+    context.subscriptions.push(
+        vscode.window.onDidChangeActiveTerminal(
+            (terminal) => {
+                if (terminal && TERMINALS.has(terminal)) {
+                    ACTIVE_TERMINAL = terminal;
+                }
+            }
+        )
+    );
+
+    context.subscriptions.push(
+        vscode.window.onDidCloseTerminal(
+            (terminal) => {
+                if (terminal) {
+                    TERMINALS.delete(terminal);
+
+                    if (ACTIVE_TERMINAL === terminal) {
+                        ACTIVE_TERMINAL = undefined;
+                    }
+                }
+            }
+        )
+    );
+
+    // context.subscriptions.push(
+    //     vscode.workspace.onDidOpenTextDocument(
+    //         (document) => {
+    //             if (document.languageId === 'python') {
+    //                 if (!FILE_UID.has(document.fileName)) {
+    //                     FILE_UID.set(document.fileName, util.createUniqueId());
+    //                 }
+    //             }
+    //         }
+    //     )
+    // );
+
+    context.subscriptions.push(
+        vscode.workspace.onDidCloseTextDocument(
+            (document) => {
+                FILE_UID.delete(document.fileName);
+            },
+        )
+    );
+}
+
+
 /**
  * Create an ipython terminal.
  *
- * @returns terminal - an ipython terminal
+ * @param name of the terminal tab. Default 'IPython'.
+ * @param uid of the terminal. If undefined, use a random new unique identity.
+ * @returns an ipython terminal
  */
-export async function createTerminal() {
-    util.consoleLog("Creating IPython Terminal...");
+export async function createTerminal(
+    name: string = 'IPython',
+    uid: string | undefined = undefined,
+) {
+    util.consoleLog('Creating IPython Terminal...');
 
     // -- Create and Tag IPython Terminal
-    await vscode.commands.executeCommand("python.createTerminal");
+    await vscode.commands.executeCommand('python.createTerminal');
     util.wait(500); // msec, to help with a race condition of not naming terminal
-    await vscode.commands.executeCommand(
-        "workbench.action.terminal.renameWithArg",
-        { name: terminalName }
-    );
-    util.wait(500); // msec, to help with a race condition not naming terminal
 
     let terminal = vscode.window.activeTerminal;
     if (terminal === undefined) {
@@ -141,63 +246,88 @@ export async function createTerminal() {
     }
 
     // Launch options
-    let cmd = "ipython ";
-    let launchArgs = util.getConfig("LaunchArguments") as string;
+    let cmd = 'ipython ';
+    let launchArgs = util.getConfig('LaunchArguments') as string;
 
-    let args = launchArgs.split(" ");
+    let args = launchArgs.split(' ');
     for (let arg of args) {
         let s = arg.trim();
         if (s.length === 0) {
             continue;
         }
-        cmd += s + " ";
+        cmd += s + ' ';
     }
 
     // Startup options
     // REF: https://ipython.readthedocs.io/en/stable/config/intro.html#command-line-arguments
-    let cmds = util.getConfig("StartupCommands") as string[];
-    let startupCmd = "";
+    let cmds = util.getConfig('StartupCommands') as string[];
+    let startupCmd = '';
 
     for (let c of cmds) {
         let s = c.trim();
         if (s.length === 0) {
             continue;
         }
-        startupCmd += "--InteractiveShellApp.exec_lines=" + `'${s}' `;
+        startupCmd += '--InteractiveShellApp.exec_lines=' + `'${s}' `;
     }
     cmd += startupCmd;
 
     util.consoleLog(`Startup Command: ${startupCmd}`);
     await executeSingleLine(terminal, cmd);
-    await util.wait(500);  // may take awhile to startup ipython
-    return terminal;
+    await util.wait(1000);  // may take awhile to startup ipython
+
+    await vscode.commands.executeCommand(
+        'workbench.action.terminal.renameWithArg',
+        { name: name }
+    );
+
+    // TERMINALS.add(terminal);
+    if (uid === undefined) {
+        uid = util.createUniqueId();
+    }
+    let ipyTerminal = new IpyTerminal(terminal, name, uid);
+    TERMINALS.set(
+        terminal,
+        ipyTerminal,
+    );
+    ACTIVE_TERMINAL = terminal;
+
+    return ipyTerminal;
 }
 
 /**
- * Get a created ipython terminal.
- *
- * @returns terminal - an ipython terminal
+ * Get an existing ipython terminal.
+ * @param uid of the terminal to retrieve. If undefined, get recent active
+ * ipython terminal.
+ * @returns an ipython terminal.
  */
-export async function getTerminal() {
-    let terminal = vscode.window.activeTerminal;
-    if (terminal !== undefined && terminal.name === terminalName) {
-        return terminal;
-    }
-
-    // FIXME: cache ipython terminal and manage its creation / deletion
-    // Might already been created
-    terminal = vscode.window.terminals.find(
-        (aTerminal) => {
-            return aTerminal.name === terminalName;
+export async function getTerminal(uid: string | undefined = undefined) {
+    if (uid) {
+        let terminal: vscode.Terminal;
+        for (let ipyTerminal of TERMINALS.values()) {
+            if (ipyTerminal.uid === uid) {
+                terminal = ipyTerminal.terminal;
+                return terminal;
+            }
         }
-    );
-
-    // No valid terminal exists
-    if (terminal === undefined) {
-        terminal = await createTerminal();
     }
-    return terminal;
+
+    if (ACTIVE_TERMINAL) {
+        return ACTIVE_TERMINAL;
+    }
+
+    let ipyTerminal: IpyTerminal | undefined;
+    if (TERMINALS.size > 0) {
+        ipyTerminal = TERMINALS.values().next().value as IpyTerminal;
+    }
+
+    let activeTerminal = vscode.window.activeTerminal;
+    if (activeTerminal && TERMINALS.has(activeTerminal)) {
+        return activeTerminal;
+    }
 }
+
+// == CODE EXECUTION
 
 /**
  * Execute a block of code.
@@ -222,7 +352,7 @@ export async function executeCodeBlock(
     } else {  // assume %load
         nExec = 2;
     }
-    terminal.sendText(command, false); // false: no append `newline`
+    terminal.sendText(command, false);  // false: no append `newline`
     await execute(terminal, nExec);
 }
 
@@ -291,33 +421,56 @@ async function execute(
  */
 export async function runFile(
     document: vscode.TextDocument | undefined,
+    isNewDedicatedTerminal: boolean = false,
     isWithArgs: boolean = false,
     isWithCli: boolean = false,
 ) {
     if (document === undefined) {
         let editor = getPythonEditor();
         if (editor === undefined) {
-            console.error('runFile: Failed to get a python editor');
+            console.error('runFile: failed to get a python editor');
             return;
         }
         await editor.document.save();
         document = editor.document;
     }
+    let terminal: vscode.Terminal | undefined = undefined;
+    let uid = FILE_UID.get(document.fileName);
+    if (isNewDedicatedTerminal) {
+        let uri = vscode.Uri.file(document.fileName);
+        let relPath = vscode.workspace.asRelativePath(uri);
+        let basename = path.basename(relPath);
+        let addon = relPath.replace(basename, '');
+        addon = (addon.length > 0)? (' ' + addon):addon;
+        let name = basename + addon;
+        let ipyTerminal = await createTerminal(name, uid);
+        if (ipyTerminal) {
+            FILE_UID.set(document.fileName, ipyTerminal.uid);
+            terminal = ipyTerminal.terminal;
+        }
+    } else {
+        terminal = await getTerminal(uid);
+        if (terminal === undefined) {
+            let ipyTerminal = await createTerminal();
+            if (ipyTerminal) {
+                terminal = ipyTerminal.terminal;
+            }
+        }
+    }
 
-    let terminal = await getTerminal();
     if (terminal === undefined) {
-        console.error('runFile: Failed to get a Terminal');
+        console.error('runFile: failed to get a Terminal');
         return;
     }
 
     let file = document.fileName;
     let cmd = `"${file}"`;
     if (isWithCli) {
-        let args = util.getConfig("CommandLineArguments") as string;
+        let args = util.getConfig('CommandLineArguments') as string;
         cmd = cmd + ` ${args}`;
     }
     if (isWithArgs) {
-        let args = util.getConfig("RunArguments") as string;
+        let args = util.getConfig('RunArguments') as string;
         cmd = `${args} ` + cmd;
     }
     cmd = `%run ` + cmd;
@@ -331,15 +484,21 @@ export async function runFile(
  * @returns Promise - is ran in terminal
  */
 export async function runSelections() {
-    util.consoleLog("IPython run selection...");
+    util.consoleLog('IPython run selection...');
     let editor = getPythonEditor();
     if (editor === undefined) {
-        console.error('runFile: Failed to get an editor');
+        console.error('runFile: failed to get an editor');
         return;
     }
     let terminal = await getTerminal();
     if (terminal === undefined) {
-        console.error('runFile: Failed to get a Terminal');
+        let ipyTerminal = await createTerminal();
+        if (ipyTerminal) {
+            terminal = ipyTerminal.terminal;
+        }
+    }
+    if (terminal === undefined) {
+        console.error('runFile: failed to get a Terminal');
         return;
     }
 
@@ -369,7 +528,7 @@ export async function runSelections() {
  * @returns Promise - executed in terminal
  */
 export async function runLine() {
-    util.consoleLog("IPython run a line...");
+    util.consoleLog('IPython run a line...');
     let editor = getPythonEditor();
     if (editor === undefined) {
         console.error('runFile: Failed to get an editor');
@@ -383,12 +542,18 @@ export async function runLine() {
 
     let terminal = await getTerminal();
     if (terminal === undefined) {
-        console.error('runFile: Failed to get a Terminal');
+        let ipyTerminal = await createTerminal();
+        if (ipyTerminal) {
+            terminal = ipyTerminal.terminal;
+        }
+    }
+    if (terminal === undefined) {
+        console.error('runFile: failed to get a Terminal');
         return;
     }
 
     let cmd = formatCode(editor.document, editor.selection);
-    if (cmd !== "") {
+    if (cmd !== '') {
         util.consoleLog(`IPython Run Line :${cmd}`);
         await executeSingleLine(terminal, cmd);
     }
@@ -397,27 +562,21 @@ export async function runLine() {
     navi.moveAndRevealCursor(editor, line);
 }
 
-// /**
-//  * Run current section of python code in an ipython terminal.
-//  *
-//  * @param isNext - move cursor to next section if any
-//  * @returns Promise - is ran in terminal
-//  */
 
 /**
- *
+ * Run current section of python code in an ipython terminal.
  * @param document a python text document
  * @param cursor a cursor position in document
  * @param toEnd inclusively from top to end of section or from start of section
  * to end of file. If undefined, run section at cursor.
- * @returns document section range
+ * @returns code section that was ran
  */
 export async function runDocumentSection(
     document: vscode.TextDocument,
     cursor: vscode.Position,
     toEnd: boolean | undefined = undefined,
 ) {
-    let sectionPositions = navi.sectionCache.get(document.fileName);
+    let sectionPositions = navi.SECTIONS.get(document.fileName);
     if (sectionPositions === undefined) {
         console.error('runDocumentSection: failed to retrieve cache');
         return;
@@ -470,6 +629,12 @@ export async function runDocumentSection(
     let code = formatCode(document, selection);
     if (code !== '') {
         let terminal = await getTerminal();
+        if (terminal === undefined) {
+            let ipyTerminal = await createTerminal();
+            if (ipyTerminal) {
+                terminal = ipyTerminal.terminal;
+            }
+        }
         if (terminal) {
             await executeCodeBlock(terminal, code, identity);
         }
@@ -535,10 +700,127 @@ export async function runCursor(toEnd: boolean) {
     let identity = `# ${name} Line ${start}:${end}`;
 
     let code = formatCode(editor.document, selection);
-    if (code !== "") {
+    if (code !== '') {
         let terminal = await getTerminal();
+        if (terminal === undefined) {
+            let ipyTerminal = await createTerminal();
+            if (ipyTerminal) {
+                terminal = ipyTerminal.terminal;
+            }
+        }
         if (terminal) {
             await executeCodeBlock(terminal, code, identity);
         }
     }
 }
+
+
+/**
+ * Register commands
+ * @param context of extension
+ */
+export function registerCommands(context: vscode.ExtensionContext) {
+    context.subscriptions.push(
+        vscode.commands.registerCommand(
+            "ipython.createTerminal",
+            createTerminal,
+        )
+    );
+
+    context.subscriptions.push(
+        vscode.commands.registerCommand(
+            "ipython.runFile",
+            runFile,
+        )
+    );
+
+    context.subscriptions.push(
+        vscode.commands.registerCommand(
+            "ipython.runFileInDedicatedTerminal",
+            () => runFile(undefined, true),
+        )
+    );
+
+    context.subscriptions.push(
+        vscode.commands.registerCommand(
+            "ipython.runFileWithArgs",
+            () => runFile(undefined, false, true, false),
+        )
+    );
+    context.subscriptions.push(
+        vscode.commands.registerCommand(
+            "ipython.runFileWithCli",
+            () => runFile(undefined, false, true),
+        )
+    );
+    context.subscriptions.push(
+        vscode.commands.registerCommand(
+            "ipython.runFileWithArgsCli",
+            () => runFile(undefined, false, true, true),
+        )
+    );
+    context.subscriptions.push(
+        vscode.commands.registerCommand(
+            "ipython.runLineAndAdvance",
+            runLine,
+        )
+    );
+    context.subscriptions.push(
+        vscode.commands.registerCommand(
+            "ipython.runSelections",
+            runSelections
+        )
+    );
+    context.subscriptions.push(
+        vscode.commands.registerCommand(
+            "ipython.runSection",
+            runSection,
+        )
+    );
+
+    context.subscriptions.push(
+        vscode.commands.registerCommand(
+            "ipython.runSectionAndMoveToNext",
+             () => runSection(true),
+        )
+    );
+    context.subscriptions.push(
+        vscode.commands.registerCommand(
+            "ipython.runToLine",
+            () => runCursor(false),
+        )
+    );
+    context.subscriptions.push(
+        vscode.commands.registerCommand(
+            "ipython.runFromLine",
+            () => runCursor(true),
+        )
+    );
+    context.subscriptions.push(
+        vscode.commands.registerCommand(
+            "ipython.runToSection",
+            () => {
+                let editor = vscode.window.activeTextEditor;
+                if (editor) {
+                    let document = editor.document;
+                    let cursor = editor.selection.start;
+                    runDocumentSection(document, cursor, false);
+                }
+            },
+        )
+    );
+    context.subscriptions.push(
+        vscode.commands.registerCommand(
+            "ipython.runFromSection",
+            () => {
+                let editor = vscode.window.activeTextEditor;
+                if (editor) {
+                    let document = editor.document;
+                    let cursor = editor.selection.start;
+                    runDocumentSection(document, cursor, true);
+                }
+            },
+        )
+    );
+}
+
