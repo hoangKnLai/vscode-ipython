@@ -3,7 +3,7 @@
     "displayName": "ipython",
     "description": "IPython integration supporting direct interactive usage and commands.",
     "icon": "md_img/icon.png",
-    "version": "2023.10.1",
+    "version": "2023.10.2",
     "publisher": "HoangKimLai",
     "repository": {
         "type": "git",
@@ -216,8 +216,8 @@
             },
             {
                 "category": "IPython",
-                "command": "ipython.runFromLine",
-                "title": "Run From Start of Current Section to End of File"
+                "command": "ipython.runFromSection",
+                "title": "Run From Start of Section to End of File"
             }
         ],
         "keybindings": [
