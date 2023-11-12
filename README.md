@@ -30,6 +30,9 @@ Key features tagged with `IPython`:
   - Use `cltr+shift+i b` to open `Code Section Navigator`
   - Click on a heading focus the active editor to the section
   - Various execution buttons are provided for file and section code execution
+- ** Code section folding (issue #32)
+  - Folding sections as region. See [VSCode Folding Documentation](https://code.visualstudio.com/docs/editor/codebasics#_folding).
+  - Note that vscode resolves criss-cross folding by taking the higher level folding
 
 See `ipython: Feature Contribution` tab in VSCode Extension (Ctrl + Shift + X)
 panel for latest features and details.
@@ -87,6 +90,11 @@ Dependent on your project, you might:
 - Customize [settings specific context such as language](https://code.visualstudio.com/docs/getstarted/settings#_language-specific-editor-settings)
 
 ## Release Notes
+
+### 2023.11.x
+
+- Added section code folding
+- Fixed run section keybinding
 
 ### 2023.10.x
 

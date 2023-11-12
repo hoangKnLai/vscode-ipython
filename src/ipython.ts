@@ -659,12 +659,17 @@ export async function runSection(isNext: boolean) {
     let cursor = editor.selection.start;
     let section = await runDocumentSection(editor.document, cursor, undefined);
 
-    if (isNext) {
-        if (section === undefined) {
-            console.error('runSection: error finding section in document');
-        } else {
-            navi.moveAndRevealCursor(editor, section.end.line, section.end.character);
+    if (isNext && (section !== undefined)) {
+        let line = section.end.line + 1;
+        if (line >= editor.document.lineCount) {
+            line = editor.document.lineCount - 1;
         }
+
+        let char = editor.document.lineAt(line).firstNonWhitespaceCharacterIndex;
+
+        navi.moveAndRevealCursor(editor, line, char);
+    } else {
+        console.error('runSection: error finding next section in document');
     }
 }
 

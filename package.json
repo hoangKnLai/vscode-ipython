@@ -44,7 +44,7 @@
                         "javascript",
                         "markdown"
                     ],
-                    "markdownDescription": "Language navigator to operates on. See [VSCode language identifiers](https://code.visualstudio.com/docs/languages/identifiers)"
+                    "markdownDescription": "[Language identifier](https://code.visualstudio.com/docs/languages/identifiers) navigator allowed to operates on"
                 },
                 "ipython.SectionTag": {
                     "type": "array",
@@ -53,7 +53,7 @@
                         "// ==",
                         "/(^(#)#+)+/"
                     ],
-                    "markdownDescription": "A section is a line that starts with whitespaces and a tag. Regular expression can also be used (e.g., `(^(#)#+)+` for markdown 2nd level heading and lower) "
+                    "markdownDescription": "A tag or regular expression to identify line as start of a section. E.g., `# %%` for Jupyter style or `(^(#)#+)+` for markdown 2nd level heading and lower."
                 },
                 "ipython.workFolderBase": {
                     "type": "string",

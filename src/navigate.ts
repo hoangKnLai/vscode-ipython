@@ -307,7 +307,14 @@ export function moveCursorToSection(below: boolean) {
     }
 
     if (below) {
-        moveAndRevealCursor(editor, section.end.line, section.end.character);
+        let line = section.end.line + 1;
+        if (line >= editor.document.lineCount) {
+            line = editor.document.lineCount - 1;
+        }
+
+        let char = editor.document.lineAt(line).firstNonWhitespaceCharacterIndex;
+
+        moveAndRevealCursor(editor, line, char);
         return;
     }
 
