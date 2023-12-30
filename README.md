@@ -93,6 +93,7 @@ Dependent on your project, you might:
 
 ### 2023.11.x
 
+- Changed `ipython` command to be compatible with both `Window` and `Linux` (issue #44)
 - Added section code folding
 - Fixed run section keybinding
 

@@ -3,7 +3,7 @@
     "displayName": "ipython",
     "description": "IPython integration supporting direct interactive usage and commands.",
     "icon": "md_img/icon.png",
-    "version": "2023.11.1",
+    "version": "2023.11.2",
     "publisher": "HoangKimLai",
     "repository": {
         "type": "git",
