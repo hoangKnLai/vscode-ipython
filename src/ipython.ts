@@ -240,6 +240,7 @@ export async function createTerminal(
     util.wait(500); // msec, to help with a race condition of not naming terminal
 
     let terminal = vscode.window.activeTerminal;
+
     if (terminal === undefined) {
         console.error('createTerminal: failed to create new ipython terminal');
         return;
@@ -268,7 +269,7 @@ export async function createTerminal(
         if (s.length === 0) {
             continue;
         }
-        startupCmd += '--InteractiveShellApp.exec_lines=' + `'${s}' `;
+        startupCmd += '--InteractiveShellApp.exec_lines=' + `"${s}" `;
     }
     cmd += startupCmd;
 
@@ -281,7 +282,6 @@ export async function createTerminal(
         { name: name }
     );
 
-    // TERMINALS.add(terminal);
     if (uid === undefined) {
         uid = util.createUniqueId();
     }
