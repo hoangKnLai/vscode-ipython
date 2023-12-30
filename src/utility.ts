@@ -9,11 +9,12 @@ import { homedir } from 'os';
 import * as cst from './constants';
 
 
-// FIXME: as configuration grow, might be worth to create a config.ts
+// FIXME: move configuration related to config.ts
 export let config = vscode.workspace.getConfiguration('ipython');
-export let WORK_FOLDER:string = '';
+export let WORK_FOLDER: string = '';
 export let SECTION_TAG: RegExp = RegExp('');
-export let FILE_EXT: RegExp = RegExp('');
+export let LANGUAGE_EXPR: RegExp = RegExp('');
+export let LANGUAGES: string[] = [];
 
 // TODO: store temporary files for deletion when deactivated
 export let tempfiles = new Set<vscode.Uri>();
@@ -79,12 +80,20 @@ export function updateConfig() {
     SECTION_TAG = RegExp(pattern, 'gm');
 
     // -- File Extension Regular Expression
-    let extensions = config.get('navigatorFileExtension') as string[];
-    tags = extensions.map(
-        (ext) => `(${escapeRegex(ext)})$`  // end of path string
+    // let extensions = config.get('navigatorFileExtension') as string[];
+    // tags = extensions.map(
+    //     (ext) => `(${escapeRegex(ext)})$`  // end of path string
+    // );
+    // pattern = '(?:' + tags.join('|') + ')';
+    // FILE_EXT = RegExp(pattern);
+
+    // -- File Language IDs
+    LANGUAGES = config.get('navigatorLanguageId') as string[];
+    tags = LANGUAGES.map(
+        (str) => `(${escapeRegex(str)})`
     );
     pattern = '(?:' + tags.join('|') + ')';
-    FILE_EXT = RegExp(pattern);
+    LANGUAGE_EXPR = RegExp(pattern);
 }
 
 /**

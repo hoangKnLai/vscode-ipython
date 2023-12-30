@@ -29,6 +29,7 @@ export async function activate(context: vscode.ExtensionContext) {
     // === CALLBACKS ===
     util.registerConfigCallbacks(context);
     navi.registerSectionNavigator(context);
+    navi.registerSectionFolding(context);
     ipy.registerTerminalCallbacks(context);
 
     // === COMMANDS ===
@@ -38,7 +39,7 @@ export async function activate(context: vscode.ExtensionContext) {
     // === COMMANDS: navigation and ipython ===
     context.subscriptions.push(
         vscode.commands.registerCommand(
-            "ipython.naviRunToSection",
+            'ipython.naviRunToSection',
             (item: navi.SectionItem) => {
                 if (item === undefined) {
                     console.error('naviRunToSection: found undefined item');
@@ -52,7 +53,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
     context.subscriptions.push(
         vscode.commands.registerCommand(
-            "ipython.naviRunFromSection",
+            'ipython.naviRunFromSection',
             (item: navi.SectionItem) => {
                 if (item === undefined) {
                     console.error('naviRunFromSection: found undefined item');
@@ -66,7 +67,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
     context.subscriptions.push(
         vscode.commands.registerCommand(
-            "ipython.naviRunSection",
+            'ipython.naviRunSection',
             (item: navi.SectionItem) => {
                 if (item === undefined) {
                     console.error('naviRunSection: Found undefined item');
@@ -80,7 +81,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
     context.subscriptions.push(
         vscode.commands.registerCommand(
-            "ipython.naviRunFile",
+            'ipython.naviRunFile',
             (item: navi.SectionItem) => {
                 if (item && item.document && item.document.languageId === 'python') {
                     ipy.runFile(item.document);
