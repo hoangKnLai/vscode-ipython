@@ -63,7 +63,7 @@
                 "ipython.LaunchArguments": {
                     "type": "string",
                     "default": "--no-autoindent",
-                    "markdownDescription": "Input command to `ipython` call on launch (e.g. `--matplotlib=qt5`). Strongly recommend using `--no-autoindent` for proper code loading to IPython."
+                    "markdownDescription": "Input command to `ipython` call on launch (e.g. `--matplotlib=qt5`)"
                 },
                 "ipython.StartupCommands": {
                     "type": "array",
@@ -85,17 +85,17 @@
                         "%run -i"
                     ],
                     "default": "%run -i",
-                    "markdownDescription": "Write code block (section, multi-selections) to `{workFolder}/code.py`, then execute using `%run -i or %load code.py`. NOTE: open `code.py` to see exact code executed."
+                    "markdownDescription": "(DEPRECATED to just `%run -i` in a future release) Write code block (section, multi-selections) to `{workFolder}/code.py`, then execute using `%run -i or %load code.py`. NOTE: open `code.py` to see exact code executed."
                 },
                 "ipython.RunArguments": {
                     "type": "string",
                     "default": "-t",
-                    "markdownDescription": "Run argument list equivalent to `%run run-args file.py`. More detail in [`%run` documentation](https://ipython.readthedocs.io/en/stable/interactive/magics.html#magic-run)"
+                    "markdownDescription": "Run arguments `run-args` equivalent to `%run run-args file.py`. More detail in [`%run` documentation](https://ipython.readthedocs.io/en/stable/interactive/magics.html#magic-run)"
                 },
                 "ipython.CommandLineArguments": {
                     "type": "string",
                     "default": "",
-                    "markdownDescription": "Command line input (CLI) argument list equivalent to `python file.py cli-args`"
+                    "markdownDescription": "Command line input arguments `cli-args` equivalent to `python file.py cli-args`"
                 }
             }
         },

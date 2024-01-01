@@ -269,6 +269,7 @@ export async function createTerminal(
         if (s.length === 0) {
             continue;
         }
+        // NOTE: "${s}" instead of single quote enable cross platform support
         startupCmd += '--InteractiveShellApp.exec_lines=' + `"${s}" `;
     }
     cmd += startupCmd;
