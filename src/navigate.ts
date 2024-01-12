@@ -15,6 +15,9 @@ import * as util from './utility';
  * @value starting position of each section marker
  */
 export let SECTION_MARKER_POSITIONS = new Map<string, vscode.Position[]>();
+// export let FILE_SECTIONS = new Map<string, Map<vscode.Position, Section>>();
+
+// let position = new vscode.Position(0,0);
 
 
 // === CONSTANTS ===
@@ -93,7 +96,8 @@ export function getSectionStart(
     let startOfFile = new vscode.Position(0, 0);
     let found = sectionPositions.slice().reverse().find(
         (position) => {
-            return position.line <= cursorPosition.line;
+            return position.isBeforeOrEqual(cursorPosition);
+            // return position.line <= cursorPosition.line;
         },
     );
 
@@ -163,6 +167,14 @@ export function getSectionAt(
         return new vscode.Range(startOfFile, endOfFile);
     }
 
+    if (
+        cursorPosition.isEqual(endOfFile)
+        && !cursorPosition.isEqual(startOfFile)
+    ) {
+        let lineDelta = Math.max(0, cursorPosition.line - 1);
+        cursorPosition = cursorPosition.translate(lineDelta);
+    }
+
     // NOTE: Must find `start` before `end`
     let start = getSectionStart(
         cursorPosition,
@@ -181,12 +193,12 @@ export function getSectionAt(
 
 // === SECTION ===
 
-export class Section{
+export class SectionMarker{
     // Attributes
-    range: vscode.Range;
-    name: string;
-    level: number;
-    document: vscode.TextDocument;
+    readonly name: string;
+    readonly level: number;
+    readonly document: vscode.TextDocument;
+    readonly position: vscode.Position;
 
     // Constructor
     constructor(
@@ -194,26 +206,28 @@ export class Section{
         document: vscode.TextDocument,
     ) {
         this.document = document;
-        this.range = this.calcRange(position);
-        this.name = getSectionHeader(this.range.start, this.document);
-        this.level = this.calcLevel();
+        this.position = position;
+        this.level = this.calcLevel(position);
+        this.name = getSectionHeader(position, document);
     }
 
     // Methods
-    calcRange(position) {
-        // TODO
-        let start = new vscode.Position(0, 0);
-        let end = new vscode.Position(0, 0);
-        return new vscode.Range(start, end);
-    }
-
-    calcLevel() {
+    calcLevel(position: vscode.Position) {
         let tabSize = util.getTabSize();
 
         // Assume section indented with whitespaces
-        return Math.floor(this.range.start.character / tabSize);
+        return Math.floor(position.character / tabSize);
     }
 }
+
+
+export function makeSections(
+    positions: vscode.Position[],
+    document: vscode.TextDocument,
+){
+
+}
+
 
 /**
  * Find section tag position in current active text editor.
@@ -306,7 +320,6 @@ export function removeSectionCache(fileName: string) {
  * @param document - a text file.
  */
 export function updateSectionCache(document: vscode.TextDocument) {
-    // let match = document.fileName.search(util.LANGUAGE);
     let match = document.languageId.search(util.LANGUAGE_EXPR);
     if (match === -1) {
         return;
@@ -412,7 +425,7 @@ export function getSectionHeader(
     let header = '';
     if (matchSectionTag(text)) {
         header = text.replace(pattern, '').trim();
-    } else {
+    } else {  // default to file first line
         header = (startOfFile.isEqual(sectionStart)) ? '(First Section)' : '(Unknown)';
     }
     return header;
