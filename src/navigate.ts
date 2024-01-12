@@ -9,11 +9,13 @@ import * as util from './utility';
 
 
 // === CACHE ===
-export let SECTIONS = new Map<string, vscode.Position[]>();
+/**
+ * Section marker locations in a file
+ * @key document.fileName
+ * @value starting position of each section marker
+ */
+export let SECTION_MARKER_POSITIONS = new Map<string, vscode.Position[]>();
 
-
-// TODO: add foldable to section
-// vscode.FoldingRangeKind.Region
 
 // === CONSTANTS ===
 // TODO: make some configurable?
@@ -25,6 +27,8 @@ const sectionDecorType = vscode.window.createTextEditorDecorationType({
     borderColor: 'inherit',  // 'LightSlateGray',
     fontWeight: 'bolder',
     fontStyle: 'italic',
+
+    // TODO: section numbering
 });
 
 
@@ -177,6 +181,40 @@ export function getSectionAt(
 
 // === SECTION ===
 
+export class Section{
+    // Attributes
+    range: vscode.Range;
+    name: string;
+    level: number;
+    document: vscode.TextDocument;
+
+    // Constructor
+    constructor(
+        position: vscode.Position,
+        document: vscode.TextDocument,
+    ) {
+        this.document = document;
+        this.range = this.calcRange(position);
+        this.name = getSectionHeader(this.range.start, this.document);
+        this.level = this.calcLevel();
+    }
+
+    // Methods
+    calcRange(position) {
+        // TODO
+        let start = new vscode.Position(0, 0);
+        let end = new vscode.Position(0, 0);
+        return new vscode.Range(start, end);
+    }
+
+    calcLevel() {
+        let tabSize = util.getTabSize();
+
+        // Assume section indented with whitespaces
+        return Math.floor(this.range.start.character / tabSize);
+    }
+}
+
 /**
  * Find section tag position in current active text editor.
  *
@@ -236,7 +274,7 @@ export function decorateSection(editor: vscode.TextEditor) {
     let document = editor.document;
     let decors: vscode.DecorationOptions[] = [];
 
-    let positions = SECTIONS.get(document.fileName);
+    let positions = SECTION_MARKER_POSITIONS.get(document.fileName);
 
     if (positions === undefined) {
         editor.setDecorations(sectionDecorType, decors);
@@ -260,7 +298,7 @@ export function decorateSection(editor: vscode.TextEditor) {
  * @param fileName - a vscode document.fileName
  */
 export function removeSectionCache(fileName: string) {
-    SECTIONS.delete(fileName);
+    SECTION_MARKER_POSITIONS.delete(fileName);
 }
 
 /**
@@ -275,10 +313,10 @@ export function updateSectionCache(document: vscode.TextDocument) {
     }
     let positions = findSectionPosition(document);
     if (positions === undefined) {
-        SECTIONS.delete(document.fileName);
+        SECTION_MARKER_POSITIONS.delete(document.fileName);
         return;
     }
-    SECTIONS.set(document.fileName, positions);
+    SECTION_MARKER_POSITIONS.set(document.fileName, positions);
 }
 
 /**
@@ -293,7 +331,7 @@ export function moveCursorToSection(below: boolean) {
     }
 
     let cursor = editor.selection.start;
-    let sectionPositions = SECTIONS.get(editor.document.fileName);
+    let sectionPositions = SECTION_MARKER_POSITIONS.get(editor.document.fileName);
 
     if (sectionPositions === undefined) {
         console.error('moveCursorToSection: bad sectionCache');
@@ -386,7 +424,7 @@ export function getSectionHeader(
  * @document the text file section is found in
  * @position the starting position of a section in document
  */
-export class SectionItem extends vscode.TreeItem {
+export class SectionTreeItem extends vscode.TreeItem {
     constructor(
         public document: vscode.TextDocument,
         public collapsibleState: vscode.TreeItemCollapsibleState,
@@ -485,23 +523,23 @@ export class SectionItem extends vscode.TreeItem {
 /**
  * Section TreeProvider for text files in editors
  */
-export class SectionTreeProvider implements vscode.TreeDataProvider<SectionItem> {
-    private _onDidChangeTreeDataEmitter: vscode.EventEmitter<SectionItem | undefined | void> = new vscode.EventEmitter<SectionItem | undefined | void>();
-    readonly onDidChangeTreeData: vscode.Event<SectionItem | undefined | void> = this._onDidChangeTreeDataEmitter.event;
+export class SectionTreeProvider implements vscode.TreeDataProvider<SectionTreeItem> {
+    private _onDidChangeTreeDataEmitter: vscode.EventEmitter<SectionTreeItem | undefined | void> = new vscode.EventEmitter<SectionTreeItem | undefined | void>();
+    readonly onDidChangeTreeData: vscode.Event<SectionTreeItem | undefined | void> = this._onDidChangeTreeDataEmitter.event;
 
-    private documentNodes = new Map<string, SectionItem>;
-    private itemCache = new Map<string, SectionItem[]>;
+    private documentNodes = new Map<string, SectionTreeItem>;
+    private itemCache = new Map<string, SectionTreeItem[]>;
 
     constructor() {
         this.cacheSection(undefined);
     }
 
     // == Abstraction ==
-    getTreeItem(element: SectionItem): vscode.TreeItem | Thenable<vscode.TreeItem> {
+    getTreeItem(element: SectionTreeItem): vscode.TreeItem | Thenable<vscode.TreeItem> {
         return element;
     }
 
-    getParent(element: SectionItem): vscode.ProviderResult<SectionItem> {
+    getParent(element: SectionTreeItem): vscode.ProviderResult<SectionTreeItem> {
         if (element.position === undefined) {  // it is a document node
             return undefined;
         }
@@ -509,7 +547,7 @@ export class SectionTreeProvider implements vscode.TreeDataProvider<SectionItem>
         return this.documentNodes.get(document.fileName);
     }
 
-    getChildren(element?: SectionItem | undefined): vscode.ProviderResult<SectionItem[]> {
+    getChildren(element?: SectionTreeItem | undefined): vscode.ProviderResult<SectionTreeItem[]> {
         if (element === undefined) {
             let nodes = Array.from(this.documentNodes.values());
             return Promise.resolve(nodes);
@@ -536,7 +574,7 @@ export class SectionTreeProvider implements vscode.TreeDataProvider<SectionItem>
         if (document === undefined) {
             util.consoleLog('naviRunSection: Found undefined item');
         }
-        return new SectionItem(
+        return new SectionTreeItem(
             document,
             vscode.TreeItemCollapsibleState.Expanded,
             undefined,
@@ -571,21 +609,21 @@ export class SectionTreeProvider implements vscode.TreeDataProvider<SectionItem>
      * Cache the section nodes of a document.
      * @param documentNode a node representing a document with sections
      */
-    private cacheItem(documentNode: SectionItem): void {
+    private cacheItem(documentNode: SectionTreeItem): void {
         let document = documentNode.document;
 
-        let positions = SECTIONS.get(document.fileName);
+        let positions = SECTION_MARKER_POSITIONS.get(document.fileName);
         if (positions === undefined) {
             return;
         }
         let endOfFile = document.lineAt(document.lineCount - 1).range.end;
-        let sections: SectionItem[] = [];
+        let sections: SectionTreeItem[] = [];
         for (let position of positions) {
             if (position.isEqual(endOfFile)) {
                 continue;
             }
             sections.push(
-                new SectionItem(
+                new SectionTreeItem(
                     document,
                     vscode.TreeItemCollapsibleState.None,
                     position,
@@ -666,7 +704,7 @@ export function registerCommands(context: vscode.ExtensionContext) {
     context.subscriptions.push(
         vscode.commands.registerCommand(
             "ipython.naviJumpToSection",
-            (item: SectionItem) => {
+            (item: SectionTreeItem) => {
                 if (item) {
                     item.jumpToSection();
                 }
@@ -700,7 +738,7 @@ export function registerSectionNavigator(context: vscode.ExtensionContext) {
     }
 
     let treeProvider = new SectionTreeProvider();
-    let treeOptions: vscode.TreeViewOptions<SectionItem> = {
+    let treeOptions: vscode.TreeViewOptions<SectionTreeItem> = {
         treeDataProvider: treeProvider,
         showCollapseAll: true,
     };
@@ -788,7 +826,7 @@ export class SectionRangeProvider implements vscode.FoldingRangeProvider {
         token: vscode.CancellationToken,  // ok to ignore
     ): vscode.ProviderResult<vscode.FoldingRange[]> {
 
-        let sections = SECTIONS.get(document.fileName);
+        let sections = SECTION_MARKER_POSITIONS.get(document.fileName);
 
         if (sections === undefined) {
             return;

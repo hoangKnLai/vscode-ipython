@@ -40,7 +40,7 @@ export async function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(
         vscode.commands.registerCommand(
             'ipython.naviRunToSection',
-            (item: navi.SectionItem) => {
+            (item: navi.SectionTreeItem) => {
                 if (item === undefined) {
                     console.error('naviRunToSection: found undefined item');
                 }
@@ -54,7 +54,7 @@ export async function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(
         vscode.commands.registerCommand(
             'ipython.naviRunFromSection',
-            (item: navi.SectionItem) => {
+            (item: navi.SectionTreeItem) => {
                 if (item === undefined) {
                     console.error('naviRunFromSection: found undefined item');
                 }
@@ -68,7 +68,7 @@ export async function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(
         vscode.commands.registerCommand(
             'ipython.naviRunSection',
-            (item: navi.SectionItem) => {
+            (item: navi.SectionTreeItem) => {
                 if (item === undefined) {
                     console.error('naviRunSection: Found undefined item');
                 }
@@ -82,7 +82,7 @@ export async function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(
         vscode.commands.registerCommand(
             'ipython.naviRunFile',
-            (item: navi.SectionItem) => {
+            (item: navi.SectionTreeItem) => {
                 if (item && item.document && item.document.languageId === 'python') {
                     ipy.runFile(item.document);
                 }
