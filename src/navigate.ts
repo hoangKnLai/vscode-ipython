@@ -193,26 +193,27 @@ export function getSectionAt(
 
 // === SECTION ===
 
-export class SectionMarker{
+export class Section{
     // Attributes
     readonly name: string;
     readonly level: number;
-    readonly document: vscode.TextDocument;
-    readonly position: vscode.Position;
+    readonly range: vscode.Range;
+    label: number = -1;
+    parent: Section | undefined = undefined;
+    children: Section[] = [];
 
     // Constructor
     constructor(
-        position: vscode.Position,
-        document: vscode.TextDocument,
+        range: vscode.Range,
+        name: string,
     ) {
-        this.document = document;
-        this.position = position;
-        this.level = this.calcLevel(position);
-        this.name = getSectionHeader(position, document);
+        this.range = range;
+        this.name = name;
+        this.level = this.calcTab(range.start);
     }
 
     // Methods
-    calcLevel(position: vscode.Position) {
+    calcTab(position: vscode.Position) {
         let tabSize = util.getTabSize();
 
         // Assume section indented with whitespaces
@@ -224,8 +225,49 @@ export class SectionMarker{
 export function makeSections(
     positions: vscode.Position[],
     document: vscode.TextDocument,
-){
+) {
+    let sections: Section[] = [];
+    for (let start of positions) {
+        let range = getSectionAt(start, positions, document, false);
+        let name = getSectionHeader(start, document);
+        let section = new Section(range, name);
+        sections.push(section);
+    }
 
+    // Formulate a tree of sections
+    let root: Section[] = [];
+    for (let index of sections.keys()) {
+        findSectionParent(sections, index, root);
+    }
+    return sections;
+}
+
+
+export function findSectionParent(
+    sections: Section[],
+    index: number,
+    root: Section[],
+) {
+    let section = sections[index];
+
+    if (section.level === 0) {
+        section.parent = undefined;  // parent is root
+        root.push(section);
+        return;
+    }
+
+    for (let ii = index - 1; ii >= 0; ii--) {
+        let parent = sections[ii];
+        if (sections[ii].level < section.level) {
+            section.parent = sections[ii];
+            parent.children?.push(section);
+            break;
+        } else if(sections[ii].level === section.level) {
+            section.parent = sections[ii].parent;
+            parent.children?.push(section);
+            break;
+        }
+    }
 }
 
 
