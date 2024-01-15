@@ -15,10 +15,10 @@ import * as util from './utility';
  * @value starting position of each section marker
  */
 export let SECTION_MARKER_POSITIONS = new Map<string, vscode.Position[]>();
-export let FILE_SECTION_TREES = new Map<string, Section[]>();
 
-// let position = new vscode.Position(0,0);
-
+// FIXME: replace Section[] with SectionTree[]
+// export let FILE_SECTION_TREES = new Map<string, Section[]>();
+export let FILE_SECTION_TREES = new Map<string, SectionTree>();
 
 // === CONSTANTS ===
 // TODO: make some configurable?
@@ -175,7 +175,7 @@ export function getSectionAt(
         cursorPosition = cursorPosition.translate(lineDelta);
     }
 
-    // NOTE: Must find `start` before `end`
+    // NOTE: must find `start` before `end`
     let start = getSectionStart(
         cursorPosition,
         sectionPositions,
@@ -198,7 +198,7 @@ export class Section{
     readonly name: string;
     readonly level: number;
     readonly range: vscode.Range;
-    label: number = -1;
+    numeric: number[] = [];
     parent: Section | undefined = undefined;
     children: Section[] = [];
 
@@ -209,65 +209,184 @@ export class Section{
     ) {
         this.range = range;
         this.name = name;
-        this.level = this.calcTab(range.start);
+        this.level = this.calcLevel(range.start);
     }
 
-    // Methods
-    calcTab(position: vscode.Position) {
+    /**
+     *
+     * @param position containing a section marker
+     * @returns level of the section as number of tabs
+     */
+    calcLevel(position: vscode.Position) {
         let tabSize = util.getTabSize();
 
         // Assume section indented with whitespaces
         return Math.floor(position.character / tabSize);
     }
+
+    /**
+     * Update children list with current generation
+     * @param previous child in list
+     * @param current child
+     */
+    updateChild(previous: Section, current: Section){
+        let index = this.children.findIndex(
+            (child) => child.isEqual(previous)
+        );
+
+        if (index === -1) {
+            console.error('Section.updateChild: invalid `previous` child');
+            return;
+        }
+
+        this.children[index] = current;
+    }
+
+    /**
+     * @param section
+     * @returns `this` and `section` have same `.name` and occupies same area
+     * in document
+     */
+    isEqual(section: Section) {
+        let equal = (
+            this.range.isEqual(section.range)
+            && this.name === section.name
+        );
+        return equal;
+    }
+
 }
 
 
-export function makeSections(
-    positions: vscode.Position[],
-    document: vscode.TextDocument,
-) {
-    let sections: Section[] = [];
-    for (let start of positions) {
-        let range = getSectionAt(start, positions, document, false);
-        let name = getSectionHeader(start, document);
-        let section = new Section(range, name);
-        sections.push(section);
-    }
-    return sections;
-}
+/**
+ * Tree of sections in a document
+ */
+export class SectionTree {
+    /**
+     * Document with sections
+     */
+    readonly document: vscode.TextDocument;
 
+    /**
+     * Sections in order of found in documents
+     */
+    readonly sections: Section[] = [];
 
-export function makeSectionTree(sections: Section[]) {
-    let root: Section[] = [];
-    for (let index of sections.keys()) {
-        findSectionParent(sections, index, root);
-    }
-    return root;
-}
+    /**
+     * A tree structure of sections
+     */
+    readonly root: Section[] = [];
 
-export function findSectionParent(
-    sections: Section[],
-    index: number,
-    root: Section[],
-) {
-    let section = sections[index];
-
-    if (section.level === 0) {
-        section.parent = undefined;  // parent is root
-        root.push(section);
-        return;
+    /**
+     * @param document an open vscode.TextDocument
+     */
+    constructor(
+        document: vscode.TextDocument,
+    ) {
+        this.document = document;
+        this.formSection();
+        this.makeTree();
+        this.numberSection();
     }
 
-    for (let ii = index - 1; ii >= 0; ii--) {
-        let parent = sections[ii];
-        if (sections[ii].level < section.level) {
-            section.parent = sections[ii];
-            parent.children?.push(section);
-            break;
-        } else if(sections[ii].level === section.level) {
-            section.parent = sections[ii].parent;
-            parent.children?.push(section);
-            break;
+    /**
+     * Formulate sections from `this.document`
+     */
+    private formSection() {
+        let positions = findSectionPosition(this.document);
+        for (let start of positions) {
+            let range = getSectionAt(start, positions, this.document, false);
+            let name = getSectionHeader(start, this.document);
+            let section = new Section(range, name);
+            this.sections.push(section);
+        }
+    }
+
+
+    /**
+     * Create a tree from `this.sections`
+     */
+    private makeTree() {
+        for (let index of this.sections.keys()) {
+            this.assignParent(index);
+        }
+    }
+
+
+    /**
+     * @param index of `this.sections` to find and assign parent section or root
+     */
+    private assignParent(index: number) {
+        let section = this.sections[index];
+
+        if (section.level === 0) {
+            section.parent = undefined;  // parent is root
+            this.root.push(section);
+            return;
+        }
+
+        for (let ii = index - 1; ii >= 0; ii--) {
+            let parent = this.sections[ii];
+            if (section.level > this.sections[ii].level) {
+                section.parent = this.sections[ii];
+                parent.children?.push(section);
+                break;
+            } else if(section.level === this.sections[ii].level ) {
+                section.parent = this.sections[ii].parent;
+                parent.children?.push(section);
+                break;
+            }
+        }
+    }
+
+    /**
+     * Assign section numeric
+     */
+    private numberSection(node?: Section[]) {
+        if (node === undefined) {
+            node = this.root;
+        }
+        for (let [index, section] of node.entries()) {
+            if (section.parent === undefined) {
+                section.numeric.push(index);
+            } else {
+                section.numeric = Array.from(section.parent.numeric);
+                section.numeric.push(index);
+            }
+
+            if (section.children.length) {
+                this.numberSection(section.children);
+            }
+        }
+    }
+
+    /**
+     *
+     * @param position a line.char location in document
+     * @param node in the tree. Default to `this.root`.
+     * @returns lowest level section containing the position
+     */
+    getSection(position: vscode.Position, node?: Section[]) {
+        if (!this.document.validatePosition(position).isEqual(position)){
+            console.error('SectionTree.getSection: invalid `position`');
+            return;
+        }
+
+        if (node === undefined) {
+            node = this.root;
+        }
+
+        for (let section of node) {
+            // Branch
+            if (section.children.length) {
+                this.getSection(position, section.children);
+            }
+
+            // Leaf
+            if (section.range.contains(position)) {
+                return section;
+            }
+
         }
     }
 }
@@ -378,10 +497,7 @@ export function updateSectionCache(document: vscode.TextDocument) {
         return;
     }
     SECTION_MARKER_POSITIONS.set(document.fileName, positions);
-
-    let sections = makeSections(positions, document);
-    let root = makeSectionTree(sections);
-    FILE_SECTION_TREES.set(document.fileName, root);
+    FILE_SECTION_TREES.set(document.fileName, new SectionTree(document));
 }
 
 /**
