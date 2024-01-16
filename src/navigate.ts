@@ -499,43 +499,26 @@ export class SectionItem extends vscode.TreeItem{
     /** Parent. Undefined if it is root. */
     parent?: SectionItem;
     /** Children. Empty if None.*/
-    children: SectionItem[] = [];
+    private _children: SectionItem[] = [];
 
-    /**
-     * TODO
-     */
     constructor(
         document: vscode.TextDocument,
         parent?: SectionItem,
         section?: Section,
-        label?: string,
-        collapsibleState?: vscode.TreeItemCollapsibleState,
+        label: string = '',
     ) {
 
         if (section) {
-            // FIXME: compose label with section.numeric instead
             // Unicode: https://en.wikibooks.org/wiki/Unicode/List_of_useful_symbols
-            let front: string;
             let sectionSymbol = '\u{00A7}';
-            let verticalDash = '\u{00A6}';
-            let middleDotDot = '\u{22C5}\u{22C5}';
-            let level = section.level;
-            if (level === 0) {
-                // \u{2937}: right arrow curving down
-                // \u{22EF}: horz ellipses
-                front = `${sectionSymbol} `;
-            } else {
-                // \u{2192}: right arrow unicode
-                let subLevel = `${middleDotDot} `.repeat(level);
-                front = `${verticalDash} ${subLevel} ${sectionSymbol}`;
-            }
-            label = `${front} ${section.name}` ;
+            let numeric = section.numeric.join('.') + '.';
+            label = `${sectionSymbol} ${numeric} ${section.name}` ;
         } else {
             // FIXME: shorten with relative path?
-            label = path.basename(document.fileName);
+            label = vscode.workspace.asRelativePath(document.uri);
         }
 
-        super(label, collapsibleState);
+        super(label);
 
         this.document = document;
         this.section = section;
@@ -560,17 +543,10 @@ export class SectionItem extends vscode.TreeItem{
         let tooltip: string | undefined;
         if (section) {
             let p = section.range.start;
-            tooltip = `Jump to Section at L.C:${p.line}.${p.character}`;
+            tooltip = `Jump to Section at L.C=${p.line+1}.${p.character+1}`;
         }
 
         this.tooltip = tooltip;
-
-        // let dir = section? '': path.dirname(document.uri.path);
-        // let description = vscode.workspace.asRelativePath(dir);
-        // if (description === dir) {
-        //     description = '';
-        // }
-        // this.description = description;
 
         this.command = {
             command: 'ipython.naviJumpToSection',
@@ -588,17 +564,33 @@ export class SectionItem extends vscode.TreeItem{
             parent = this;
         }
 
+        let children: SectionItem[] = [];
         for (let child of section.children) {
             let item = new SectionItem(
                 this.document,
                 parent,
                 child,
+                undefined,
             );
 
             this.childrenFrom(child, item);
 
-            parent.children.push(item);
+            children.push(item);
         }
+        parent.children = children;
+    }
+
+    public get children() {
+        return this._children;
+    }
+
+    public set children(children: SectionItem[]) {
+        this._children = children;
+        let collapsible = vscode.TreeItemCollapsibleState.None;
+        if (children.length > 0) {
+            collapsible = vscode.TreeItemCollapsibleState.Collapsed;
+        }
+        this.collapsibleState = collapsible;
     }
 
     /**
@@ -608,7 +600,10 @@ export class SectionItem extends vscode.TreeItem{
     public async jumpToSection() {
         let range: vscode.Range | undefined = undefined;
         if (this.section) {
-            range = this.section.range;
+            range = new vscode.Range(
+                this.section.range.start,
+                this.section.range.start,
+            );
 
             let showOptions: vscode.TextDocumentShowOptions = {
                 preserveFocus: false,
@@ -701,14 +696,14 @@ export class SectionTree {
         }
 
         for (let ii = index - 1; ii >= 0; ii--) {
-            let parent = this.sections[ii];
-            if (section.level > this.sections[ii].level) {
-                section.parent = this.sections[ii];
-                parent.children?.push(section);
-                break;
-            } else if(section.level === this.sections[ii].level ) {
-                section.parent = this.sections[ii].parent;
-                parent.children?.push(section);
+            let prior = this.sections[ii];
+            if (section.level > prior.level) {
+                section.parent = prior;
+            } else if(section.level === prior.level ) {
+                section.parent = prior.parent;
+            }
+            if (section.parent && section.parent.children) {
+                section.parent.children.push(section);
                 break;
             }
         }
@@ -721,12 +716,15 @@ export class SectionTree {
         if (node === undefined) {
             node = this.root;
         }
+
+        let offset = 1;
         for (let [index, section] of node.entries()) {
+            let num = index + offset;
             if (section.parent === undefined) {
-                section.numeric.push(index);
+                section.numeric.push(num);
             } else {
                 section.numeric = Array.from(section.parent.numeric);
-                section.numeric.push(index);
+                section.numeric.push(num);
             }
 
             if (section.children.length) {
@@ -778,6 +776,7 @@ export class SectionTree {
                     this.document,
                     undefined,
                     section,
+                    undefined,
                 )
             );
         }
@@ -796,8 +795,8 @@ export class SectionTreeProvider implements vscode.TreeDataProvider<SectionItem>
 
     private roots = new Map<string, SectionItem>;
 
-    private documentNodes = new Map<string, SectionItem>;
-    private itemCache = new Map<string, SectionItem[]>;
+    // private documentNodes = new Map<string, SectionItem>;
+    // private itemCache = new Map<string, SectionItem[]>;
 
     // constructor() {
     //     this.cacheSection(undefined);
@@ -826,7 +825,9 @@ export class SectionTreeProvider implements vscode.TreeDataProvider<SectionItem>
             }
 
             let top = tree.toTreeItem();
-            let root = new SectionItem(document);
+            let root = new SectionItem(
+                document,
+            );
             root.children = top;
             this.roots.set(document.fileName, root);
         }
@@ -838,14 +839,14 @@ export class SectionTreeProvider implements vscode.TreeDataProvider<SectionItem>
         return element;
     }
 
-    getParent(element: SectionItem): vscode.ProviderResult<SectionItem> {
-        return element.parent;
-    }
+    // getParent(element: SectionItem): vscode.ProviderResult<SectionItem> {
+    //     return element.parent;
+    // }
 
     getChildren(element?: SectionItem | undefined): vscode.ProviderResult<SectionItem[]> {
-        if (element === undefined) {  // querying roots
+        if (element === undefined) {
             let roots = Array.from(this.roots.values());
-            return Promise.resolve(roots);
+            return roots;
         }
 
         return element.children;
@@ -1261,19 +1262,19 @@ export function registerSectionNavigator(context: vscode.ExtensionContext) {
                 if (editor && editor.document !== undefined) {
                     updateSectionDecor(editor);
                     treeProvider.refreshDocument(editor.document);
-                    let docNode = treeProvider.getDocumentNode(editor.document);
-                    // NOTE: only change view when `visible` so to avoid hijacking
-                    //  current view
-                    if (docNode && treeView.visible) {
-                        treeView.reveal(
-                            docNode,
-                            {
-                                select: false,
-                                focus: false,  // NEVER set to true to not hijack!
-                                expand: true,
-                            }
-                        );
-                    }
+                    // let docNode = treeProvider.getDocumentNode(editor.document);
+                    // // NOTE: only change view when `visible` so to avoid hijacking
+                    // //  current view
+                    // if (docNode && treeView.visible) {
+                    //     treeView.reveal(
+                    //         docNode,
+                    //         {
+                    //             select: false,
+                    //             focus: false,  // NEVER set to true to not hijack!
+                    //             expand: true,
+                    //         }
+                    //     );
+                    // }
                 }
             },
             null,
