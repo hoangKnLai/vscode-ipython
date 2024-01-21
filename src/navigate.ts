@@ -16,9 +16,6 @@ import * as util from './utility';
  * @value starting position of each section marker
  */
 export let SECTION_MARKER_POSITIONS = new Map<string, vscode.Position[]>();
-
-// FIXME: replace Section[] with SectionTree[]
-// export let FILE_SECTION_TREES = new Map<string, Section[]>();
 export let FILE_SECTION_TREES = new Map<string, SectionTree>();
 
 // === CONSTANTS ===
@@ -192,6 +189,110 @@ export function getSectionAt(
 }
 
 
+// === FILE ===
+export class ActiveDocument {
+    // FIXME: move to config
+    maxActive: number;
+    private count: number = 0;
+
+    documents: vscode.TextDocument[] = [];
+
+    /** Age of documents */
+    age = new Map<vscode.TextDocument, number>();
+
+    constructor(maxActive: number) {
+        this.maxActive = maxActive > 0? maxActive : 3;
+    }
+
+     /** Recently opened */
+    public get recent() {
+        return new Set(this.age.keys());
+    }
+
+    add(document: vscode.TextDocument) {
+        if (this.age.has(document)) {
+            this.age.set(document, 0);
+            let others = Array.from(this.age.keys());
+            others = others.filter((doc) => doc.fileName !== document.fileName);
+            this.rank(others);
+            return;
+        }
+
+        if (this.age.size > this.maxActive) {
+            this.drop();
+            this.rank();
+            this.age.set(document, 0);
+        }
+    }
+
+    /**
+     * Drop the document from active list
+     * @param document of an active document. Default to oldest active document.
+     * @returns same as map.delete(name)
+     */
+    drop(document: vscode.TextDocument | undefined = undefined) {
+        if (document) {
+            return this.age.delete(document);
+        }
+
+        let age = Array.from(this.age.values());
+        let oldest = Math.max(...age);
+        let index = age.find((value) => value === oldest) as number;
+        document = Array.from(this.age.keys())[index];
+        return this.age.delete(document);
+    }
+
+    /**
+     * Update document age perserving newborn with age = 0
+     * @param documents of documents. Default are this.age.keys()
+     */
+    rank(documents: vscode.TextDocument[] | undefined = undefined) {
+        if (documents === undefined) {
+            documents = Array.from(this.age.keys());
+        }
+        for (let doc of documents) {
+            let age = this.age.get(doc) as number;
+            age = ((age + 1) % this.maxActive) + 1;
+            this.age.set(doc, age);
+        }
+    }
+
+    register(context: vscode.ExtensionContext) {
+        context.subscriptions.push(
+            vscode.workspace.onDidOpenTextDocument(
+                (document) => {
+                    this.add(document);
+                },
+                null,  // thisArgs
+                context.subscriptions,  // disposables
+            )
+        );
+
+        context.subscriptions.push(
+            vscode.workspace.onDidCloseTextDocument(
+                (document) => {
+                    this.drop(document.fileName);
+                },
+                null,  // thisArgs
+                context.subscriptions,  // disposables
+            ),
+        );
+
+        context.subscriptions.push(
+            vscode.window.onDidChangeActiveTextEditor(
+                (editor) => {
+                    if (editor && editor.document !== undefined) {
+                        this.add(editor.document);
+                    }
+                },
+                null, // thisArgs
+                context.subscriptions,  // disposables
+            )
+        );
+    }
+}
+
+
 // === SECTION ===
 
 /**
@@ -205,9 +306,7 @@ export function findSectionPosition(document: vscode.TextDocument) {
     let pattern = util.SECTION_TAG;
     let matches = text.matchAll(pattern);
 
-    let start = new vscode.Position(0, 0);
     let positions: vscode.Position[] = [];
-    positions.push(start);
     for (let match of matches) {
         if (match.index === undefined) {
             continue;
@@ -225,15 +324,10 @@ export function findSectionPosition(document: vscode.TextDocument) {
         return positions;
     }
 
-
-    let end = document.lineAt(document.lineCount - 1).range.end;
-
-    if (start.line < positions[0].line) {
+    // Beginning of file is a section unless something is already there
+    let start = new vscode.Position(0, 0);
+    if (!start.isEqual(positions[0])) {
         positions.unshift(start);
-    }
-
-    if (end.line > positions[positions.length - 1].line) {
-        positions.push(end);
     }
 
     return positions;
@@ -501,32 +595,48 @@ export class SectionItem extends vscode.TreeItem{
     /** Children. Empty if None.*/
     private _children: SectionItem[] = [];
 
+    /**
+     *
+     * @param document where section lives
+     * @param parent node of this section
+     * @param section parameters and methods
+     * @param label specific label forward to {@link vscode.TreeItem}
+     * @param isAddChildren convert childre of `section` to this item
+     */
     constructor(
         document: vscode.TextDocument,
         parent?: SectionItem,
         section?: Section,
         label: string = '',
+        isAddChildren: boolean = true,
     ) {
-
+        let description = '';
         if (section) {
             // Unicode: https://en.wikibooks.org/wiki/Unicode/List_of_useful_symbols
-            let sectionSymbol = '\u{00A7}';
+            // let sectionSymbol = '\u{00A7}';
             let numeric = section.numeric.join('.') + '.';
-            label = `${sectionSymbol} ${numeric} ${section.name}` ;
+            // label = `${sectionSymbol} ${numeric} ${section.name}` ;
+            label = `${numeric} ${section.name}` ;
         } else {
-            // FIXME: shorten with relative path?
-            label = vscode.workspace.asRelativePath(document.uri);
+            label = path.basename(document.fileName);
+
+            let dir = path.dirname(document.uri.path);
+            description = vscode.workspace.asRelativePath(dir);
+            if (description === dir) {
+                description = '';
+            }
         }
 
         super(label);
 
         this.document = document;
         this.section = section;
+        this.description = description;
         this.parent = parent;
 
-        if (section && section.children.length) {
+        if (isAddChildren && section && section.children.length) {
             this.childrenFrom(section);
-        }
+        } // else default CollapsibleState is None
 
         let context: string | undefined = undefined;
         let isPython = document.languageId === 'python';
@@ -588,7 +698,7 @@ export class SectionItem extends vscode.TreeItem{
         this._children = children;
         let collapsible = vscode.TreeItemCollapsibleState.None;
         if (children.length > 0) {
-            collapsible = vscode.TreeItemCollapsibleState.Collapsed;
+            collapsible = vscode.TreeItemCollapsibleState.Expanded;
         }
         this.collapsibleState = collapsible;
     }
@@ -764,8 +874,8 @@ export class SectionTree {
     }
 
     /**
-     * Create a SectionItem tree from this tree.
-     * @returns root of SectionItemTree
+     * Create a tree for a TreeDataProvider from this tree.
+     * @returns root of tree
      */
     toTreeItem() {
         let root: SectionItem[] = [];
@@ -783,6 +893,31 @@ export class SectionTree {
 
         return root;
     }
+
+    /**
+     * Create a tree for a TreeDataProvider from this tree.
+     * @param [parent=undefined] parent of node, else undefined for root
+     * @returns flat list of sections
+     */
+    listTreeItem(parent: SectionItem | undefined = undefined) {
+        let list: SectionItem[] = [];
+        let label = '';
+        let isAddChildren = false;
+        for (let section of this.sections) {
+            list.push (
+                new SectionItem(
+                    this.document,
+                    parent,
+                    section,
+                    label,
+                    isAddChildren,
+                )
+            );
+        }
+
+        return list;
+    }
+
 }
 
 
@@ -793,14 +928,10 @@ export class SectionTreeProvider implements vscode.TreeDataProvider<SectionItem>
     private _onDidChangeTreeDataEmitter: vscode.EventEmitter<SectionItem | undefined | void> = new vscode.EventEmitter<SectionItem | undefined | void>();
     readonly onDidChangeTreeData: vscode.Event<SectionItem | undefined | void> = this._onDidChangeTreeDataEmitter.event;
 
+    /**
+     * Each element is a document with section as children
+     */
     private roots = new Map<string, SectionItem>;
-
-    // private documentNodes = new Map<string, SectionItem>;
-    // private itemCache = new Map<string, SectionItem[]>;
-
-    // constructor() {
-    //     this.cacheSection(undefined);
-    // }
 
     constructor() {
         this.cacheSection(undefined);
@@ -824,11 +955,16 @@ export class SectionTreeProvider implements vscode.TreeDataProvider<SectionItem>
                 continue;
             }
 
-            let top = tree.toTreeItem();
             let root = new SectionItem(
                 document,
             );
-            root.children = top;
+
+            // NOTE: slower, sections are collapsible
+            // root.children = tree.toTreeItem();
+
+            // NOTE: faster, sections are flattened
+            root.children = tree.listTreeItem(root);
+
             this.roots.set(document.fileName, root);
         }
     }
@@ -1242,7 +1378,9 @@ export function registerSectionNavigator(context: vscode.ExtensionContext) {
             (document) => {
                 updateSectionCache(document);
                 treeProvider.refreshDocument(document);
-            }
+            },
+            null,  // thisArgs
+            context.subscriptions,
         )
     );
 
@@ -1253,6 +1391,8 @@ export function registerSectionNavigator(context: vscode.ExtensionContext) {
                 treeProvider.removeDocument(document);
                 treeProvider.refresh();
             },
+            null,  // thisArgs
+            context.subscriptions,
         )
     );
 
