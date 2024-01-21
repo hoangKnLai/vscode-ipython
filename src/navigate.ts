@@ -18,6 +18,8 @@ import * as util from './utility';
 export let SECTION_MARKER_POSITIONS = new Map<string, vscode.Position[]>();
 export let FILE_SECTION_TREES = new Map<string, SectionTree>();
 
+// let Tracker = new ActiveDocument(3);
+
 // === CONSTANTS ===
 // TODO: make some configurable?
 // REF: https://www.dofactory.com/css/
@@ -190,18 +192,23 @@ export function getSectionAt(
 
 
 // === FILE ===
+
+// FIXME: move to utils?
 export class ActiveDocument {
     // FIXME: move to config
     maxActive: number;
-    private count: number = 0;
+    // private count: number = 0;
 
     documents: vscode.TextDocument[] = [];
 
     /** Age of documents */
-    age = new Map<vscode.TextDocument, number>();
+    age = new Map<string, number>();
 
     constructor(maxActive: number) {
         this.maxActive = maxActive > 0? maxActive : 3;
+        if (vscode.window.activeTextEditor){
+            this.add(vscode.window.activeTextEditor.document);
+        }
     }
 
      /** Recently opened */
@@ -210,47 +217,47 @@ export class ActiveDocument {
     }
 
     add(document: vscode.TextDocument) {
-        if (this.age.has(document)) {
-            this.age.set(document, 0);
+        if (this.age.has(document.fileName)) {
+            this.age.set(document.fileName, 0);
             let others = Array.from(this.age.keys());
-            others = others.filter((doc) => doc.fileName !== document.fileName);
+            others = others.filter((name) => name !== document.fileName);
             this.rank(others);
             return;
         }
 
-        if (this.age.size > this.maxActive) {
+        if (this.age.size >= this.maxActive) {
             this.drop();
             this.rank();
-            this.age.set(document, 0);
         }
+        this.age.set(document.fileName, 0);
     }
 
     /**
      * Drop the document from active list
-     * @param document of an active document. Default to oldest active document.
+     * @param fileName of an active document. Default to oldest active document.
      * @returns same as map.delete(name)
      */
-    drop(document: vscode.TextDocument | undefined = undefined) {
-        if (document) {
-            return this.age.delete(document);
+    drop(fileName: string | undefined = undefined) {
+        if (fileName) {
+            return this.age.delete(fileName);
         }
 
         let age = Array.from(this.age.values());
         let oldest = Math.max(...age);
-        let index = age.find((value) => value === oldest) as number;
-        document = Array.from(this.age.keys())[index];
-        return this.age.delete(document);
+        let index = age.findIndex((value) => value === oldest) as number;
+        fileName = Array.from(this.age.keys())[index];
+        return this.age.delete(fileName);
     }
 
     /**
      * Update document age perserving newborn with age = 0
-     * @param documents of documents. Default are this.age.keys()
+     * @param fileNames of documents. Default are this.age.keys()
      */
-    rank(documents: vscode.TextDocument[] | undefined = undefined) {
-        if (documents === undefined) {
-            documents = Array.from(this.age.keys());
+    rank(fileNames: string[] | undefined = undefined) {
+        if (fileNames === undefined) {
+            fileNames = Array.from(this.age.keys());
         }
-        for (let doc of documents) {
+        for (let doc of fileNames) {
             let age = this.age.get(doc) as number;
             age = ((age + 1) % this.maxActive) + 1;
             this.age.set(doc, age);
@@ -631,6 +638,7 @@ export class SectionItem extends vscode.TreeItem{
 
         this.document = document;
         this.section = section;
+        this.tooltip = 'Click to Reveal';
         this.description = description;
         this.parent = parent;
 
@@ -932,6 +940,7 @@ export class SectionTreeProvider implements vscode.TreeDataProvider<SectionItem>
      * Each element is a document with section as children
      */
     private roots = new Map<string, SectionItem>;
+    readonly documentTracker = new ActiveDocument(2);
 
     constructor() {
         this.cacheSection(undefined);
@@ -981,7 +990,18 @@ export class SectionTreeProvider implements vscode.TreeDataProvider<SectionItem>
 
     getChildren(element?: SectionItem | undefined): vscode.ProviderResult<SectionItem[]> {
         if (element === undefined) {
-            let roots = Array.from(this.roots.values());
+            // Only recently tracked files
+            let active = this.documentTracker.recent;
+            let roots: SectionItem[] = [];
+            for (let name of active) {
+                let sections = this.roots.get(name);
+                if (sections) {
+                    roots.push(sections);
+                }
+            }
+
+            // All files opened
+            // let roots = Array.from(this.roots.values());
             return roots;
         }
 
@@ -1339,6 +1359,7 @@ export function registerSectionNavigator(context: vscode.ExtensionContext) {
     }
 
     let treeProvider = new SectionTreeProvider();
+    treeProvider.documentTracker.register(context);
     // let treeOptions: vscode.TreeViewOptions<SectionTreeItem> = {
     //     treeDataProvider: treeProvider,
     //     showCollapseAll: true,
