@@ -7,14 +7,21 @@ import * as fs from 'fs';
 import { homedir } from 'os';
 
 import * as cst from './constants';
+import * as tracker from './tracker';
 
 
 // FIXME: move configuration related to config.ts
 export let config = vscode.workspace.getConfiguration('ipython');
 export let WORK_FOLDER: string = '';
-export let SECTION_TAG: RegExp = RegExp('');
-export let LANGUAGE_EXPR: RegExp = RegExp('');
+export let SECTION_MARKER_PATTERN: RegExp | undefined;
+export let SECTION_LEVEL_PATTERN: RegExp | undefined;
+export let LANGUAGE_PATTERN: RegExp | undefined;
 export let LANGUAGES: string[] = [];
+export let TRACK_OPTION: string;
+
+// export let MAX_ACTIVE_DOCUMENT = 0;
+// export let TRACKER: tracker.ActiveDocument = new tracker.ActiveDocument(2);
+
 
 // TODO: store temporary files for deletion when deactivated
 export let tempfiles = new Set<vscode.Uri>();
@@ -77,7 +84,10 @@ export function updateConfig() {
     // NOTE: should be non-capture matching alternates
     //  (^[\\t ]*(literal))|(...)|(expression)|...
     let pattern = tags.join('|');
-    SECTION_TAG = RegExp(pattern, 'gm');
+    SECTION_MARKER_PATTERN = RegExp(pattern, 'gm');
+
+    let tag = config.get('SectionLevelTag') as string;
+    SECTION_LEVEL_PATTERN = RegExp(`^(${tag}+)`);
 
     // -- File Extension Regular Expression
     // let extensions = config.get('navigatorFileExtension') as string[];
@@ -93,8 +103,14 @@ export function updateConfig() {
         (str) => `(${escapeRegex(str)})`
     );
     pattern = '(?:' + tags.join('|') + ')';
-    LANGUAGE_EXPR = RegExp(pattern);
+    LANGUAGE_PATTERN = RegExp(pattern);
+
+    // -- Document Tracker
+    TRACK_OPTION = config.get('navigatorTrackingOption') as string;
+    // MAX_ACTIVE_DOCUMENT = config.get('navigatorMaxActiveFiles') as number;
+    // TRACKER.maxActiveDocument = config.get('navigatorMaxActiveFiles') as number;
 }
+
 
 /**
  * Get extension configuration.
@@ -121,6 +137,8 @@ export function registerConfigCallbacks(context: vscode.ExtensionContext) {
             }
         )
     );
+
+    // TRACKER.register(context);
 }
 
 

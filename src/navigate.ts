@@ -43,8 +43,11 @@ const sectionDecorType = vscode.window.createTextEditorDecorationType({
  * @returns true when section pattern found in text.
  */
 export function matchSectionTag(text: string) {
-    let pattern = util.SECTION_TAG;
+    let pattern = util.SECTION_MARKER_PATTERN;
     // let pattern = getSectionPattern();
+    if (!pattern) {
+        return;
+    }
     return text.match(pattern) !== null;
 }
 
@@ -191,115 +194,6 @@ export function getSectionAt(
 }
 
 
-// === FILE ===
-
-// FIXME: move to utils?
-export class ActiveDocument {
-    // FIXME: move to config
-    maxActive: number;
-    // private count: number = 0;
-
-    documents: vscode.TextDocument[] = [];
-
-    /** Age of documents */
-    age = new Map<string, number>();
-
-    constructor(maxActive: number) {
-        this.maxActive = maxActive > 0? maxActive : 3;
-        if (vscode.window.activeTextEditor){
-            this.add(vscode.window.activeTextEditor.document);
-        }
-    }
-
-     /** Recently opened */
-    public get recent() {
-        return new Set(this.age.keys());
-    }
-
-    add(document: vscode.TextDocument) {
-        if (this.age.has(document.fileName)) {
-            this.age.set(document.fileName, 0);
-            let others = Array.from(this.age.keys());
-            others = others.filter((name) => name !== document.fileName);
-            this.rank(others);
-            return;
-        }
-
-        if (this.age.size >= this.maxActive) {
-            this.drop();
-            this.rank();
-        }
-        this.age.set(document.fileName, 0);
-    }
-
-    /**
-     * Drop the document from active list
-     * @param fileName of an active document. Default to oldest active document.
-     * @returns same as map.delete(name)
-     */
-    drop(fileName: string | undefined = undefined) {
-        if (fileName) {
-            return this.age.delete(fileName);
-        }
-
-        let age = Array.from(this.age.values());
-        let oldest = Math.max(...age);
-        let index = age.findIndex((value) => value === oldest) as number;
-        fileName = Array.from(this.age.keys())[index];
-        return this.age.delete(fileName);
-    }
-
-    /**
-     * Update document age perserving newborn with age = 0
-     * @param fileNames of documents. Default are this.age.keys()
-     */
-    rank(fileNames: string[] | undefined = undefined) {
-        if (fileNames === undefined) {
-            fileNames = Array.from(this.age.keys());
-        }
-        for (let doc of fileNames) {
-            let age = this.age.get(doc) as number;
-            age = ((age + 1) % this.maxActive) + 1;
-            this.age.set(doc, age);
-        }
-    }
-
-    register(context: vscode.ExtensionContext) {
-        context.subscriptions.push(
-            vscode.workspace.onDidOpenTextDocument(
-                (document) => {
-                    this.add(document);
-                },
-                null,  // thisArgs
-                context.subscriptions,  // disposables
-            )
-        );
-
-        context.subscriptions.push(
-            vscode.workspace.onDidCloseTextDocument(
-                (document) => {
-                    this.drop(document.fileName);
-                },
-                null,  // thisArgs
-                context.subscriptions,  // disposables
-            ),
-        );
-
-        context.subscriptions.push(
-            vscode.window.onDidChangeActiveTextEditor(
-                (editor) => {
-                    if (editor && editor.document !== undefined) {
-                        this.add(editor.document);
-                    }
-                },
-                null, // thisArgs
-                context.subscriptions,  // disposables
-            )
-        );
-    }
-}
-
-
 // === SECTION ===
 
 /**
@@ -310,7 +204,10 @@ export class ActiveDocument {
  */
 export function findSectionPosition(document: vscode.TextDocument) {
     let text = document.getText();
-    let pattern = util.SECTION_TAG;
+    let pattern = util.SECTION_MARKER_PATTERN;
+    if (!pattern) {
+        return;
+    }
     let matches = text.matchAll(pattern);
 
     let positions: vscode.Position[] = [];
@@ -389,7 +286,10 @@ export function removeSectionCache(fileName: string) {
  * @param document - a text file.
  */
 export function updateSectionCache(document: vscode.TextDocument) {
-    let match = document.languageId.search(util.LANGUAGE_EXPR);
+    if (!util.LANGUAGE_PATTERN) {
+        return;
+    }
+    let match = document.languageId.search(util.LANGUAGE_PATTERN);
     if (match === -1) {
         return;
     }
@@ -489,7 +389,10 @@ export function getSectionHeader(
 ) {
     let lineText =  document.lineAt(sectionStart.line);
     let text = lineText.text;
-    let pattern = util.SECTION_TAG;
+    let pattern = util.SECTION_MARKER_PATTERN;
+    if (!pattern) {
+        return;
+    }
     let match = text.match(pattern);
 
     let topOfFile = new vscode.Position(0, 0);
@@ -520,7 +423,9 @@ export function getSectionHeader(
  * Section in a document
  */
 export class Section{
-    /** Heading name from document */
+    /** Section header with numerbing tag*/
+    readonly header: string;
+    /** Heading name without marker from document */
     readonly name: string;
     /** Heading level */
     readonly level: number;
@@ -536,14 +441,19 @@ export class Section{
     /**
      *
      * @param range line-column occupancy in document
-     * @param name of heading from document
+     * @param header of section from document
      */
     constructor(
         range: vscode.Range,
-        name: string,
+        header: string,
     ) {
         this.range = range;
-        this.name = name;
+        this.header = header;
+        if (util.SECTION_LEVEL_PATTERN) {
+            this.name = header.replace(util.SECTION_LEVEL_PATTERN, '').trim();
+        } else {
+            this.name = header.trim();
+        }
         this.level = this.calcLevel();
     }
 
@@ -553,10 +463,20 @@ export class Section{
      * @returns level of the section as number of tabs
      */
     private calcLevel() {
-        let tabSize = util.getTabSize();
 
-        // Assume section indented with whitespaces
-        return Math.floor(this.range.start.character / tabSize);
+        let pattern = util.SECTION_LEVEL_PATTERN;
+
+        let level = 0;
+        if (pattern) {
+            let found = this.header.match(pattern);
+            if (found) {  // there should only be one match
+                level += found[0].length;
+            }
+        }
+
+        // Section indented with whitespaces
+        let tabSize = util.getTabSize();
+        return level + Math.floor(this.range.start.character / tabSize);
     }
 
     /**
@@ -673,6 +593,7 @@ export class SectionItem extends vscode.TreeItem{
         label: string = '',
         isAddChildren: boolean = true,
     ) {
+        let highlights: [number, number][] | undefined;
         let description = '';
         if (section) {
             // Unicode: https://en.wikibooks.org/wiki/Unicode/List_of_useful_symbols
@@ -680,8 +601,13 @@ export class SectionItem extends vscode.TreeItem{
             let numeric = section.numeric.join('.') + '.';
             // label = `${sectionSymbol} ${numeric} ${section.name}` ;
             label = `${numeric} ${section.name}` ;
+
+            // NOTE: add orange highlights like cursor select, looks bad
+            // hightlights = [[0, numeric.length]];
+            highlights = undefined;
         } else {
             label = path.basename(document.fileName);
+            highlights = undefined;
 
             let dir = path.dirname(document.uri.path);
             description = vscode.workspace.asRelativePath(dir);
@@ -690,7 +616,12 @@ export class SectionItem extends vscode.TreeItem{
             }
         }
 
-        super(label);
+        let itemLabel: vscode.TreeItemLabel = {
+            label: label,
+            highlights: highlights,
+        };
+
+        super(itemLabel);
 
         this.document = document;
         this.section = section;
@@ -838,9 +769,15 @@ export class SectionTree {
      */
     private formSection() {
         let positions = findSectionPosition(this.document);
+        if (!positions) {
+            return;
+        }
         for (let start of positions) {
             let range = getSectionAt(start, positions, this.document, false);
             let name = getSectionHeader(start, this.document);
+            if (!name) {
+                return;
+            }
             let section = new Section(range, name);
             this.sections.push(section);
         }
@@ -887,11 +824,14 @@ export class SectionTree {
      * Assign section numeric
      */
     private numberSection(node?: Section[]) {
+        let offset: number;  // FIXME: make configurable?
         if (node === undefined) {
             node = this.root;
+            offset = 0;
+        } else {
+            offset = 1;
         }
 
-        let offset = 1;
         for (let [index, section] of node.entries()) {
             let num = index + offset;
             if (section.parent === undefined) {
@@ -913,7 +853,7 @@ export class SectionTree {
      * @param node in the tree. Default to `this.root`.
      * @returns lowest level section containing the position
      */
-    getSection(position: vscode.Position, node?: Section[]) {
+    getSection(position: vscode.Position, node?: Section[]): Section | undefined {
         if (!this.document.validatePosition(position).isEqual(position)){
             console.error('SectionTree.getSection: invalid `position`');
             return;
@@ -924,7 +864,10 @@ export class SectionTree {
 
         for (let section of node) {
             if (section.children.length) {  // branch
-                this.getSection(position, section.children);
+                let found = this.getSection(position, section.children);
+                if (found) {
+                    return found;
+                }
             }
             if (section.range.contains(position)) {  // leaf
                 return section;
@@ -996,7 +939,6 @@ export class SectionTreeProvider implements vscode.TreeDataProvider<SectionItem>
      * Each element is a document with section as children
      */
     private roots = new Map<string, SectionItem>;
-    readonly documentTracker = new ActiveDocument(2);
 
     constructor() {
         this.cacheSection(undefined);
@@ -1046,10 +988,19 @@ export class SectionTreeProvider implements vscode.TreeDataProvider<SectionItem>
 
     getChildren(element?: SectionItem | undefined): vscode.ProviderResult<SectionItem[]> {
         if (element === undefined) {
-            // Only recently tracked files
-            let active = this.documentTracker.recent;
+            let option = util.TRACK_OPTION;
+            let documents: string[];
+            if (option === 'visible') {
+                let editors = vscode.window.visibleTextEditors;
+                documents = editors.map(editor => editor.document.fileName);
+            } else if (option === 'opened') {
+                documents = [...this.roots.keys()];
+            } else {
+                console.error(`'Invalid navigatorTrackingOption: ${option}'`)
+                return;
+            }
             let roots: SectionItem[] = [];
-            for (let name of active) {
+            for (let name of documents) {
                 let sections = this.roots.get(name);
                 if (sections) {
                     roots.push(sections);
@@ -1267,8 +1218,11 @@ export class SectionTreeProviderBACKUP implements vscode.TreeDataProvider<Sectio
             let editors = vscode.window.visibleTextEditors;
             documents = editors.map(item => item.document);
         }
+        if (!util.LANGUAGE_PATTERN) {
+            return;
+        }
         for (let document of documents) {
-            let matchExt = document.languageId.search(util.LANGUAGE_EXPR);
+            let matchExt = document.languageId.search(util.LANGUAGE_PATTERN);
             if (matchExt === -1 || !matchSectionTag(document.getText())) {
                 continue;
             }
@@ -1415,7 +1369,6 @@ export function registerSectionNavigator(context: vscode.ExtensionContext) {
     }
 
     let treeProvider = new SectionTreeProvider();
-    treeProvider.documentTracker.register(context);
     // let treeOptions: vscode.TreeViewOptions<SectionTreeItem> = {
     //     treeDataProvider: treeProvider,
     //     showCollapseAll: true,

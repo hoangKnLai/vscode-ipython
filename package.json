@@ -46,6 +46,24 @@
                     ],
                     "markdownDescription": "[Language identifier](https://code.visualstudio.com/docs/languages/identifiers) navigator allowed to operates on"
                 },
+
+                "ipython.navigatorTrackingOption": {
+                    "type": "string",
+                    "enum": [
+                        "visible",
+                        "opened"
+                    ],
+                    "default": "visible",
+                    "markdownEnumDescriptions": [
+                        "Only show sections of VISIBLE documents of navigatorLanguageId",
+                        "Show sections of ALL opened documents of navigatorLanguageId"
+                    ]
+                },
+                "ipython.SectionLevelTag": {
+                    "type": "string",
+                    "default": "-",
+                    "markdownDescription": "Indent level tag after a SectionTag like `# %% - Heading 1` to increase heading level by +1"
+                },
                 "ipython.SectionTag": {
                     "type": "array",
                     "default": [
@@ -85,7 +103,10 @@
                         "%run -i"
                     ],
                     "default": "%run -i",
-                    "markdownDescription": "(DEPRECATED to just `%run -i` in a future release) Write code block (section, multi-selections) to `{workFolder}/code.py`, then execute using `%run -i or %load code.py`. NOTE: open `code.py` to see exact code executed."
+                    "markdownEnumDescriptions": [
+                        "(DEPRECATED to just `%run -i` in a future release) Use `%load ` to send code to terminal and then execute",
+                        "Write code block (section, multi-selections) to `{workFolder}/code.py`, then execute using `%run -i code.py`. NOTE: open `code.py` to see exact code executed."
+                    ]
                 },
                 "ipython.RunArguments": {
                     "type": "string",
