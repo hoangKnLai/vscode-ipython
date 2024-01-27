@@ -65,7 +65,7 @@ export function moveAndRevealCursor(
     editor.selection = selection;
     editor.revealRange(
         selection.with(),
-        vscode.TextEditorRevealType.InCenterIfOutsideViewport
+        vscode.TextEditorRevealType.InCenterIfOutsideViewport,
     );
 }
 
@@ -581,6 +581,25 @@ export class Section{
         return equal;
     }
 
+    /**
+     * Navigate to start of this section
+     * @param editor this section document is in
+     */
+    jumpToStart(editor: vscode.TextEditor) {
+        let line = this.range.start.line;
+        let char = this.range.start.character;
+        moveAndRevealCursor(editor, line, char);
+    }
+
+    /**
+     * Navigate to end of this section
+     * @param editor this section document is in
+     */
+    jumpToEnd(editor: vscode.TextEditor) {
+        let line = this.range.end.line;
+        let char = this.range.end.character;
+        moveAndRevealCursor(editor, line, char);
+    }
 }
 
 
@@ -862,44 +881,18 @@ export class SectionTree {
             console.error('SectionTree.getSection: invalid `position`');
             return;
         }
-
         if (node === undefined) {
             node = this.root;
         }
 
         for (let section of node) {
-            // Branch
-            if (section.children.length) {
+            if (section.children.length) {  // branch
                 this.getSection(position, section.children);
             }
-
-            // Leaf
-            if (section.range.contains(position)) {
+            if (section.range.contains(position)) {  // leaf
                 return section;
             }
-
         }
-    }
-
-    /**
-     * Create a tree for a TreeDataProvider from this tree.
-     * @returns root of tree
-     */
-    toTreeItem() {
-        let root: SectionItem[] = [];
-
-        for (let section of this.root) {
-            root.push(
-                new SectionItem(
-                    this.document,
-                    undefined,
-                    section,
-                    undefined,
-                )
-            );
-        }
-
-        return root;
     }
 
     /**
@@ -926,6 +919,32 @@ export class SectionTree {
         return list;
     }
 
+}
+
+
+/**
+ *
+ * @param document containing cursor and having any section
+ * @param cursor position in document
+ * @returns lowest level section containing cursor if exists. Note,
+ * {@link navi.Section.parent} can be used to get parent level section.
+ */
+export function getSectionFrom(
+    document: vscode.TextDocument,
+    cursor: vscode.Position,
+) {
+    let tree = FILE_SECTION_TREES.get(document.fileName);
+    if (tree === undefined) {
+        console.error('getSectionFrom: failed to retrieve cache');
+        return;
+    }
+
+    let section = tree.getSection(cursor);
+    if (section === undefined) {
+        console.error('getSectionFrom: failed to find section');
+        return;
+    }
+    return section;
 }
 
 
