@@ -667,6 +667,7 @@ export async function runSection(isNext: boolean) {
     await runDocumentSection(editor.document, section, undefined);
 
     if (isNext) {
+        section.jumpToNext(editor);
         let line = section.range.end.line + 1;
         if (line >= editor.document.lineCount) {
             line = editor.document.lineCount - 1;

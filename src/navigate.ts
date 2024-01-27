@@ -520,15 +520,24 @@ export function getSectionHeader(
  * Section in a document
  */
 export class Section{
-    // Attributes
+    /** Heading name from document */
     readonly name: string;
+    /** Heading level */
     readonly level: number;
+    /** Line-column occupancy in document */
     readonly range: vscode.Range;
+    /** Heading number from left to right [anceter...sibling] */
     numeric: number[] = [];
+    /** Parent section containing this section and its siblings */
     parent: Section | undefined = undefined;
+    /** Children sections if any */
     children: Section[] = [];
 
-    // Constructor
+    /**
+     *
+     * @param range line-column occupancy in document
+     * @param name of heading from document
+     */
     constructor(
         range: vscode.Range,
         name: string,
@@ -585,21 +594,49 @@ export class Section{
      * Navigate to start of this section
      * @param editor this section document is in
      */
-    jumpToStart(editor: vscode.TextEditor) {
-        let line = this.range.start.line;
-        let char = this.range.start.character;
-        moveAndRevealCursor(editor, line, char);
-    }
+    // jumpToStart(editor: vscode.TextEditor) {
+    //     let line = this.range.start.line;
+    //     let char = this.range.start.character;
+    //     moveAndRevealCursor(editor, line, char);
+    // }
 
     /**
      * Navigate to end of this section
      * @param editor this section document is in
      */
-    jumpToEnd(editor: vscode.TextEditor) {
-        let line = this.range.end.line;
-        let char = this.range.end.character;
+    // jumpToEnd(editor: vscode.TextEditor) {
+    //     let line = this.range.end.line;
+    //     let char = this.range.end.character;
+    //     moveAndRevealCursor(editor, line, char);
+    // }
+
+    /**
+     * Navigate editor to one line and to first non-whitespace beyond the end of
+     * this section
+     * @param editor containing this document section
+     */
+    jumpToNext(editor: vscode.TextEditor) {
+        let line = Math.min(
+            this.range.end.line + 1,
+            editor.document.lineCount - 1,
+        );
+        let char = editor.document.lineAt(line).firstNonWhitespaceCharacterIndex;
         moveAndRevealCursor(editor, line, char);
     }
+
+    /**
+     * Navigate editor to one line and to first non-whitespace before the start
+     * of this section
+     * @param editor containing this document section
+     */
+    // jumpToPrevious(editor: vscode.TextEditor) {
+    //     let line = Math.max(
+    //         this.range.start.line - 1,
+    //         0,
+    //     );
+    //     let char = editor.document.lineAt(line).firstNonWhitespaceCharacterIndex;
+    //     moveAndRevealCursor(editor, line, char);
+    // }
 }
 
 
