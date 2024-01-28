@@ -17,12 +17,12 @@ Key features tagged with `IPython`:
     so that the created terminals are removed at end of a session and this feature
     working properly for the next session.
 - **Run `python` code interactively on IPython terminal**
-  - E.g., run a file, selection(s) of code, code section, run to line, run from line, ...
+  - Run a file, selection(s) of code, code section, run to line, run from line, ...
+  - Command line argument equivalent to `sys.argv` of `python foo.py argv`
+  - `%run` arguments (e.g., `-t` print timing info when running a `script.py`)
 - **Settings for code custom sectioning and execution**
   - Support multiple code section tags (e.g., `# %%`, `// ==`, or regular expression)
-  - Code section tag assocation option to a list of file extensions (e.g., `.py, .ts, .md`)
-  - `%run` arguments (e.g., `-t` print timing info when running a `script.py`)
-  - Command line argument equivalent to `sys.argv` of `python foo.py argv`
+  - Code section tag association option to a list of file extensions (e.g., `.py, .ts, .md`)
 - **Editor visualization of code section blocks (issue #25)**
   - Horizontal line divider and bolder text indicating each section starting line
 - **Code section navigation and execution (issue #30)**
@@ -30,7 +30,8 @@ Key features tagged with `IPython`:
   - Use `cltr+shift+i b` to open `Code Section Navigator`
   - Click on a heading focus the active editor to the section
   - Various execution buttons are provided for file and section code execution
-- ** Code section folding (issue #32)
+  - Section automatic numbering and execution options (#48)
+- **Code section folding (issue #32)**
   - Folding sections as region. See [VSCode Folding Documentation](https://code.visualstudio.com/docs/editor/codebasics#_folding).
   - Note that vscode resolves criss-cross folding by taking the higher level folding
 
@@ -38,7 +39,7 @@ See `ipython: Feature Contribution` tab in VSCode Extension (Ctrl + Shift + X)
 panel for latest features and details.
 
 If you find the extension useful, it would be awesome if you can leave a comment
-and/or a suggestion on GitHub!!
+and/or a suggestion on the [project page](https://github.com/hoangKnLai/vscode-ipython/issues)!
 
 - What feature you like and use the most?
 - What other feature(s) you would like to have?
@@ -60,7 +61,7 @@ More on vscode handling of `python` virtual environment can be found in [vscode 
 
 [Microsoft Python Extension](https://marketplace.visualstudio.com/items?itemName=ms-python.python)
 
-- This should automatically installed with when this extension is installed
+- This should automatically installed when this extension is installed
 
 ## Settings
 
@@ -90,6 +91,11 @@ Dependent on your project, you might:
 - Customize [settings specific context such as language](https://code.visualstudio.com/docs/getstarted/settings#_language-specific-editor-settings)
 
 ## Release Notes
+
+### 2024.1.x
+
+- Added section auto-numbering and manual numbering option to navigator (#48)
+- Various efficiency improvement with section handling
 
 ### 2023.11.x
 

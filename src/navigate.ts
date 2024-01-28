@@ -989,12 +989,14 @@ export class SectionTreeProvider implements vscode.TreeDataProvider<SectionItem>
     getChildren(element?: SectionItem | undefined): vscode.ProviderResult<SectionItem[]> {
         if (element === undefined) {
             let option = util.TRACK_OPTION;
-            let documents: string[];
+            let documents = new Set<string>();
             if (option === 'visible') {
                 let editors = vscode.window.visibleTextEditors;
-                documents = editors.map(editor => editor.document.fileName);
+                editors.forEach(editor => documents.add(editor.document.fileName));
             } else if (option === 'opened') {
-                documents = [...this.roots.keys()];
+                for (let name of this.roots.keys()) {
+                    documents.add(name);
+                }
             } else {
                 console.error(`'Invalid navigatorTrackingOption: ${option}'`)
                 return;
@@ -1048,6 +1050,7 @@ export class SectionTreeProvider implements vscode.TreeDataProvider<SectionItem>
 
 
 /**
+ * DEPRECATED
  * Section Item for use with TreeProvider
  * @document the text file section is found in
  * @position the starting position of a section in document
@@ -1149,6 +1152,7 @@ export class SectionTreeItem extends vscode.TreeItem {
 
 
 /**
+ * DEPRECATED
  * Section TreeProvider for text file in editors
  */
 export class SectionTreeProviderBACKUP implements vscode.TreeDataProvider<SectionTreeItem> {
