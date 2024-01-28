@@ -57,7 +57,7 @@ export function writeCodeFile(filename: string, code: string) {
 // === TERMINAL ===
 
 /**
- * Format single line or consecutive lines of code to fit ipython terminal.
+ * Format selected code to fit ipython terminal.
  *
  * NOTE: always return code with empty newline like newline at end of file.
  *
@@ -567,66 +567,67 @@ export async function runLine() {
 /**
  * Run current section of python code in an ipython terminal.
  * @param document a python text document
- * @param cursor a cursor position in document
+ * @param section of document
  * @param toEnd inclusively from top to end of section or from start of section
  * to end of file. If undefined, run section at cursor.
  * @returns code section that was ran
  */
 export async function runDocumentSection(
     document: vscode.TextDocument,
-    cursor: vscode.Position,
+    section: navi.Section,
     toEnd: boolean | undefined = undefined,
 ) {
-    let sectionPositions = navi.SECTIONS.get(document.fileName);
-    if (sectionPositions === undefined) {
-        console.error('runDocumentSection: failed to retrieve cache');
-        return;
-    }
-    let section = navi.getSectionAt(cursor, sectionPositions, document, false);
-    if (section === undefined) {
-        console.error('runDocumentSection: failed to find section');
-        return;
-    }
-
-    let header = navi.getSectionHeader(
-        section.start,
-        document,
-    );
-
-    let startPosition: vscode.Position;
-    let stopPosition: vscode.Position;
-    let tag = `${header}`;
     let singleSection = toEnd === undefined;
     if (singleSection) {
-        startPosition = section.start;
-        stopPosition = section.end;
-    } else {  // run to/from section
-        startPosition = new vscode.Position(0, 0);  // beginning of file
-        stopPosition = section.end;
-        tag = `run_to: ${header}`;
-
-        if (toEnd) {  // to bottom
-            startPosition = section.start;
-
-            let lastLine = document.lineAt(document.lineCount - 1);
-            stopPosition = lastLine.range.end;
-            tag = `run_from: ${header}`;
-        }
+        let range = section.range;
+        let tag = section.name;
+        runDocumentRange(document, range, tag);
+        return section.range;
     }
 
-    let sLine = startPosition.line;
-    let sChar = startPosition.character;
-    let eLine = stopPosition.line;
-    let eChar = stopPosition.character;
+    if (toEnd) { // to bottom
+        let lastLine = document.lineAt(document.lineCount - 1);
+        let range = section.range.with(undefined, lastLine.range.end);
+        let tag = `run_from: ${section.name}`;
+        runDocumentRange(document, range, tag);
+        return section.range;
+    }
 
-    // NOTE: default line numbering is 1-indexing
-    // FIXME: consider sourcing it from editor options like tabSize
-    let lineMarker = `(Line.Col:${sLine + 1}.${sChar}-${eLine + 1}.${eChar})`;
+    // From top
+    let beginOfFile = new vscode.Position(0, 0);
+    let range = section.range.with(beginOfFile);
+    let tag = `run_to: ${section.name}`;
+    runDocumentRange(document, range, tag);
+    return section.range;
+}
 
-    // let identity = `"# ${tag} ${lineMarker}"`;  // in python CLI as a string
-    let identity = `# ${tag} ${lineMarker}`;  // in python CLI as argv
 
-    let selection = new vscode.Selection(startPosition, stopPosition);
+/**
+ *
+ * @param document a Python .py text document
+ * @param range a consecutive set of lines and characters
+ * @param tag of this run. E.g., `$ %run -i code.py # tag`
+ * @returns
+ */
+export async function runDocumentRange(
+    document: vscode.TextDocument,
+    range: vscode.Range,
+    tag: string = '',
+) {
+    if (document.languageId !== 'python') {
+        console.error(`runDocumentRange: invalid languageId ${document.languageId}`);
+        return;
+    }
+
+    let sLine = range.start.line;
+    let sChar = range.start.character;
+    let eLine = range.end.line;
+    let eChar = range.end.character;
+    let selectLabel = `(Line.Col:${sLine + 1}.${sChar}-${eLine + 1}.${eChar})`;
+
+    let identity = `# ${tag} ${selectLabel}`;  // in python CLI as argv
+
+    let selection = new vscode.Selection(range.start, range.end);
     let code = formatCode(document, selection);
     if (code !== '') {
         let terminal = await getTerminal();
@@ -640,8 +641,8 @@ export async function runDocumentSection(
             await executeCodeBlock(terminal, code, identity);
         }
     }
-    return section;
 }
+
 
 /**
  * Run current section of python code in an ipython terminal.
@@ -658,10 +659,16 @@ export async function runSection(isNext: boolean) {
     }
 
     let cursor = editor.selection.start;
-    let section = await runDocumentSection(editor.document, cursor, undefined);
+    let section = navi.getSectionFrom(editor.document, cursor);
+    if (section === undefined) {
+        console.error('runSection: failed to find section');
+        return;
+    }
+    await runDocumentSection(editor.document, section, undefined);
 
-    if (isNext && (section !== undefined)) {
-        let line = section.end.line + 1;
+    if (isNext) {
+        section.jumpToNext(editor);
+        let line = section.range.end.line + 1;
         if (line >= editor.document.lineCount) {
             line = editor.document.lineCount - 1;
         }
@@ -669,8 +676,6 @@ export async function runSection(isNext: boolean) {
         let char = editor.document.lineAt(line).firstNonWhitespaceCharacterIndex;
 
         navi.moveAndRevealCursor(editor, line, char);
-    } else {
-        console.error('runSection: error finding next section in document');
     }
 }
 
@@ -810,7 +815,13 @@ export function registerCommands(context: vscode.ExtensionContext) {
                 if (editor) {
                     let document = editor.document;
                     let cursor = editor.selection.start;
-                    runDocumentSection(document, cursor, false);
+                    let section = navi.getSectionFrom(
+                        document,
+                        cursor,
+                    );
+                    if (section) {
+                        runDocumentSection(document, section, false);
+                    }
                 }
             },
         )
@@ -823,7 +834,13 @@ export function registerCommands(context: vscode.ExtensionContext) {
                 if (editor) {
                     let document = editor.document;
                     let cursor = editor.selection.start;
-                    runDocumentSection(document, cursor, true);
+                    let section = navi.getSectionFrom(
+                        document,
+                        cursor,
+                    );
+                    if (section) {
+                        runDocumentSection(document, section, true);
+                    }
                 }
             },
         )

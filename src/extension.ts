@@ -43,9 +43,10 @@ export async function activate(context: vscode.ExtensionContext) {
             (item: navi.SectionItem) => {
                 if (item === undefined) {
                     console.error('naviRunToSection: found undefined item');
+                    return;
                 }
-                if(item && item.position !== undefined && item.document.languageId === 'python'){
-                    ipy.runDocumentSection(item.document, item.position, false);
+                if(item && item.section !== undefined && item.document.languageId === 'python'){
+                    ipy.runDocumentSection(item.document, item.section, false);
                 }
             },
         ),
@@ -57,9 +58,10 @@ export async function activate(context: vscode.ExtensionContext) {
             (item: navi.SectionItem) => {
                 if (item === undefined) {
                     console.error('naviRunFromSection: found undefined item');
+                    return;
                 }
-                if(item && item.position !== undefined && item.document.languageId === 'python'){
-                    ipy.runDocumentSection(item.document, item.position, true);
+                if(item && item.section !== undefined && item.document.languageId === 'python'){
+                    ipy.runDocumentSection(item.document, item.section, true);
                 }
             },
         ),
@@ -69,11 +71,8 @@ export async function activate(context: vscode.ExtensionContext) {
         vscode.commands.registerCommand(
             'ipython.naviRunSection',
             (item: navi.SectionItem) => {
-                if (item === undefined) {
-                    console.error('naviRunSection: Found undefined item');
-                }
-                if(item && item.position !== undefined && item.document.languageId === 'python'){
-                    ipy.runDocumentSection(item.document, item.position);
+                if(item && item.section && item.document.languageId === 'python'){
+                    ipy.runDocumentSection(item.document, item.section);
                 }
             },
         ),
@@ -82,6 +81,11 @@ export async function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(
         vscode.commands.registerCommand(
             'ipython.naviRunFile',
+            // (item: navi.SectionTreeItem) => {
+            //     if (item && item.document && item.document.languageId === 'python') {
+            //         ipy.runFile(item.document);
+            //     }
+            // },
             (item: navi.SectionItem) => {
                 if (item && item.document && item.document.languageId === 'python') {
                     ipy.runFile(item.document);
