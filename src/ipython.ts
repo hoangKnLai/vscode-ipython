@@ -474,6 +474,12 @@ export async function runFile(
         let args = util.getConfig('RunArguments') as string;
         cmd = `${args} ` + cmd;
     }
+
+    if (util.getConfig('RunInFileDirectory') as Boolean) {
+        let cd = `%cd ` + path.dirname(file);
+        await executeSingleLine(terminal, cd);
+    }
+
     cmd = `%run ` + cmd;
 
     await executeSingleLine(terminal, cmd);

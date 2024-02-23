@@ -117,6 +117,11 @@
                     "type": "string",
                     "default": "",
                     "markdownDescription": "Command line input arguments `cli-args` equivalent to `python file.py cli-args`"
+                },
+                "ipython.RunInFileDirectory" : {
+                    "type": "boolean",
+                    "default": false,
+                    "markdownDescription": "Run python file using its containing directory as working directory"
                 }
             }
         },
