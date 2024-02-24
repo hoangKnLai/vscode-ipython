@@ -1,3 +1,7 @@
+/**
+ * Recently used tracker.
+ * NOTE: UNFINISHED, DO NOT USE, likely not a good solution
+ */
 import * as vscode from 'vscode';
 
 

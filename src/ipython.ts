@@ -59,7 +59,7 @@ export function writeCodeFile(filename: string, code: string) {
 /**
  * Format selected code to fit ipython terminal.
  *
- * NOTE: always return code with empty newline like newline at end of file.
+ * NOTE: always return code with an empty newline at end of file.
  *
  * @param document - current active python file
  * @param selection - a selection in python file
@@ -306,11 +306,9 @@ export async function createTerminal(
  */
 export async function getTerminal(uid: string | undefined = undefined) {
     if (uid) {
-        let terminal: vscode.Terminal;
         for (let ipyTerminal of TERMINALS.values()) {
             if (ipyTerminal.uid === uid) {
-                terminal = ipyTerminal.terminal;
-                return terminal;
+                return ipyTerminal.terminal;
             }
         }
     }
@@ -391,7 +389,7 @@ export async function executeSingleLine(
  */
 async function execute(
     terminal: vscode.Terminal,
-    nExec=1
+    nExec=1,
 ){
     // Wait for IPython to register command before execution.
     // NOTE: this helps with race condition, not solves it.
