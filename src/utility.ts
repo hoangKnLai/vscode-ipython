@@ -9,7 +9,6 @@ import { homedir } from 'os';
 import * as cst from './constants';
 import * as tracker from './tracker';
 
-
 // FIXME: move configuration related to config.ts
 export let config = vscode.workspace.getConfiguration('ipython');
 export let WORK_FOLDER: string = '';

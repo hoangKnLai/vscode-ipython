@@ -3,7 +3,7 @@
     "displayName": "ipython",
     "description": "IPython integration supporting direct interactive usage and commands.",
     "icon": "md_img/icon.png",
-    "version": "2024.1.0",
+    "version": "2024.1.2",
     "publisher": "HoangKimLai",
     "repository": {
         "type": "git",
@@ -46,7 +46,6 @@
                     ],
                     "markdownDescription": "[Language identifier](https://code.visualstudio.com/docs/languages/identifiers) navigator to operates on"
                 },
-
                 "ipython.navigatorTrackingOption": {
                     "type": "string",
                     "enum": [

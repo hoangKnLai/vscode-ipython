@@ -381,7 +381,7 @@ export function updateSectionDecor(editor: vscode.TextEditor) {
  * @param sectionStart position in document
  * @param document where section is found
  * @returns section header (i.e., text immediately after section tag and
- * whitespace trimmed.
+ * whitespace trimmed. Undefined when invalid. NOTE: empty string is valid.
  */
 export function getSectionHeader(
     sectionStart: vscode.Position,
@@ -393,11 +393,9 @@ export function getSectionHeader(
     if (!pattern) {
         return;
     }
-    let match = text.match(pattern);
-
     let topOfFile = new vscode.Position(0, 0);
     let isTop = topOfFile.isEqual(sectionStart);
-
+    let match = text.match(pattern);
     if (match === null) {
         if (isTop) {
             return 'Top of File';
@@ -406,7 +404,6 @@ export function getSectionHeader(
             return 'ERROR';
         }
     }
-
     let tabSize = util.getTabSize();
     let level = Math.floor(lineText.firstNonWhitespaceCharacterIndex / tabSize);
 
@@ -414,7 +411,6 @@ export function getSectionHeader(
         // Allow subsection on first line
         return 'Top of File';
     }
-
     return text.replace(pattern, '').trim();
 }
 
@@ -775,7 +771,7 @@ export class SectionTree {
         for (let start of positions) {
             let range = getSectionAt(start, positions, this.document, false);
             let name = getSectionHeader(start, this.document);
-            if (!name) {
+            if (name === undefined) {
                 return;
             }
             let section = new Section(range, name);

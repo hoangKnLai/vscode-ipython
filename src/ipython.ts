@@ -13,7 +13,7 @@ import * as navi from "./navigate";
 let newLine = util.getNewLine();
 
 //FIXME: consider making configurable?!
-export const terminalName = "IPython";
+export const terminalName = 'IPython';
 
 // === FUNCTIONS ===
 
@@ -59,7 +59,7 @@ export function writeCodeFile(filename: string, code: string) {
 /**
  * Format selected code to fit ipython terminal.
  *
- * NOTE: always return code with empty newline like newline at end of file.
+ * NOTE: always return code with an empty newline at end of file.
  *
  * @param document - current active python file
  * @param selection - a selection in python file
@@ -225,12 +225,12 @@ export function registerTerminalCallbacks(context: vscode.ExtensionContext) {
 /**
  * Create an ipython terminal.
  *
- * @param name of the terminal tab. Default 'IPython'.
+ * @param name of the terminal tab. Default {@link terminalName}.
  * @param uid of the terminal. If undefined, use a random new unique identity.
  * @returns an ipython terminal
  */
 export async function createTerminal(
-    name: string = 'IPython',
+    name: string = terminalName,
     uid: string | undefined = undefined,
 ) {
     util.consoleLog('Creating IPython Terminal...');
@@ -239,7 +239,8 @@ export async function createTerminal(
     await vscode.commands.executeCommand('python.createTerminal');
     util.wait(500); // msec, to help with a race condition of not naming terminal
 
-    let terminal = vscode.window.activeTerminal;
+    // FIXME: this is shaky, perhaps use @vscode/python-extension
+    let terminal = vscode.window.terminals[vscode.window.terminals.length - 1];
 
     if (terminal === undefined) {
         console.error('createTerminal: failed to create new ipython terminal');
@@ -275,6 +276,7 @@ export async function createTerminal(
     cmd += startupCmd;
 
     util.consoleLog(`Startup Command: ${startupCmd}`);
+    terminal.show()  // bring it to current
     await executeSingleLine(terminal, cmd);
     await util.wait(1000);  // may take awhile to startup ipython
 
@@ -304,11 +306,9 @@ export async function createTerminal(
  */
 export async function getTerminal(uid: string | undefined = undefined) {
     if (uid) {
-        let terminal: vscode.Terminal;
         for (let ipyTerminal of TERMINALS.values()) {
             if (ipyTerminal.uid === uid) {
-                terminal = ipyTerminal.terminal;
-                return terminal;
+                return ipyTerminal.terminal;
             }
         }
     }
@@ -317,9 +317,9 @@ export async function getTerminal(uid: string | undefined = undefined) {
         return ACTIVE_TERMINAL;
     }
 
-    let ipyTerminal: IpyTerminal | undefined;
     if (TERMINALS.size > 0) {
-        ipyTerminal = TERMINALS.values().next().value as IpyTerminal;
+        let ipyTerminal = TERMINALS.values().next().value as IpyTerminal;
+        return ipyTerminal.terminal;
     }
 
     let activeTerminal = vscode.window.activeTerminal;
@@ -389,7 +389,7 @@ export async function executeSingleLine(
  */
 async function execute(
     terminal: vscode.Terminal,
-    nExec=1
+    nExec=1,
 ){
     // Wait for IPython to register command before execution.
     // NOTE: this helps with race condition, not solves it.
