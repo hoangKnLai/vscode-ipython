@@ -106,10 +106,6 @@
                         "(DEPRECATED to just `%run -i` in a future release) Use `%load ` to send code to terminal and then execute",
                         "Write code block (section, multi-selections) to `{workFolder}/code.py`, then execute using `%run -i code.py`. NOTE: open `code.py` to see exact code executed."
                     ]
-                    "markdownEnumDescriptions": [
-                        "(DEPRECATED to just `%run -i` in a future release) Use `%load ` to send code to terminal and then execute",
-                        "Write code block (section, multi-selections) to `{workFolder}/code.py`, then execute using `%run -i code.py`. NOTE: open `code.py` to see exact code executed."
-                    ]
                 },
                 "ipython.RunArguments": {
                     "type": "string",
