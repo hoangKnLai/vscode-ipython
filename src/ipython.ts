@@ -238,7 +238,7 @@ export async function createTerminal(
 
     // -- Create and Tag IPython Terminal
     await vscode.commands.executeCommand('python.createTerminal');
-    util.wait(500); // msec, to help with a race condition of not naming terminal
+    util.wait(1000); // msec, to help with a race condition of not naming terminal
 
     // FIXME: this is shaky, perhaps use @vscode/python-extension
     let terminal = vscode.window.terminals[vscode.window.terminals.length - 1];
