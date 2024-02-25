@@ -232,6 +232,7 @@ export function registerTerminalCallbacks(context: vscode.ExtensionContext) {
 export async function createTerminal(
     name: string = terminalName,
     uid: string | undefined = undefined,
+    extraStartupCmds: string[] | undefined = undefined,
 ) {
     util.consoleLog('Creating IPython Terminal...');
 
@@ -263,6 +264,9 @@ export async function createTerminal(
     // Startup options
     // REF: https://ipython.readthedocs.io/en/stable/config/intro.html#command-line-arguments
     let cmds = util.getConfig('StartupCommands') as string[];
+    if (extraStartupCmds) {
+        cmds = cmds.concat(extraStartupCmds);
+    }
     let startupCmd = '';
 
     for (let c of cmds) {
@@ -414,6 +418,42 @@ async function execute(
 
 // === COMMANDS ===
 /**
+ *
+ * @param document that new terminal is dedicated to.
+ * @returns created {@link IpyTerminal}.
+ */
+export async function createDedicatedTerminal(
+    document: vscode.TextDocument,
+    isInDir: boolean = false,
+) {
+    let uid = FILE_UID.get(document.fileName);
+    let uri = vscode.Uri.file(document.fileName);
+
+    // Terminal naming
+    let relPath = vscode.workspace.asRelativePath(uri);
+    let basename = path.basename(relPath);
+    let addon = relPath.replace(basename, '');
+    addon = (addon.length > 0)? (' ' + addon):addon;
+    let name = basename + addon;
+
+    // Start terminal in file directory
+    let extraStartupCmds: string[] | undefined = undefined;
+    if (isInDir) {
+        let folder = path.dirname(uri.fsPath);
+        extraStartupCmds = [`%cd ${folder}`];
+    }
+
+    let ipyTerminal = await createTerminal(name, uid, extraStartupCmds);
+    if (ipyTerminal) {
+        FILE_UID.set(document.fileName, ipyTerminal.uid);
+    } else {
+        console.error('createDedicatedTerminal: failed to create terminal')
+    }
+    return ipyTerminal;
+}
+
+
+/**
  * Run a python file in an ipython terminal.
  *
  * @param isWithArgs - with specific run arguments
@@ -438,15 +478,8 @@ export async function runFile(
     let terminal: vscode.Terminal | undefined = undefined;
     let uid = FILE_UID.get(document.fileName);
     if (isNewDedicatedTerminal) {
-        let uri = vscode.Uri.file(document.fileName);
-        let relPath = vscode.workspace.asRelativePath(uri);
-        let basename = path.basename(relPath);
-        let addon = relPath.replace(basename, '');
-        addon = (addon.length > 0)? (' ' + addon):addon;
-        let name = basename + addon;
-        let ipyTerminal = await createTerminal(name, uid);
+        let ipyTerminal = await createDedicatedTerminal(document);
         if (ipyTerminal) {
-            FILE_UID.set(document.fileName, ipyTerminal.uid);
             terminal = ipyTerminal.terminal;
         }
     } else {
@@ -735,6 +768,33 @@ export function registerCommands(context: vscode.ExtensionContext) {
         vscode.commands.registerCommand(
             "ipython.createTerminal",
             createTerminal,
+        )
+    );
+
+    context.subscriptions.push(
+        vscode.commands.registerCommand(
+            "ipython.createDedicatedTerminal",
+            () => {
+                let document = vscode.window.activeTextEditor?.document;
+                if (document) {
+                    let uid = FILE_UID.get(document.fileName);
+                    createDedicatedTerminal(document);
+                }
+            },
+        )
+    );
+
+    context.subscriptions.push(
+        vscode.commands.registerCommand(
+            "ipython.createDedicatedTerminalInFileDir",
+            () => {
+                let document = vscode.window.activeTextEditor?.document;
+                if (document) {
+                    let uid = FILE_UID.get(document.fileName);
+                    let isInDir = true;
+                    createDedicatedTerminal(document, isInDir);
+                }
+            },
         )
     );
 

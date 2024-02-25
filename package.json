@@ -137,6 +137,16 @@
             },
             {
                 "category": "IPython",
+                "command": "ipython.createDedicatedTerminal",
+                "title": "Create a Dedicated IPython Terminal for Current Active Python File"
+            },
+            {
+                "category": "IPython",
+                "command": "ipython.createDedicatedTerminalInFileDir",
+                "title": "Create a Dedicated IPython Terminal with its Current Directory the Active Python File Directory"
+            },
+            {
+                "category": "IPython",
                 "command": "ipython.runFile",
                 "title": "Run File in an IPython Terminal"
             },
