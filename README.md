@@ -92,6 +92,15 @@ Dependent on your project, you might:
 
 ## Release Notes
 
+### 2024.3.x
+
+- Added dedicated terminal creation commands (#51)
+- `ipython.createDedicatedTerminal (ctrl+shift+i shift+c)`
+  - Create an ipython terminal linked to current active `.py` file
+- `ipython.createDedicatedTerminalInFileDir (ctrl+shift+i ctrl+shift+c)`
+  - Create an ipython terminal linked to current active `.py` with terminal
+    current directory the file's directory
+
 ### 2024.1.x
 
 - Added section auto-numbering and manual numbering option to navigator (#48)

@@ -3,7 +3,7 @@
     "displayName": "ipython",
     "description": "IPython integration supporting direct interactive usage and commands.",
     "icon": "md_img/icon.png",
-    "version": "2024.1.2",
+    "version": "2024.3.0",
     "publisher": "HoangKimLai",
     "repository": {
         "type": "git",
@@ -137,6 +137,16 @@
             },
             {
                 "category": "IPython",
+                "command": "ipython.createDedicatedTerminal",
+                "title": "Create a Dedicated IPython Terminal for Current Active Python File"
+            },
+            {
+                "category": "IPython",
+                "command": "ipython.createDedicatedTerminalInFileDir",
+                "title": "Create a Dedicated IPython Terminal with its Current Directory the Active Python File Directory"
+            },
+            {
+                "category": "IPython",
                 "command": "ipython.runFile",
                 "title": "Run File in an IPython Terminal"
             },
@@ -254,6 +264,16 @@
             {
                 "command": "ipython.createTerminal",
                 "key": "ctrl+shift+i c",
+                "when": "ipython.isUse"
+            },
+            {
+                "command": "ipython.createDedicatedTerminal",
+                "key": "ctrl+shift+i shift+c",
+                "when": "ipython.isUse"
+            },
+            {
+                "command": "ipython.createDedicatedTerminalInFileDir",
+                "key": "ctrl+shift+i ctrl+shift+c",
                 "when": "ipython.isUse"
             },
             {
