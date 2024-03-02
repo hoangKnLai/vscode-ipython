@@ -902,8 +902,8 @@ export class SectionTree {
  *
  * @param document containing cursor and having any section
  * @param cursor position in document
- * @returns lowest level section containing cursor if exists. Note,
- * {@link navi.Section.parent} can be used to get parent level section.
+ * @returns lowest level {@link Section} containing cursor if exists. Note,
+ * {@link Section.parent} can be used to get parent level section.
  */
 export function getSectionFrom(
     document: vscode.TextDocument,
@@ -913,6 +913,20 @@ export function getSectionFrom(
     if (tree === undefined) {
         console.error('getSectionFrom: failed to retrieve cache');
         return;
+    }
+
+    if (!tree.root.length) {  // .py without any section
+        let header = path.basename(document.fileName);
+        let lastLine = document.lineCount - 1;
+        let lastPosition = document.lineAt(lastLine).rangeIncludingLineBreak.end;
+        let range = new vscode.Range(
+            new vscode.Position(0, 0),
+            lastPosition,
+        )
+        return new Section(
+            range,
+            header,
+        )
     }
 
     let section = tree.getSection(cursor);
