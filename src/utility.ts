@@ -18,12 +18,6 @@ export let LANGUAGE_PATTERN: RegExp | undefined;
 export let LANGUAGES: string[] = [];
 export let TRACK_OPTION: string;
 
-// export let MAX_ACTIVE_DOCUMENT = 0;
-// export let TRACKER: tracker.ActiveDocument = new tracker.ActiveDocument(2);
-
-
-// TODO: store temporary files for deletion when deactivated
-export let tempfiles = new Set<vscode.Uri>();
 
 /**
  * @returns a unique identifier

@@ -43,7 +43,6 @@ export function writeCodeFile(filename: string, code: string) {
     let fileUri = vscode.Uri.file(fullFileName);
 
     util.consoleLog(`Write File: ${fileUri.fsPath}`);
-    util.tempfiles.add(fileUri);
 
     // NOTE: extra newline for indented code at end of file
     let cmd = Buffer.from(code, "utf8");
@@ -329,10 +328,14 @@ export async function createIPythonTerminal(
     await executeSingleLine(terminal, cmd);
     await util.wait(1000);  // may take awhile to startup ipython
 
-    if (name === '') {
-        let count = TERMINALS.size + 1
-        name = terminalName + `-${count}`
+    let count = TERMINALS.size + 1
+    let prefix = `${terminalName}-${count}`;
+    if (name !== '') {
+        name = `${prefix}: ${name}`
+    } else {
+        name = prefix
     }
+
     await vscode.commands.executeCommand(
         'workbench.action.terminal.renameWithArg',
         { name: name }

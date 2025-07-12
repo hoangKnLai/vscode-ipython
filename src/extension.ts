@@ -102,8 +102,4 @@ export function deactivate() {
     //  - No guarantee that any extension deactivate() will be called immediately
     //  or at all at session closure
 
-    // Remove temporary file used
-    for (let uri of util.tempfiles) {
-        vscode.workspace.fs.delete(uri);
-    }
 }
