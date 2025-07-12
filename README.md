@@ -63,6 +63,11 @@ More on vscode handling of `python` virtual environment can be found in [vscode 
 
 - This should automatically installed when this extension is installed
 
+## Installation
+Install into vscode via the [vscode marketplace](https://marketplace.visualstudio.com/items?itemName=HoangKimLai.ipython).
+
+Alternativey search for `hoangkimlai.ipython` under the Extensions tab in vscode.
+
 ## Settings
 
 Here are some recommended VSCode settings (`settings.json`) to get started:
