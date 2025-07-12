@@ -1060,7 +1060,6 @@ export class SectionTreeProvider implements vscode.TreeDataProvider<SectionItem>
 
 
 /**
- * DEPRECATED
  * Section Item for use with TreeProvider
  * @document the text file section is found in
  * @position the starting position of a section in document
@@ -1162,186 +1161,6 @@ export class SectionTreeItem extends vscode.TreeItem {
 
 
 /**
- * DEPRECATED
- * Section TreeProvider for text file in editors
- */
-export class SectionTreeProviderBACKUP implements vscode.TreeDataProvider<SectionTreeItem> {
-    private _onDidChangeTreeDataEmitter: vscode.EventEmitter<SectionTreeItem | undefined | void> = new vscode.EventEmitter<SectionTreeItem | undefined | void>();
-    readonly onDidChangeTreeData: vscode.Event<SectionTreeItem | undefined | void> = this._onDidChangeTreeDataEmitter.event;
-
-    private documentNodes = new Map<string, SectionTreeItem>;
-    private itemCache = new Map<string, SectionTreeItem[]>;
-
-    constructor() {
-        this.cacheSection(undefined);
-    }
-
-    // == Abstraction ==
-    getTreeItem(element: SectionTreeItem): vscode.TreeItem | Thenable<vscode.TreeItem> {
-        return element;
-    }
-
-    getParent(element: SectionTreeItem): vscode.ProviderResult<SectionTreeItem> {
-        if (element.position === undefined) {  // it is a document node
-            return undefined;
-        }
-        let document = element.document;
-        return this.documentNodes.get(document.fileName);
-    }
-
-    getChildren(element?: SectionTreeItem | undefined): vscode.ProviderResult<SectionTreeItem[]> {
-        if (element === undefined) {
-            let nodes = Array.from(this.documentNodes.values());
-            return Promise.resolve(nodes);
-        }
-
-        if (element.document === undefined) {
-            util.consoleLog('getChildren: Found undefined');
-        }
-
-        if (!element.document.isClosed) {
-            let sections = this.itemCache.get(element.document.fileName);
-            return Promise.resolve(sections);
-        }
-        return Promise.resolve([]);
-    }
-
-    // == Functions ==
-    /**
-     * Create a view node document.
-     * @param document a text document
-     * @returns a document view node
-     */
-    private createDocumentNode(document: vscode.TextDocument) {
-        if (document === undefined) {
-            util.consoleLog('naviRunSection: Found undefined item');
-        }
-        return new SectionTreeItem(
-            document,
-            vscode.TreeItemCollapsibleState.Expanded,
-            undefined,
-        );
-    }
-
-    /**
-     * Find section in documents and cache the results.
-     * @param documents a set of text file
-     */
-    private cacheSection(documents: readonly vscode.TextDocument[] | undefined): void {
-        if (documents === undefined) {
-            let editors = vscode.window.visibleTextEditors;
-            documents = editors.map(item => item.document);
-        }
-        if (!util.LANGUAGE_PATTERN) {
-            return;
-        }
-        for (let document of documents) {
-            let matchExt = document.languageId.search(util.LANGUAGE_PATTERN);
-            if (matchExt === -1 || !matchSectionTag(document.getText())) {
-                continue;
-            }
-
-            let docNode = this.documentNodes.get(document.fileName);
-            if (docNode === undefined) {
-                docNode = this.createDocumentNode(document);
-                this.documentNodes.set(document.fileName, docNode);
-            }
-            this.cacheItem(docNode);
-        }
-    }
-
-    /**
-     * Cache the section nodes of a document.
-     * @param documentNode a node representing a document with sections
-     */
-    private cacheItem(documentNode: SectionTreeItem): void {
-        let document = documentNode.document;
-
-        let positions = SECTION_MARKER_POSITIONS.get(document.fileName);
-        if (positions === undefined) {
-            return;
-        }
-        let endOfFile = document.lineAt(document.lineCount - 1).range.end;
-        let sections: SectionTreeItem[] = [];
-        for (let position of positions) {
-            if (position.isEqual(endOfFile)) {
-                continue;
-            }
-            sections.push(
-                new SectionTreeItem(
-                    document,
-                    vscode.TreeItemCollapsibleState.None,
-                    position,
-                )
-            );
-        }
-        this.itemCache.set(document.fileName, sections);
-        return;
-    }
-
-    /**
-     * Refresh the tree view from root.
-     */
-    public refresh(): void {
-        this._onDidChangeTreeDataEmitter.fire();
-    }
-
-    /**
-     * Get a cached document node in tree view
-     * @param document a text editor document
-     * @returns cached document node
-     */
-    public getDocumentNode(document: vscode.TextDocument) {
-        return this.documentNodes.get(document.fileName);
-    }
-
-    /**
-     * WIP: Expand the collapsible document node
-     * @param document a text editor document
-     */
-    public expandDocument(document: vscode.TextDocument) {
-        if (document === undefined) {
-            util.consoleLog('SectionItem: Found undefined');
-            return;
-        }
-        let docNode = this.documentNodes.get(document.fileName);
-        if (docNode) {
-            docNode.collapsibleState = vscode.TreeItemCollapsibleState.Expanded;
-        }
-        this.refresh();
-    }
-
-    /**
-     * Refresh the view of a document. If not cached, caches it and update view.
-     * @param document in view
-     */
-    public refreshDocument(document: vscode.TextDocument) {
-        if (document === undefined) {
-            util.consoleLog('SectionItem: Found undefined');
-            return;
-        }
-        this.cacheSection([document]);
-        this.expandDocument(document);
-        this.refresh();
-    }
-
-    /**
-     * Remove a document from view.
-     * @param document in view
-     */
-    public removeDocument(document: vscode.TextDocument) {
-        if (document === undefined) {
-            util.consoleLog('SectionItem: Found undefined');
-            return;
-        }
-        this.documentNodes.delete(document.fileName);
-        this.itemCache.delete(document.fileName);
-        this.refresh();
-    }
-}
-
-
-/**
  * Register navigator commands
  * @param context of extension
  */
@@ -1383,11 +1202,6 @@ export function registerSectionNavigator(context: vscode.ExtensionContext) {
     }
 
     let treeProvider = new SectionTreeProvider();
-    // let treeOptions: vscode.TreeViewOptions<SectionTreeItem> = {
-    //     treeDataProvider: treeProvider,
-    //     showCollapseAll: true,
-    // };
-
     let treeOptions: vscode.TreeViewOptions<SectionItem> = {
         treeDataProvider: treeProvider,
         showCollapseAll: true,
