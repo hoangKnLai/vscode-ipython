@@ -13,7 +13,7 @@ import * as navi from "./navigate";
 let newLine = util.getNewLine();
 
 //FIXME: consider making configurable?!
-export const terminalName = 'IPython';
+export const terminalName = 'IPy';
 
 // === FUNCTIONS ===
 
@@ -135,7 +135,7 @@ class IpyTerminal {
      * @param uid is the unique identity of the terminal
      */
     constructor(
-        terminal:vscode.Terminal,
+        terminal: vscode.Terminal,
         name: string,
         uid: string
     ) {
@@ -224,7 +224,7 @@ export function registerTerminalCallbacks(context: vscode.ExtensionContext) {
 
 
 /**
- * Create an ipython terminal.
+ * Wrapper to create Python and then IPython terminal.
  *
  * @param name of the terminal tab. Default {@link terminalName}.
  * @param uid of the terminal. If undefined, use a random new unique identity.
@@ -237,18 +237,62 @@ export async function createTerminal(
 ) {
     util.consoleLog('Creating IPython Terminal...');
 
-    // -- Create and Tag IPython Terminal
+    // -- Create Python terminal
     await vscode.commands.executeCommand('python.createTerminal');
-    util.wait(1000); // msec, to help with a race condition of not naming terminal
+    util.wait(1000); // msec, to help with a race condition
 
-    // FIXME: this is shaky, perhaps use @vscode/python-extension
+    // FIXME: this is fragile, perhaps use @vscode/python-extension
     let terminal = vscode.window.terminals[vscode.window.terminals.length - 1];
 
+    if (terminal === undefined) {
+        console.error('createTerminal: failed to create new Python terminal');
+        return;
+    }
+    let ipyTerminal = await createIPythonTerminal(
+        terminal,
+        name,
+        uid,
+        extraStartupCmds,
+    )
+    if (ipyTerminal === undefined) {
+        console.error('createTerminal: failed to create new IPython terminal');
+        return;
+    }
+    TERMINALS.set(
+        terminal,
+        ipyTerminal,
+    );
+    ACTIVE_TERMINAL = terminal;
+
+    return ipyTerminal;
+}
+
+
+/**
+ * Create an ipython terminal.
+ *
+ * @param terminal with activated environment that ipython call can be made to
+ * create the IPython terminal. Default to lastest terminal in list.
+ * @param name of the terminal tab. Default {@link terminalName}.
+ * @param uid of the terminal. If undefined, use a random new unique identity.
+ * @returns an ipython terminal
+ */
+export async function createIPythonTerminal(
+    terminal: vscode.Terminal | undefined = undefined,
+    name: string = '',
+    uid: string | undefined = undefined,
+    extraStartupCmds: string[] | undefined = undefined,
+) {
+    util.consoleLog('Creating IPython Terminal...');
+
+    if (terminal === undefined) {
+        terminal = vscode.window.terminals[vscode.window.terminals.length - 1];
+    }
     if (terminal === undefined) {
         console.error('createTerminal: failed to create new ipython terminal');
         return;
     }
-
+    // -- Create and Tag IPython Terminal
     // Launch options
     let cmd = 'ipython ';
     let launchArgs = util.getConfig('LaunchArguments') as string;
@@ -297,6 +341,26 @@ export async function createTerminal(
     if (uid === undefined) {
         uid = util.createUniqueId();
     }
+    let ipyTerminal = addTerminal(terminal, name, uid);
+
+    return ipyTerminal;
+}
+
+
+/**
+ * Add terminal to ipython terminal list
+ *
+ * @param terminal with activated environment that ipython call can be made to
+ * create the IPython terminal. Default to lastest terminal in list.
+ * @param name of the terminal tab. Default {@link terminalName}.
+ * @param uid of the terminal. If undefined, use a random new unique identity.
+ * @returns an ipython terminal
+ */
+export function addTerminal(
+    terminal: vscode.Terminal,
+    name: string,
+    uid: string,
+) {
     let ipyTerminal = new IpyTerminal(terminal, name, uid);
     TERMINALS.set(
         terminal,
@@ -306,6 +370,7 @@ export async function createTerminal(
 
     return ipyTerminal;
 }
+
 
 /**
  * Get an existing ipython terminal.
@@ -357,7 +422,7 @@ export async function executeCodeBlock(
     let execMethod = util.getConfig('RunCodeBlockMethod') as string;
     let command = `${execMethod} "${path}"`;
 
-    if (execMethod === '%run -i'){
+    if (execMethod === '%run -i') {
         command += `  ${identity}`;
     } else {  // assume %load
         nExec = 2;
@@ -379,7 +444,7 @@ export async function executeSingleLine(
 ) {
     command = command.trim();
 
-    if (command.length === 0){
+    if (command.length === 0) {
         return;
     }
 
@@ -398,8 +463,8 @@ export async function executeSingleLine(
  */
 async function execute(
     terminal: vscode.Terminal,
-    nExec=1,
-){
+    nExec = 1,
+) {
     // Wait for IPython to register command before execution.
     // NOTE: this helps with race condition, not solves it.
     if (nExec === 0) {
@@ -438,7 +503,7 @@ export async function createDedicatedTerminal(
     let relPath = vscode.workspace.asRelativePath(uri);
     let basename = path.basename(relPath);
     let addon = relPath.replace(basename, '');
-    addon = (addon.length > 0)? (' ' + addon):addon;
+    addon = (addon.length > 0) ? (' ' + addon) : addon;
     let name = basename + addon;
 
     // Start terminal in file directory
@@ -541,7 +606,7 @@ export async function runSelections() {
         return;
     }
 
-    let codes:string[] = [];
+    let codes: string[] = [];
     for (let select of editor.selections) {
         let code = formatCode(editor.document, select);
         let lines = code.trimEnd().split(newLine);
@@ -553,7 +618,7 @@ export async function runSelections() {
     let code = codes.join(newLine) + newLine;
 
     util.consoleLog(`IPython Run Line Selection(s):${code}`);
-    if (isSingleLine){
+    if (isSingleLine) {
         await executeSingleLine(terminal, code);
         return;
     }
@@ -857,7 +922,7 @@ export function registerCommands(context: vscode.ExtensionContext) {
     context.subscriptions.push(
         vscode.commands.registerCommand(
             "ipython.runSectionAndMoveToNext",
-             () => runSection(true),
+            () => runSection(true),
         )
     );
     context.subscriptions.push(

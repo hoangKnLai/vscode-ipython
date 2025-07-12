@@ -1,7 +1,7 @@
 # ipython
 
 Enable [IPython Terminal](https://ipython.org/) creation and direct execution of
-`python` code from `.py` in editor.
+`python` code from `.py` file in editor.
 
 ## Features
 
@@ -64,6 +64,7 @@ More on vscode handling of `python` virtual environment can be found in [vscode 
 - This should automatically installed when this extension is installed
 
 ## Installation
+
 Install into vscode via the [vscode marketplace](https://marketplace.visualstudio.com/items?itemName=HoangKimLai.ipython).
 
 Alternativey search for `hoangkimlai.ipython` under the Extensions tab in vscode.
