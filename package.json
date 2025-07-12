@@ -75,7 +75,7 @@
                 "ipython.workFolderBase": {
                     "type": "string",
                     "default": "",
-                    "markdownDescription": "A folder to be used by this extension. \nDefault: `${HOME}`. NOTE: temporary `files` are placed in `${workFolderBase}/.vscode/ipython/`."
+                    "markdownDescription": "A folder to be used by this extension. \nDefault: `${HOME}`."
                 },
                 "ipython.LaunchArguments": {
                     "type": "string",
@@ -94,18 +94,6 @@
                     "type": "number",
                     "default": 64,
                     "markdownDescription": "Millisecond delay between each code execution. Helps with race condition when sending text to IPython `stdin` shell."
-                },
-                "ipython.RunCodeBlockMethod": {
-                    "type": "string",
-                    "enum": [
-                        "%load",
-                        "%run -i"
-                    ],
-                    "default": "%run -i",
-                    "markdownEnumDescriptions": [
-                        "(DEPRECATED to just `%run -i` in a future release) Use `%load ` to send code to terminal and then execute",
-                        "Write code block (section, multi-selections) to `{workFolder}/code.py`, then execute using `%run -i code.py`. NOTE: open `code.py` to see exact code executed."
-                    ]
                 },
                 "ipython.RunArguments": {
                     "type": "string",

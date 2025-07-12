@@ -418,15 +418,10 @@ export async function executeCodeBlock(
 ) {
     let file = writeCodeFile(cst.CODE_FILE, code);
     let path = vscode.workspace.asRelativePath(file);
-    let nExec = 1;  // default to %run -i
-    let execMethod = util.getConfig('RunCodeBlockMethod') as string;
+    let nExec = 1;
+    let execMethod = '%run -i'
     let command = `${execMethod} "${path}"`;
 
-    if (execMethod === '%run -i') {
-        command += `  ${identity}`;
-    } else {  // assume %load
-        nExec = 2;
-    }
     terminal.sendText(command, false);  // false: no append `newline`
     await execute(terminal, nExec);
 }
