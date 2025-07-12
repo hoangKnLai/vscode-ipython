@@ -118,6 +118,7 @@ export function formatCode(
 
 
 // == TERMINAL
+// NOTE: vscode API does not have option to directly extends Terminal
 /**
  * IPython wrapper on vscode.Terminal
  */
@@ -230,7 +231,7 @@ export function registerTerminalCallbacks(context: vscode.ExtensionContext) {
  * @returns an ipython terminal
  */
 export async function createTerminal(
-    name: string = terminalName,
+    name: string = '',
     uid: string | undefined = undefined,
     extraStartupCmds: string[] | undefined = undefined,
 ) {
@@ -284,6 +285,10 @@ export async function createTerminal(
     await executeSingleLine(terminal, cmd);
     await util.wait(1000);  // may take awhile to startup ipython
 
+    if (name === '') {
+        let count = TERMINALS.size + 1
+        name = terminalName + `-${count}`
+    }
     await vscode.commands.executeCommand(
         'workbench.action.terminal.renameWithArg',
         { name: name }
