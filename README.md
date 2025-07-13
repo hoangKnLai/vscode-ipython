@@ -141,7 +141,7 @@ Dependent on your project, you might:
   - Added button for `runToSection(), runFromSection()`
 
 - Added tree view for file section (indicated by a set of `sectionTag` such as `# %%`)
-  - `jumpToSection`: jump to section in text editor and focus on it
+  - When click on a section: jump to section in text editor and focus on it
     - Support any text files with `sectionTag`
   - `runFile, runSection`: excution interaction on tree view
     - Support a configurable set of file extensions such as `.py, .ts, .md`

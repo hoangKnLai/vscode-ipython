@@ -15,6 +15,8 @@ export let WORK_FOLDER: string = '';
 export let SECTION_MARKER_PATTERN: RegExp | undefined;
 export let SECTION_LEVEL_PATTERN: RegExp | undefined;
 export let LANGUAGE_PATTERN: RegExp | undefined;
+
+/* Language ID for navigator */
 export let LANGUAGES: string[] = [];
 export let TRACK_OPTION: string;
 

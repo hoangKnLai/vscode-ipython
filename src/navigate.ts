@@ -281,16 +281,27 @@ export function removeSectionCache(fileName: string) {
     FILE_SECTION_TREES.delete(fileName);
 }
 
+
 /**
- * Update section cache of document.
- * @param document - a text file.
+ *
+ * @param document
+ * @returns true if language is supported
  */
-export function updateSectionCache(document: vscode.TextDocument) {
+export function isSupportedLanguage(document: vscode.TextDocument) {
     if (!util.LANGUAGE_PATTERN) {
-        return;
+        return false;
     }
     let match = document.languageId.search(util.LANGUAGE_PATTERN);
-    if (match === -1) {
+    return match !== -1;
+}
+
+
+/**
+ * Update section cache of document.
+ * @param document
+ */
+export function updateSectionCache(document: vscode.TextDocument) {
+    if (!isSupportedLanguage(document)) {
         return;
     }
     let positions = findSectionPosition(document);
@@ -725,6 +736,25 @@ export class SectionItem extends vscode.TreeItem{
             false,  // preserveFocus
         );
     }
+
+    /**
+     *
+     * @param position
+     * @returns
+     */
+    public find(position: vscode.Position): SectionItem | undefined {
+        if (this.children.length > 0) {
+            for (let child of this.children) {
+                let found = child.find(position);
+                if (found) {
+                    return found;
+                }
+            }
+        }
+        if (this.children.length === 0 && this.section && this.section.range.contains(position)) {
+            return this;
+        }
+    }
 }
 
 
@@ -899,17 +929,22 @@ export class SectionTree {
 
 
 /**
- *
+ * @param file_section_trees containing section tree for each active file.
+ * Default to FILE_SECTION_TREES
  * @param document containing cursor and having any section
  * @param cursor position in document
  * @returns lowest level {@link Section} containing cursor if exists. Note,
- * {@link Section.parent} can be used to get parent level section.
+ * Section.parent can be used to get parent level section.
  */
 export function getSectionFrom(
+    file_section_trees: Map<string, SectionTree> | undefined,
     document: vscode.TextDocument,
     cursor: vscode.Position,
 ) {
-    let tree = FILE_SECTION_TREES.get(document.fileName);
+    if (file_section_trees === undefined) {
+        file_section_trees = FILE_SECTION_TREES;
+    }
+    let tree = file_section_trees.get(document.fileName);
     if (tree === undefined) {
         console.error('getSectionFrom: failed to retrieve cache');
         return;
@@ -1018,12 +1053,8 @@ export class SectionTreeProvider implements vscode.TreeDataProvider<SectionItem>
                     roots.push(sections);
                 }
             }
-
-            // All files opened
-            // let roots = Array.from(this.roots.values());
             return roots;
         }
-
         return element.children;
     }
 
@@ -1055,6 +1086,26 @@ export class SectionTreeProvider implements vscode.TreeDataProvider<SectionItem>
     public removeDocument(document: vscode.TextDocument) {
         this.roots.delete(document.fileName);
         this.refresh();
+    }
+
+    /**
+     *
+     * @param document
+     * @param position
+     */
+    public getSectionItemAt(
+        document: vscode.TextDocument,
+        position: vscode.Position,
+    ) {
+        if (!isSupportedLanguage(document)) {
+            return;
+        }
+        let sections = this.roots.get(document.fileName);
+        if (sections === undefined) {
+            console.error("Failed to retrieve SectionItem of file");
+            return;
+        }
+        return sections.find(position);
     }
 }
 
@@ -1130,11 +1181,6 @@ export class SectionTreeItem extends vscode.TreeItem {
         this.iconPath = icon;
         this.tooltip = tooltip;
         this.description = description;
-        this.command = {
-            command: 'ipython.naviJumpToSection',
-            arguments: [this],
-            title: 'Jump to ...',
-        };
     }
 
     /**
@@ -1175,14 +1221,12 @@ export function registerCommands(context: vscode.ExtensionContext) {
             },
         ),
     );
-
     context.subscriptions.push(
         vscode.commands.registerCommand(
             "ipython.moveToSectionTagAbove",
             () => moveCursorToSection(false)
         )
     );
-
     context.subscriptions.push(
         vscode.commands.registerCommand(
             "ipython.moveToSectionTagBelow",
@@ -1213,13 +1257,32 @@ export function registerSectionNavigator(context: vscode.ExtensionContext) {
         treeOptions,
     );
 
+    // FIXME: not working as intended.
+    // context.subscriptions.push(vscode.window.onDidChangeTextEditorSelection((event) => {
+    //     if (event.textEditor === vscode.window.activeTextEditor) {
+    //         const cursorPosition = event.selections[0].active; // Get the active cursor position
+    //         const currentSection = treeProvider.getSectionItemAt(
+    //             event.textEditor.document,
+    //             cursorPosition,
+    //         );
+    //         if (currentSection) {
+    //             // Reveal the corresponding section in the tree view
+    //             // This will highlight the item and make sure it's visible
+    //             // without necessarily changing the focus if the user is typing
+    //             treeView.reveal(currentSection, { select: true, focus: false, expand: true });
+    //         } else {
+    //             // If the cursor is not in any section, might want to de-select
+    //             // in the tree view. Might involve calling `reveal` with an
+    //             // undefined element or managing the selected state within
+    //             // data provider.
+    //         }
+    //     }
+    // }));
+
+
     context.subscriptions.push(
         vscode.workspace.onDidChangeTextDocument(
             (event) => {
-                // if (event.contentChanges.length === 0) {
-                //     treeProvider.expandDocument(event.document);
-                //     return;
-                // }
                 updateSectionCache(event.document);
                 if (vscode.window.activeTextEditor) {
                     updateSectionDecor(vscode.window.activeTextEditor);
@@ -1279,6 +1342,18 @@ export function registerSectionNavigator(context: vscode.ExtensionContext) {
             context.subscriptions,
         )
     );
+
+    context.subscriptions.push(
+        vscode.window.onDidChangeTextEditorSelection(
+            (event) => {
+                let editor = event.textEditor;
+                let position = event.selections[0].active;
+                if (editor && position) {
+                    // TODO
+                }
+            }
+        )
+    )
 }
 
 

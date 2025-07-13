@@ -423,6 +423,7 @@ export async function executeCodeBlock(
     let path = vscode.workspace.asRelativePath(file);
     let nExec = 1;
     let execMethod = '%run -i'
+
     let command = `${execMethod} "${path}"`;
 
     terminal.sendText(command, false);  // false: no append `newline`
@@ -760,7 +761,11 @@ export async function runSection(isNext: boolean) {
     }
 
     let cursor = editor.selection.start;
-    let section = navi.getSectionFrom(editor.document, cursor);
+    let section = navi.getSectionFrom(
+        navi.FILE_SECTION_TREES,
+        editor.document,
+        cursor,
+    );
     if (section === undefined) {
         console.error('runSection: failed to find section');
         return;
@@ -944,6 +949,7 @@ export function registerCommands(context: vscode.ExtensionContext) {
                     let document = editor.document;
                     let cursor = editor.selection.start;
                     let section = navi.getSectionFrom(
+                        navi.FILE_SECTION_TREES,
                         document,
                         cursor,
                     );
@@ -963,6 +969,7 @@ export function registerCommands(context: vscode.ExtensionContext) {
                     let document = editor.document;
                     let cursor = editor.selection.start;
                     let section = navi.getSectionFrom(
+                        navi.FILE_SECTION_TREES,
                         document,
                         cursor,
                     );
@@ -972,6 +979,56 @@ export function registerCommands(context: vscode.ExtensionContext) {
                 }
             },
         )
+    );
+
+    // -- navigation and ipython
+    context.subscriptions.push(
+        vscode.commands.registerCommand(
+            'ipython.naviRunToSection',
+            (item: navi.SectionItem) => {
+                if (item === undefined) {
+                    console.error('naviRunToSection: found undefined item');
+                    return;
+                }
+                if(item && item.section !== undefined && item.document.languageId === 'python'){
+                    runDocumentSection(item.document, item.section, false);
+                }
+            },
+        ),
+    );
+    context.subscriptions.push(
+        vscode.commands.registerCommand(
+            'ipython.naviRunFromSection',
+            (item: navi.SectionItem) => {
+                if (item === undefined) {
+                    console.error('naviRunFromSection: found undefined item');
+                    return;
+                }
+                if(item && item.section !== undefined && item.document.languageId === 'python'){
+                    runDocumentSection(item.document, item.section, true);
+                }
+            },
+        ),
+    );
+    context.subscriptions.push(
+        vscode.commands.registerCommand(
+            'ipython.naviRunSection',
+            (item: navi.SectionItem) => {
+                if(item && item.section && item.document.languageId === 'python'){
+                    runDocumentSection(item.document, item.section);
+                }
+            },
+        ),
+    );
+    context.subscriptions.push(
+        vscode.commands.registerCommand(
+            'ipython.naviRunFile',
+            (item: navi.SectionItem) => {
+                if (item && item.document && item.document.languageId === 'python') {
+                    runFile(item.document);
+                }
+            },
+        ),
     );
 }
 
