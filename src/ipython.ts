@@ -4,7 +4,7 @@
 
 import * as path from "path";
 import * as vscode from "vscode";
-
+import * as fs from "fs"
 import * as util from "./utility";
 import * as cst from "./constants";
 import * as navi from "./navigate";
@@ -36,9 +36,13 @@ export function getPythonEditor() {
  *
  * @param filename - name of file to write code to
  * @param code - properly formatted code
- * @returns URI to written file
+ * @returns relative path from workspaceFolder to written file
  */
 export function writeCodeFile(filename: string, code: string) {
+    if (!fs.existsSync(util.WORK_FOLDER)) {
+        console.error(`writeCodeFile: invalid workFolder ${util.WORK_FOLDER}`);
+        return;
+    }
     let fullFileName = path.join(util.WORK_FOLDER, filename);
     let fileUri = vscode.Uri.file(fullFileName);
 
@@ -47,9 +51,8 @@ export function writeCodeFile(filename: string, code: string) {
     // NOTE: extra newline for indented code at end of file
     let cmd = Buffer.from(code, "utf8");
     vscode.workspace.fs.writeFile(fileUri, cmd);
-
-    // return fullFileName;
-    return fileUri;
+    let file = vscode.workspace.asRelativePath(fileUri);
+    return file;
 }
 
 
@@ -420,14 +423,18 @@ export async function executeCodeBlock(
     identity: string = '',
 ) {
     let file = writeCodeFile(cst.CODE_FILE, code);
-    let path = vscode.workspace.asRelativePath(file);
-    let nExec = 1;
+    if (file === undefined) {
+        console.error(`executeCodeBlock: invalid ${file}`)
+    }
+    let nNewLines = 1;
     let execMethod = '%run -i'
 
-    let command = `${execMethod} "${path}"`;
-
+    let command = `${execMethod} "${file}"`;
+    if (identity) {
+        command = `${command} ${identity}`;
+    }
     terminal.sendText(command, false);  // false: no append `newline`
-    await execute(terminal, nExec);
+    await execute(terminal, nNewLines);
 }
 
 /**
@@ -457,28 +464,26 @@ export async function executeSingleLine(
  * Execute code that are already sent to an ipython terminal.
  *
  * @param terminal - an ipython terminal
- * @param nExec - number of ipython execution
+ * @param nNewLines - number of ipython execution
  * @param Promise - executed on terminal
  */
 async function execute(
     terminal: vscode.Terminal,
-    nExec = 1,
+    nNewLines = 1,
 ) {
-    // Wait for IPython to register command before execution.
-    // NOTE: this helps with race condition, not solves it.
-    if (nExec === 0) {
+    if (nNewLines === 0) {
         return;
     }
-
+    // Wait for IPython to register command before execution.
+    // NOTE: this helps with race condition, not solves it.
     let execLagMilliSec = util.getConfig("ExecutionLagMilliSec") as number;
-    util.consoleLog(`+ Number of Execution: ${nExec}`);
-    for (let i = 0; i < nExec; i++) {
+    util.consoleLog(`+ Number of New Lines: ${nNewLines}`);
+    for (let i = 0; i < nNewLines; i++) {
         await util.wait(execLagMilliSec);
         util.consoleLog(`- Waited ${execLagMilliSec} msec`);
         terminal.sendText('');
         util.consoleLog(`- Execute ID ${i}`);
     }
-
     await vscode.commands.executeCommand(
         "workbench.action.terminal.scrollToBottom"
     );

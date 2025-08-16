@@ -11,7 +11,7 @@ import * as cst from './constants';
 
 // FIXME: move configuration related to config.ts
 export let config = vscode.workspace.getConfiguration('ipython');
-export let WORK_FOLDER: string = '';
+export let WORK_FOLDER: string;
 export let SECTION_MARKER_PATTERN: RegExp | undefined;
 export let SECTION_LEVEL_PATTERN: RegExp | undefined;
 export let LANGUAGE_PATTERN: RegExp | undefined;
@@ -46,21 +46,36 @@ export function escapeRegex(str: string) {
 export function updateConfig() {
     config = vscode.workspace.getConfiguration('ipython');
 
-    let baseDir = config.get('workFolderBase') as string;
-
-    // -- Base directory of work folder
-    if (baseDir === '') {
-        baseDir = homedir();
+    let workFolder = config.get('workFolder') as string;
+    let default_path = path.join(homedir(), cst.RELATIVE_WORKFOLDER);
+    if (!workFolder) {  // "": use default
+        if (!fs.existsSync(default_path)) {
+            fs.mkdirSync(default_path, {recursive: true});
+        }
+        WORK_FOLDER = default_path
+    } else if (fs.existsSync(workFolder)) {  // a specific folder
+        WORK_FOLDER = workFolder;
+    } else {  // relative to `workspaceFolder` or `HOME`
+        let workspaceFolder: string = homedir();
+        if (vscode.workspace.workspaceFolders) {
+            workspaceFolder = vscode.Uri.parse(
+                vscode.workspace.workspaceFolders[0].uri.toString(),
+                true,
+            ).fsPath;
+            WORK_FOLDER = path.join(workspaceFolder, workFolder);
+            try{
+                if (!fs.existsSync(WORK_FOLDER)) {
+                    fs.mkdirSync(WORK_FOLDER, {recursive: true});
+                }
+            } catch {
+                vscode.window.showWarningMessage(`Unable to use: ${WORK_FOLDER}, defaulting to ${default_path}`);
+                if (!fs.existsSync(default_path)) {
+                    fs.mkdirSync(default_path, {recursive: true});
+                }
+                WORK_FOLDER = default_path
+            }
+        }
     }
-
-    let workFolder: string;
-    if (!fs.existsSync(baseDir)) {
-        workFolder = path.join(homedir(), cst.RELATIVE_WORKFOLDER);
-        vscode.window.showWarningMessage(`ipython: invalid workFolder, default to ${workFolder}`);
-    } else {
-        workFolder = path.join(baseDir, cst.RELATIVE_WORKFOLDER);
-    }
-    WORK_FOLDER = workFolder;
 
     // -- Section Regular Expression
     let tags = config.get('SectionTag') as string[];

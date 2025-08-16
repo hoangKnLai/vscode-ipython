@@ -21,8 +21,6 @@ export async function activate(context: vscode.ExtensionContext) {
     let pyExtension = vscode.extensions.getExtension('ms-python.python');
     if (pyExtension && !pyExtension.isActive){
         await pyExtension.activate();
-    } else {
-        console.error('activate: failed to activate MS-Python Extension');
     }
 
     // === CALLBACKS ===

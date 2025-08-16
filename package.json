@@ -55,13 +55,13 @@
                     "default": "visible",
                     "markdownEnumDescriptions": [
                         "Only show sections of VISIBLE documents of navigatorLanguageId",
-                        "Show sections of ALL opened documents of navigatorLanguageId"
+                        "Show sections of ALL opened documents of navigatorLanguageId. WARNING: will affect speed with many tabs and/or large files."
                     ]
                 },
                 "ipython.SectionLevelTag": {
                     "type": "string",
                     "default": "-",
-                    "markdownDescription": "Indent level tag after a SectionTag like `# %% - Heading 1` to increase heading level by +1"
+                    "markdownDescription": "Indent level tag after a SectionTag like `# %% - Heading` to increase heading level by +1"
                 },
                 "ipython.SectionTag": {
                     "type": "array",
@@ -72,10 +72,10 @@
                     ],
                     "markdownDescription": "A tag or regular expression to identify line as start of a section. E.g., `# %%` for Jupyter style or `(^(#)#+)+` for markdown 2nd level heading and lower."
                 },
-                "ipython.workFolderBase": {
+                "ipython.workFolder": {
                     "type": "string",
                     "default": "",
-                    "markdownDescription": "A folder to be used by this extension. \nDefault: `${HOME}`."
+                    "markdownDescription": "A folder to be used by this extension to write temporary files. If a relative path like `.vscode/ipython` is given, the first workspaceFolder is the root like `/your/workspace/folder/.vscode/ipython`. Default to `HOME/.vscode/ipython`."
                 },
                 "ipython.LaunchArguments": {
                     "type": "string",
@@ -98,7 +98,7 @@
                 "ipython.RunArguments": {
                     "type": "string",
                     "default": "-t",
-                    "markdownDescription": "Run arguments `run-args` equivalent to `%run run-args file.py`. More detail in [`%run` documentation](https://ipython.readthedocs.io/en/stable/interactive/magics.html#magic-run)"
+                    "markdownDescription": "Run arguments `run-args` equivalent to `%run run-args file.py` when `IPython: Run File ...`. More detail in [`%run` documentation](https://ipython.readthedocs.io/en/stable/interactive/magics.html#magic-run)"
                 },
                 "ipython.CommandLineArguments": {
                     "type": "string",
@@ -378,7 +378,8 @@
     },
     "dependencies": {
         "@types/vscode": "^1.81.0",
-        "@vscode/python-extension": "^1.0.5"
+        "@vscode/python-extension": "^1.0.5",
+        "vscode-variables": "^1.0.1"
     },
     "devDependencies": {
         "@types/glob": "^7.2.0",
@@ -388,10 +389,10 @@
         "@typescript-eslint/eslint-plugin": "^4.33.0",
         "@typescript-eslint/parser": "^4.33.0",
         "@vscode/test-electron": "^1.6.2",
-        "esbuild": "^0.19.2",
+        "esbuild": "^0.25.9",
         "eslint": "^7.32.0",
         "glob": "^7.2.3",
-        "mocha": "^9.2.2",
+        "mocha": "^11.7.1",
         "typescript": "^4.9.5"
     }
 }
