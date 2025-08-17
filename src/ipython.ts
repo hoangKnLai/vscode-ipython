@@ -572,19 +572,38 @@ export async function runFile(
     }
 
     let file = vscode.workspace.asRelativePath(document.fileName, false);
-    let cmd = `"${file}"`;
-    if (isWithCli) {
-        let args = util.getConfig('CommandLineArguments') as string;
-        cmd = cmd + ` ${args}`;
-    }
-    if (isWithArgs) {
-        let args = util.getConfig('RunArguments') as string;
-        cmd = `${args} ` + cmd;
-    }
-    cmd = `%run ` + cmd;
-
+    let cmd = composeCommand(file, isWithArgs, isWithCli, "%run");
     await executeSingleLine(terminal, cmd);
 }
+
+
+/**
+ * Compose a command `${command} ${args} ${file} ${cli}`
+ * @param file full path to a file
+ * @param isWithArgs to include command arguements
+ * @param isWithCli to include file command line interface arguments
+ * @param command the specific command
+ */
+export function composeCommand(
+    file: string,
+    isWithArgs: boolean = false,
+    isWithCli: boolean = false,
+    command: string = "%run",
+) {
+    let relativeFile = vscode.workspace.asRelativePath(file, false);
+    let cmd: string[] = [command];
+    if (isWithArgs) {
+        let args = util.getConfig('RunArguments') as string;
+        cmd.push(args);
+    }
+    cmd.push(relativeFile);
+    if (isWithCli) {
+        let args = util.getConfig('CommandLineArguments') as string;
+        cmd.push(args);
+    }
+    return cmd.join(' ');
+}
+
 
 /**
  * Run a selection of python code in an ipython terminal.
