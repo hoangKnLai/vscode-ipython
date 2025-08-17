@@ -10,7 +10,7 @@ import * as cst from './constants';
 
 
 // FIXME: move configuration related to config.ts
-export let config = vscode.workspace.getConfiguration('ipython');
+export let config: vscode.WorkspaceConfiguration;
 export let WORK_FOLDER: string;
 export let SECTION_MARKER_PATTERN: RegExp | undefined;
 export let SECTION_LEVEL_PATTERN: RegExp | undefined;
@@ -129,7 +129,7 @@ export function updateConfig() {
  * @returns - configuration value
  */
 export function getConfig(name: string) {
-    return config.get(name);
+    return vscode.workspace.getConfiguration('ipython').get(name);
 }
 
 

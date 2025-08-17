@@ -77,10 +77,15 @@
                     "default": "",
                     "markdownDescription": "A folder to be used by this extension to write temporary files. If a relative path like `.vscode/ipython` is given, the first workspaceFolder is the root like `/your/workspace/folder/.vscode/ipython`. Default to `HOME/.vscode/ipython` when empty."
                 },
+                "ipython.useRelativePath": {
+                    "type": "boolean",
+                    "default": false,
+                    "markdownDescription": "When executing a file, use path relative to the first Workspace Folder instead of absolute path. This is useful when running ipython in docker a container with repo mapped directly to the Workspace Folder."
+                },
                 "ipython.LaunchArguments": {
                     "type": "string",
                     "default": "--no-autoindent",
-                    "markdownDescription": "Input command to `ipython` call on launch (e.g. `--matplotlib=qt5`)"
+                    "markdownDescription": "Input command to `ipython` call on launch (e.g. `ipython --matplotlib=qt5`)"
                 },
                 "ipython.StartupCommands": {
                     "type": "array",

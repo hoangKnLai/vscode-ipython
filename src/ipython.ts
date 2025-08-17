@@ -50,8 +50,7 @@ export function writeCodeFile(filename: string, code: string) {
     // NOTE: extra newline for indented code at end of file
     let cmd = Buffer.from(code, "utf8");
     vscode.workspace.fs.writeFile(fileUri, cmd);
-    let file = vscode.workspace.asRelativePath(fileUri);
-    return file;
+    return fileUri.fsPath;
 }
 
 
@@ -405,7 +404,6 @@ export async function executeCodeBlock(
     let nNewLines = 1;
     let execMethod = '%run -i'
     let command = composeIPythonCommand(file, isWithArgs, false, execMethod);
-    // let command = `${execMethod} "${file}"`;
     if (identity) {
         command = `${command} ${identity}`;
     }
@@ -545,8 +543,12 @@ export async function runFile(
         console.error('runFile: failed to get a Terminal');
         return;
     }
-    let file = vscode.workspace.asRelativePath(document.fileName, false);
-    let cmd = composeIPythonCommand(file, isWithArgs, isWithCli, "%run");
+    let cmd = composeIPythonCommand(
+        document.fileName,
+        isWithArgs,
+        isWithCli,
+        '%run',
+    );
     await executeSingleLine(terminal, cmd);
 }
 
@@ -562,10 +564,13 @@ export function composeIPythonCommand(
     file: string,
     isWithArgs: boolean = false,
     isWithCli: boolean = false,
-    command: string = "%run",
+    command: string = '%run',
 ) {
-    let relativeFile = vscode.workspace.asRelativePath(file, false);
-    relativeFile = `"${relativeFile}"`  // for platform compatibility
+    let relativeFile = file;
+    if (util.getConfig('useRelativePath') as boolean) {
+        relativeFile = vscode.workspace.asRelativePath(file, false);
+    }
+    relativeFile = `"${relativeFile}"`  // "": for platform compatibility
     let cmd: string[] = [command];
     if (isWithArgs) {
         let args = util.getConfig('RunArguments') as string;
