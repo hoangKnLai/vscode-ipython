@@ -571,7 +571,7 @@ export async function runFile(
         return;
     }
 
-    let file = document.fileName;
+    let file = vscode.workspace.asRelativePath(document.fileName, false);
     let cmd = `"${file}"`;
     if (isWithCli) {
         let args = util.getConfig('CommandLineArguments') as string;
