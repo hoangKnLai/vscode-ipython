@@ -198,6 +198,10 @@ export function registerTerminalCallbacks(context: vscode.ExtensionContext) {
 }
 
 
+/**
+ * Look through terminals for ipython terminals and attach them for use in this
+ * instance.
+ */
 export function attachTerminals(){
     for (let terminal of vscode.window.terminals) {
         if (terminal.name.startsWith(terminalName)) {
@@ -205,7 +209,6 @@ export function attachTerminals(){
             addTerminal(terminal, filename);
         }
     }
-
 }
 
 
@@ -287,6 +290,11 @@ export async function launchIpyTerminal(
 }
 
 
+/**
+ * Get the command that can be sent to terminal and launch an ipython terminal
+ * @param extraStartupCmds additional startup commands not from settings
+ * @returns
+ */
 export function getLaunchCommand(extraStartupCmds?: string[]) {
     let cmd = 'ipython ';
 
@@ -472,7 +480,8 @@ async function execute(
 
 // === COMMANDS ===
 /**
- *
+ * Create ipython terminal dedicated to file such that when runFile, this
+ * terminal will be used instead of the current active ipython terminal.
  * @param document that new terminal is dedicated to.
  * @returns created {@link IpyTerminal}.
  */
@@ -498,10 +507,14 @@ export async function createDedicatedTerminal(
 }
 
 
+/**
+ * Compose the name of the ipython terminal
+ * @param filename a document.fileName
+ * @returns `${terminalName}-%{d}: <file.py> <path/to/folder>`
+ */
 export function composeTerminalName(filename?: string) {
     let name = "";
     if (filename) {
-        // let relPath = vscode.workspace.asRelativePath(filename);
         let basename = path.basename(filename);
         let addon = filename.replace(basename, '');
         addon = (addon.length > 0) ? (' ' + addon) : addon;
@@ -535,7 +548,6 @@ export function getFileFromTerminalName(name: string) {
 
 /**
  * Run a python file in an ipython terminal.
- *
  * @param isWithArgs - with specific run arguments
  * @param isWithCli - run with command line interface arguments
  * @returns Promise - is ran in terminal
@@ -662,7 +674,6 @@ export async function runSelections(isWithArgs: boolean = false) {
 
 /**
  * Run current line of code and move cursor to next line.
- *
  * @returns Promise - executed in terminal
  */
 export async function runLine() {
@@ -740,7 +751,7 @@ export async function runDocumentSection(
 
 
 /**
- *
+ * Run code within a contiguous set of lines in a file.
  * @param document a Python .py text document
  * @param range a consecutive set of lines and characters
  * @param tag of this run. E.g., `$ %run -i code.py # tag`
@@ -783,7 +794,6 @@ export async function runDocumentRange(
 
 /**
  * Run current section of python code in an ipython terminal.
- *
  * @param isNext - move cursor to next section if any
  * @returns Promise - is ran in terminal
  */
@@ -822,7 +832,6 @@ export async function runSection(isNext: boolean) {
 
 /**
  * Run code to or from cursor.
- *
  * @param toEnd inclusively from top to line or from line to end of file
  * @returns is ran in terminal
  */
