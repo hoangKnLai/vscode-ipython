@@ -230,10 +230,10 @@ export async function createTerminal(
     // FIXME: this is fragile, perhaps use @vscode/python-extension
     let terminal = vscode.window.terminals[vscode.window.terminals.length - 1];
     if (terminal === undefined) {
-        console.error('createTerminal: failed to create new Python terminal');
+        console.error('createTerminal: failed!');
         return;
     }
-    let ipyTerminal = await createIPythonTerminal(
+    let ipyTerminal = await launchIpyTerminal(
         terminal,
         name,
         uid,
@@ -261,13 +261,13 @@ export async function createTerminal(
  * @param uid of the terminal. If undefined, use a random new unique identity.
  * @returns an ipython terminal
  */
-export async function createIPythonTerminal(
+export async function launchIpyTerminal(
     terminal: vscode.Terminal | undefined = undefined,
-    name: string = '',
-    uid: string | undefined = undefined,
-    extraStartupCmds: string[] | undefined = undefined,
+    name?: string,
+    uid?: string,
+    extraStartupCmds?: string[],
 ) {
-    util.consoleLog('Creating IPython Terminal...');
+    util.consoleLog('Launching IPython Terminal...');
 
     if (terminal === undefined) {
         terminal = vscode.window.terminals[vscode.window.terminals.length - 1];
@@ -276,7 +276,18 @@ export async function createIPythonTerminal(
         console.error('createTerminal: failed to create new ipython terminal');
         return;
     }
-    // -- Create and Tag IPython Terminal
+    terminal.show(true)  // bring it to current
+    let cmd = getLaunchCommand(extraStartupCmds);
+    await executeSingleLine(terminal, cmd);
+    await util.wait(1000);  // may take awhile to startup ipython
+    if (TERMINALS.has(terminal)) {
+        return TERMINALS.get(terminal);
+    }
+    return addTerminal(terminal, name, uid);
+}
+
+
+export function getLaunchCommand(extraStartupCmds?: string[]) {
     // Launch options
     let cmd = 'ipython ';
     let launchArgs = util.getConfig('LaunchArguments') as string;
@@ -289,7 +300,6 @@ export async function createIPythonTerminal(
         }
         cmd += s + ' ';
     }
-
     // Startup options
     // REF: https://ipython.readthedocs.io/en/stable/config/intro.html#command-line-arguments
     let cmds = util.getConfig('StartupCommands') as string[];
@@ -306,18 +316,34 @@ export async function createIPythonTerminal(
         startupCmd += '--InteractiveShellApp.exec_lines=' + `"${s}" `;
     }
     cmd += startupCmd;
-
     util.consoleLog(`Startup Command: ${startupCmd}`);
-    terminal.show()  // bring it to current
-    await executeSingleLine(terminal, cmd);
-    await util.wait(1000);  // may take awhile to startup ipython
+    return cmd;
+}
+
+/**
+ * Add terminal to ipython terminal list
+ *
+ * @param terminal with activated environment that ipython can be called to
+ * create the IPython terminal. Default to lastest terminal in list.
+ * @param name of the terminal tab. Default {@link terminalName}.
+ * @param uid of the terminal. If undefined, use a random new unique identity.
+ * @returns an ipython terminal
+ */
+export async function addTerminal(
+    terminal: vscode.Terminal,
+    name?: string,
+    uid?: string,
+) {
+    if (TERMINALS.has(terminal)) {
+        return TERMINALS.get(terminal);
+    }
 
     let count = TERMINALS.size + 1
     let prefix = `${terminalName}-${count}`;
-    if (name !== '') {
-        name = `${prefix}: ${name}`
+    if (name) {
+        name = `${prefix}: ${name}`;
     } else {
-        name = prefix
+        name = prefix;
     }
     await vscode.commands.executeCommand(
         'workbench.action.terminal.renameWithArg',
@@ -326,25 +352,6 @@ export async function createIPythonTerminal(
     if (uid === undefined) {
         uid = util.createUniqueId();
     }
-    let ipyTerminal = addTerminal(terminal, name, uid);
-    return ipyTerminal;
-}
-
-
-/**
- * Add terminal to ipython terminal list
- *
- * @param terminal with activated environment that ipython call can be made to
- * create the IPython terminal. Default to lastest terminal in list.
- * @param name of the terminal tab. Default {@link terminalName}.
- * @param uid of the terminal. If undefined, use a random new unique identity.
- * @returns an ipython terminal
- */
-export function addTerminal(
-    terminal: vscode.Terminal,
-    name: string,
-    uid: string,
-) {
     let ipyTerminal = new IpyTerminal(terminal, name, uid);
     TERMINALS.set(
         terminal,
@@ -846,33 +853,53 @@ export function registerCommands(context: vscode.ExtensionContext) {
             createTerminal,
         )
     );
-
     context.subscriptions.push(
         vscode.commands.registerCommand(
             "ipython.createDedicatedTerminal",
             () => {
                 let document = vscode.window.activeTextEditor?.document;
                 if (document) {
-                    let uid = FILE_UID.get(document.fileName);
                     createDedicatedTerminal(document);
                 }
             },
         )
     );
-
     context.subscriptions.push(
         vscode.commands.registerCommand(
             "ipython.createDedicatedTerminalInFileDir",
             () => {
                 let document = vscode.window.activeTextEditor?.document;
                 if (document) {
-                    let uid = FILE_UID.get(document.fileName);
-                    let isInDir = true;
-                    createDedicatedTerminal(document, isInDir);
+                    createDedicatedTerminal(document, true);
                 }
             },
         )
     );
+
+
+    context.subscriptions.push(
+        vscode.commands.registerCommand(
+            "ipython.addTerminal",
+            () => {
+                let terminal = vscode.window.activeTerminal;
+                if (terminal){
+                    addTerminal(terminal);
+                }
+            },
+        )
+    );
+    context.subscriptions.push(
+        vscode.commands.registerCommand(
+            "ipython.launchTerminal",
+            () => {
+                let terminal = vscode.window.activeTerminal;
+                if (terminal){
+                    launchIpyTerminal(terminal);
+                }
+            },
+        )
+    );
+
 
     context.subscriptions.push(
         vscode.commands.registerCommand(
@@ -880,14 +907,12 @@ export function registerCommands(context: vscode.ExtensionContext) {
             runFile,
         )
     );
-
     context.subscriptions.push(
         vscode.commands.registerCommand(
             "ipython.runFileInDedicatedTerminal",
             () => runFile(undefined, true),
         )
     );
-
     context.subscriptions.push(
         vscode.commands.registerCommand(
             "ipython.runFileWithArgs",
@@ -930,7 +955,6 @@ export function registerCommands(context: vscode.ExtensionContext) {
             runSection,
         )
     );
-
     context.subscriptions.push(
         vscode.commands.registerCommand(
             "ipython.runSectionAndMoveToNext",
