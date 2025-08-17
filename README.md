@@ -98,6 +98,18 @@ Dependent on your project, you might:
 
 ## Release Notes
 
+### 2025.8.x
+
+- Added various features:
+  - Custom terminal environment use cases like virtual environment activation, cloud credential, docker container start and interactive shell.
+  - Auto reconnect ipython terminals when extension restarted
+- Settings:
+  - Added `UseRelativePath`, `BeforeScript`
+  - Refined `workFolderBase` to `WorkFolder`
+  - Removed deprecated `%load` option
+- Added commands:
+  - `addTerminal`, `launchTerminal`, `runSelectionsWithArgs`
+
 ### 2024.3.x
 
 - Added dedicated terminal creation commands (#51)
