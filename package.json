@@ -165,6 +165,11 @@
             },
             {
                 "category": "IPython",
+                "command": "ipython.runSelectionsWithArgs",
+                "title": "Run Code Selection(s) or Line at each Cursor with Args"
+            },
+            {
+                "category": "IPython",
                 "command": "ipython.runLineAndAdvance",
                 "title": "Run Code on current line and advance to next line"
             },

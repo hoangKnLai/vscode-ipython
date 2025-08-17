@@ -552,7 +552,7 @@ export async function runFile(
 
 
 /**
- * Compose a command `${command} ${args} ${file} ${cli}`
+ * Compose a command `${command} ${args} "${file}" ${cli}`
  * @param file full path to a file
  * @param isWithArgs to include command arguements
  * @param isWithCli to include file command line interface arguments
@@ -584,7 +584,7 @@ export function composeCommand(
  * Run a selection of python code in an ipython terminal.
  * @returns Promise - is ran in terminal
  */
-export async function runSelections() {
+export async function runSelections(isWithArgs: boolean = false) {
     util.consoleLog('IPython run selection...');
     let editor = getPythonEditor();
     if (editor === undefined) {
@@ -614,13 +614,13 @@ export async function runSelections() {
     let isSingleLine = codes.length === 1;
     let code = codes.join(newLine) + newLine;
 
-    util.consoleLog(`IPython Run Line Selection(s):${code}`);
-    if (isSingleLine) {
+    if (isSingleLine && !isWithArgs) {
+        util.consoleLog(`IPython Run Line Selection(s):${code}`);
         await executeSingleLine(terminal, code);
         return;
     }
     let identity = '# selection(s)';
-    await executeCodeBlock(terminal, code, identity);
+    await executeCodeBlock(terminal, code, identity, isWithArgs);
 }
 
 /**
@@ -910,8 +910,14 @@ export function registerCommands(context: vscode.ExtensionContext) {
     context.subscriptions.push(
         vscode.commands.registerCommand(
             "ipython.runSelections",
-            runSelections
+            () => runSelections(false),
         )
+    );
+    context.subscriptions.push(
+        vscode.commands.registerCommand(
+            "ipython.runSelectionsWithArgs",
+            () => runSelections(true),
+        ),
     );
     context.subscriptions.push(
         vscode.commands.registerCommand(
