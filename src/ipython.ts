@@ -404,7 +404,7 @@ export async function executeCodeBlock(
     }
     let nNewLines = 1;
     let execMethod = '%run -i'
-    let command = composeCommand(file, isWithArgs, false, execMethod);
+    let command = composeIPythonCommand(file, isWithArgs, false, execMethod);
     // let command = `${execMethod} "${file}"`;
     if (identity) {
         command = `${command} ${identity}`;
@@ -546,7 +546,7 @@ export async function runFile(
         return;
     }
     let file = vscode.workspace.asRelativePath(document.fileName, false);
-    let cmd = composeCommand(file, isWithArgs, isWithCli, "%run");
+    let cmd = composeIPythonCommand(file, isWithArgs, isWithCli, "%run");
     await executeSingleLine(terminal, cmd);
 }
 
@@ -558,7 +558,7 @@ export async function runFile(
  * @param isWithCli to include file command line interface arguments
  * @param command the specific command
  */
-export function composeCommand(
+export function composeIPythonCommand(
     file: string,
     isWithArgs: boolean = false,
     isWithCli: boolean = false,

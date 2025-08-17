@@ -290,6 +290,11 @@
                 "when": "ipython.isUse && !inDebugMode && editorTextFocus && !findInputFocussed && !replaceInputFocussed && editorLangId == python"
             },
             {
+                "command": "ipython.runSelectionsWithArgs",
+                "key": "ctrl+shift+i f9",
+                "when": "ipython.isUse && !inDebugMode && editorTextFocus && !findInputFocussed && !replaceInputFocussed && editorLangId == python"
+            },
+            {
                 "command": "ipython.runSection",
                 "key": "alt+enter",
                 "when": "ipython.isUse && !inDebugMode && editorTextFocus && editorLangId == python"
