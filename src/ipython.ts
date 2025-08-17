@@ -246,10 +246,6 @@ export async function createTerminal(
         console.error('createTerminal: failed to create new IPython terminal');
         return;
     }
-    TERMINALS.set(
-        terminal,
-        ipyTerminal,
-    );
     ACTIVE_TERMINAL = terminal;
     return ipyTerminal;
 }
@@ -520,7 +516,8 @@ export function composeTerminalName(filename?: string) {
         addon = (addon.length > 0) ? (' ' + addon) : addon;
         name = basename + addon;
     }
-    let prefix = `${terminalName}-${TERMINALS.size + 1}`;
+    let count = TERMINALS.size + 1;
+    let prefix = `${terminalName}-${count}`;
     if (name) {
         name = `${prefix}: ${name}`;
     } else {
