@@ -16,12 +16,16 @@ export async function activate(context: vscode.ExtensionContext) {
     // NOTE: make sure all configuration are loaded and mapping are done FIRST!
     util.updateConfig();
 
-    // Always make sure Python is available for creating terminal
+    // Make sure Python is available for creating terminal
     // FIXME: use official ms-python hook instead!?
+    // FIXME: probably not need with before-script option, will leave alone for now
     let pyExtension = vscode.extensions.getExtension('ms-python.python');
     if (pyExtension && !pyExtension.isActive){
         await pyExtension.activate();
     }
+
+    // In case vscode restarted with opened ipython terminals
+    ipy.attachTerminals();
 
     // === CALLBACKS ===
     util.registerConfigCallbacks(context);

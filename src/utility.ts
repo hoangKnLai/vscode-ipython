@@ -46,7 +46,7 @@ export function escapeRegex(str: string) {
 export function updateConfig() {
     config = vscode.workspace.getConfiguration('ipython');
 
-    let workFolder = config.get('workFolder') as string;
+    let workFolder = config.get('WorkFolder') as string;
     let default_path = path.join(homedir(), cst.RELATIVE_WORKFOLDER);
     if (!workFolder) {  // "": use default
         if (!fs.existsSync(default_path)) {
