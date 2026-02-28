@@ -4,7 +4,7 @@
 
 import * as path from "path";
 import * as vscode from "vscode";
-import * as fs from "fs"
+import * as fs from "fs";
 import * as util from "./utility";
 import * as cst from "./constants";
 import * as navi from "./navigate";
@@ -241,7 +241,7 @@ export async function createTerminal(
         filename,
         uid,
         extraStartupCmds,
-    )
+    );
     if (ipyTerminal === undefined) {
         console.error('createTerminal: failed to create new IPython terminal');
         return;
@@ -275,7 +275,7 @@ export async function launchIpyTerminal(
         console.error('createTerminal: failed to create new ipython terminal');
         return;
     }
-    terminal.show(true)  // bring it to current
+    terminal.show(true);  // bring it to current
     let cmd = getLaunchCommand(extraStartupCmds);
     await executeSingleLine(terminal, cmd);
     await util.wait(1000);  // may take awhile to startup ipython
@@ -408,11 +408,11 @@ export async function executeCodeBlock(
 ) {
     let file = writeCodeFile(cst.CODE_FILE, code);
     if (file === undefined) {
-        console.error(`executeCodeBlock: invalid ${file}`)
+        console.error(`executeCodeBlock: invalid ${file}`);
         return;
     }
     let nNewLines = 1;
-    let execMethod = '%run -i'
+    let execMethod = '%run -i';
     let command = composeIPythonCommand(file, isWithArgs, false, execMethod);
     if (identity) {
         command = `${command} ${identity}`;
@@ -537,8 +537,8 @@ export function getFileFromTerminalName(name: string) {
         const regex = `^${terminalName}-\\d+: (.+)`;
         const match = name.match(regex);
         if (match && match.length > 1) {
-            let file_folder = match[1].split(" ");
-            return path.join(...file_folder.reverse());
+            let fileFolder = match[1].split(" ");
+            return path.join(...fileFolder.reverse());
         }
     }
 }
@@ -611,7 +611,7 @@ export function composeIPythonCommand(
     if (util.getConfig('UseRelativePath') as boolean) {
         relativeFile = vscode.workspace.asRelativePath(file, false);
     }
-    relativeFile = `"${relativeFile}"`  // "": for platform compatibility
+    relativeFile = `"${relativeFile}"`;  // "": for multiple platforms compatibility
     let cmd: string[] = [command];
     if (isWithArgs) {
         let args = util.getConfig('RunArguments') as string;

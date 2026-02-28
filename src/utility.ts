@@ -45,14 +45,13 @@ export function escapeRegex(str: string) {
  */
 export function updateConfig() {
     config = vscode.workspace.getConfiguration('ipython');
-
     let workFolder = config.get('WorkFolder') as string;
-    let default_path = path.join(homedir(), cst.RELATIVE_WORKFOLDER);
+    let defaultPath = path.join(homedir(), cst.RELATIVE_WORKFOLDER);
     if (!workFolder) {  // "": use default
-        if (!fs.existsSync(default_path)) {
-            fs.mkdirSync(default_path, {recursive: true});
+        if (!fs.existsSync(defaultPath)) {
+            fs.mkdirSync(defaultPath, {recursive: true});
         }
-        WORK_FOLDER = default_path
+        WORK_FOLDER = defaultPath;
     } else if (fs.existsSync(workFolder)) {  // a specific folder
         WORK_FOLDER = workFolder;
     } else {  // relative to `workspaceFolder` or `HOME`
@@ -68,11 +67,11 @@ export function updateConfig() {
                     fs.mkdirSync(WORK_FOLDER, {recursive: true});
                 }
             } catch {
-                vscode.window.showWarningMessage(`Unable to use: ${WORK_FOLDER}, defaulting to ${default_path}`);
-                if (!fs.existsSync(default_path)) {
-                    fs.mkdirSync(default_path, {recursive: true});
+                vscode.window.showWarningMessage(`Unable to use: ${WORK_FOLDER}, defaulting to ${defaultPath}`);
+                if (!fs.existsSync(defaultPath)) {
+                    fs.mkdirSync(defaultPath, {recursive: true});
                 }
-                WORK_FOLDER = default_path
+                WORK_FOLDER = defaultPath;
             }
         }
     }
