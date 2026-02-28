@@ -8,6 +8,5 @@ export const DEBUG = false;  // general debug info to console
 export const MAX_TIMEOUT = 1000;  // msec
 
 export const RELATIVE_WORKFOLDER = '.vscode/ipython/';
-export const CMD_FILE = 'command.py';
 export const CODE_FILE = 'code.py';
 

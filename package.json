@@ -3,7 +3,7 @@
     "displayName": "ipython",
     "description": "IPython integration supporting direct interactive usage and commands.",
     "icon": "md_img/icon.png",
-    "version": "2024.3.0",
+    "version": "2025.8.0",
     "publisher": "HoangKimLai",
     "repository": {
         "type": "git",
@@ -55,13 +55,13 @@
                     "default": "visible",
                     "markdownEnumDescriptions": [
                         "Only show sections of VISIBLE documents of navigatorLanguageId",
-                        "Show sections of ALL opened documents of navigatorLanguageId"
+                        "Show sections of ALL opened documents of navigatorLanguageId. WARNING: will affect speed with many tabs and/or large files."
                     ]
                 },
                 "ipython.SectionLevelTag": {
                     "type": "string",
                     "default": "-",
-                    "markdownDescription": "Indent level tag after a SectionTag like `# %% - Heading 1` to increase heading level by +1"
+                    "markdownDescription": "Indent level tag after a SectionTag like `# %% - Heading` to increase heading level by +1"
                 },
                 "ipython.SectionTag": {
                     "type": "array",
@@ -72,15 +72,25 @@
                     ],
                     "markdownDescription": "A tag or regular expression to identify line as start of a section. E.g., `# %%` for Jupyter style or `(^(#)#+)+` for markdown 2nd level heading and lower."
                 },
-                "ipython.workFolderBase": {
+                "ipython.WorkFolder": {
                     "type": "string",
                     "default": "",
-                    "markdownDescription": "A folder to be used by this extension. \nDefault: `${HOME}`. NOTE: temporary `files` are placed in `${workFolderBase}/.vscode/ipython/`."
+                    "markdownDescription": "A folder to be used by this extension to write temporary files. If a relative path like `.vscode/ipython` is given, the first workspaceFolder is the root like `/your/workspace/folder/.vscode/ipython`. Default to `HOME/.vscode/ipython` when empty."
+                },
+                "ipython.UseRelativePath": {
+                    "type": "boolean",
+                    "default": false,
+                    "markdownDescription": "When executing a file, use path relative to the first Workspace Folder instead of absolute path. This is useful when running ipython in docker a container with repo mapped directly to the Workspace Folder."
+                },
+                "ipython.BeforeScript": {
+                    "type": "string",
+                    "default": "",
+                    "markdownDescription": "Script to execute before launching IPython terminal. E.g., `source .venv/bin/activate` to always activate venv, or `docker exec -it <container_id_or_name> /bin/bash` to connect a docker shell before creating IPython terminal."
                 },
                 "ipython.LaunchArguments": {
                     "type": "string",
                     "default": "--no-autoindent",
-                    "markdownDescription": "Input command to `ipython` call on launch (e.g. `--matplotlib=qt5`)"
+                    "markdownDescription": "Input command to `ipython` call on launch (e.g. `ipython --matplotlib=qt5`)"
                 },
                 "ipython.StartupCommands": {
                     "type": "array",
@@ -95,22 +105,10 @@
                     "default": 64,
                     "markdownDescription": "Millisecond delay between each code execution. Helps with race condition when sending text to IPython `stdin` shell."
                 },
-                "ipython.RunCodeBlockMethod": {
-                    "type": "string",
-                    "enum": [
-                        "%load",
-                        "%run -i"
-                    ],
-                    "default": "%run -i",
-                    "markdownEnumDescriptions": [
-                        "(DEPRECATED to just `%run -i` in a future release) Use `%load ` to send code to terminal and then execute",
-                        "Write code block (section, multi-selections) to `{workFolder}/code.py`, then execute using `%run -i code.py`. NOTE: open `code.py` to see exact code executed."
-                    ]
-                },
                 "ipython.RunArguments": {
                     "type": "string",
                     "default": "-t",
-                    "markdownDescription": "Run arguments `run-args` equivalent to `%run run-args file.py`. More detail in [`%run` documentation](https://ipython.readthedocs.io/en/stable/interactive/magics.html#magic-run)"
+                    "markdownDescription": "Run arguments `run-args` equivalent to `%run run-args file.py` when `IPython: Run File ...`. More detail in [`%run` documentation](https://ipython.readthedocs.io/en/stable/interactive/magics.html#magic-run)"
                 },
                 "ipython.CommandLineArguments": {
                     "type": "string",
@@ -147,6 +145,16 @@
             },
             {
                 "category": "IPython",
+                "command": "ipython.addTerminal",
+                "title": "Add Terminal to IPython Terminal List"
+            },
+            {
+                "category": "IPython",
+                "command": "ipython.launchTerminal",
+                "title": "Launch IPython on Current Terminal"
+            },
+            {
+                "category": "IPython",
                 "command": "ipython.runFile",
                 "title": "Run File in an IPython Terminal"
             },
@@ -174,6 +182,11 @@
                 "category": "IPython",
                 "command": "ipython.runSelections",
                 "title": "Run Code Selection(s) or Line at each Cursor"
+            },
+            {
+                "category": "IPython",
+                "command": "ipython.runSelectionsWithArgs",
+                "title": "Run Code Selection(s) or Line at each Cursor with Args"
             },
             {
                 "category": "IPython",
@@ -277,6 +290,16 @@
                 "when": "ipython.isUse"
             },
             {
+                "command": "ipython.addTerminal",
+                "key": "ctrl+shift+i a",
+                "when": "ipython.isUse"
+            },
+            {
+                "command": "ipython.launchTerminal",
+                "key": "ctrl+shift+i shift+a",
+                "when": "ipython.isUse"
+            },
+            {
                 "command": "ipython.runFileWithCli",
                 "key": "f5",
                 "when": "ipython.isUse && !inDebugMode && editorTextFocus && editorLangId == python"
@@ -294,6 +317,11 @@
             {
                 "command": "ipython.runSelections",
                 "key": "f9",
+                "when": "ipython.isUse && !inDebugMode && editorTextFocus && !findInputFocussed && !replaceInputFocussed && editorLangId == python"
+            },
+            {
+                "command": "ipython.runSelectionsWithArgs",
+                "key": "ctrl+shift+i f9",
                 "when": "ipython.isUse && !inDebugMode && editorTextFocus && !findInputFocussed && !replaceInputFocussed && editorLangId == python"
             },
             {
@@ -390,7 +418,8 @@
     },
     "dependencies": {
         "@types/vscode": "^1.81.0",
-        "@vscode/python-extension": "^1.0.5"
+        "@vscode/python-extension": "^1.0.5",
+        "vscode-variables": "^1.0.1"
     },
     "devDependencies": {
         "@types/glob": "^7.2.0",
@@ -400,10 +429,10 @@
         "@typescript-eslint/eslint-plugin": "^4.33.0",
         "@typescript-eslint/parser": "^4.33.0",
         "@vscode/test-electron": "^1.6.2",
-        "esbuild": "^0.19.2",
+        "esbuild": "^0.25.9",
         "eslint": "^7.32.0",
         "glob": "^7.2.3",
-        "mocha": "^9.2.2",
+        "mocha": "^11.7.1",
         "typescript": "^4.9.5"
     }
 }

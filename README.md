@@ -1,7 +1,7 @@
 # ipython
 
 Enable [IPython Terminal](https://ipython.org/) creation and direct execution of
-`python` code from `.py` in editor.
+`python` code from `.py` file in editor.
 
 ## Features
 
@@ -64,6 +64,7 @@ More on vscode handling of `python` virtual environment can be found in [vscode 
 - This should automatically installed when this extension is installed
 
 ## Installation
+
 Install into vscode via the [vscode marketplace](https://marketplace.visualstudio.com/items?itemName=HoangKimLai.ipython).
 
 Alternativey search for `hoangkimlai.ipython` under the Extensions tab in vscode.
@@ -96,6 +97,18 @@ Dependent on your project, you might:
 - Customize [settings specific context such as language](https://code.visualstudio.com/docs/getstarted/settings#_language-specific-editor-settings)
 
 ## Release Notes
+
+### 2025.8.x
+
+- Added various features:
+  - Custom terminal environment use cases like virtual environment activation, cloud credential, docker container start and interactive shell.
+  - Auto reconnect ipython terminals when extension restarted
+- Settings:
+  - Added `UseRelativePath`, `BeforeScript`
+  - Refined `workFolderBase` to `WorkFolder`
+  - Removed deprecated `%load` option
+- Added commands:
+  - `addTerminal`, `launchTerminal`, `runSelectionsWithArgs`
 
 ### 2024.3.x
 
@@ -140,7 +153,7 @@ Dependent on your project, you might:
   - Added button for `runToSection(), runFromSection()`
 
 - Added tree view for file section (indicated by a set of `sectionTag` such as `# %%`)
-  - `jumpToSection`: jump to section in text editor and focus on it
+  - When click on a section: jump to section in text editor and focus on it
     - Support any text files with `sectionTag`
   - `runFile, runSection`: excution interaction on tree view
     - Support a configurable set of file extensions such as `.py, .ts, .md`

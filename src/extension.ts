@@ -16,15 +16,16 @@ export async function activate(context: vscode.ExtensionContext) {
     // NOTE: make sure all configuration are loaded and mapping are done FIRST!
     util.updateConfig();
 
-    // Always make sure Python is available for creating terminal
+    // Make sure Python is available for creating terminal
     // FIXME: use official ms-python hook instead!?
+    // FIXME: probably not need with before-script option, will leave alone for now
     let pyExtension = vscode.extensions.getExtension('ms-python.python');
-    if (pyExtension === undefined) {
-        console.error('activate: failed to activate MS-Python Extension');
-    }
     if (pyExtension && !pyExtension.isActive){
         await pyExtension.activate();
     }
+
+    // In case vscode restarted with opened ipython terminals
+    ipy.attachTerminals();
 
     // === CALLBACKS ===
     util.registerConfigCallbacks(context);
@@ -33,66 +34,8 @@ export async function activate(context: vscode.ExtensionContext) {
     ipy.registerTerminalCallbacks(context);
 
     // === COMMANDS ===
-    ipy.registerCommands(context);
     navi.registerCommands(context);
-
-    // === COMMANDS: navigation and ipython ===
-    context.subscriptions.push(
-        vscode.commands.registerCommand(
-            'ipython.naviRunToSection',
-            (item: navi.SectionItem) => {
-                if (item === undefined) {
-                    console.error('naviRunToSection: found undefined item');
-                    return;
-                }
-                if(item && item.section !== undefined && item.document.languageId === 'python'){
-                    ipy.runDocumentSection(item.document, item.section, false);
-                }
-            },
-        ),
-    );
-
-    context.subscriptions.push(
-        vscode.commands.registerCommand(
-            'ipython.naviRunFromSection',
-            (item: navi.SectionItem) => {
-                if (item === undefined) {
-                    console.error('naviRunFromSection: found undefined item');
-                    return;
-                }
-                if(item && item.section !== undefined && item.document.languageId === 'python'){
-                    ipy.runDocumentSection(item.document, item.section, true);
-                }
-            },
-        ),
-    );
-
-    context.subscriptions.push(
-        vscode.commands.registerCommand(
-            'ipython.naviRunSection',
-            (item: navi.SectionItem) => {
-                if(item && item.section && item.document.languageId === 'python'){
-                    ipy.runDocumentSection(item.document, item.section);
-                }
-            },
-        ),
-    );
-
-    context.subscriptions.push(
-        vscode.commands.registerCommand(
-            'ipython.naviRunFile',
-            // (item: navi.SectionTreeItem) => {
-            //     if (item && item.document && item.document.languageId === 'python') {
-            //         ipy.runFile(item.document);
-            //     }
-            // },
-            (item: navi.SectionItem) => {
-                if (item && item.document && item.document.languageId === 'python') {
-                    ipy.runFile(item.document);
-                }
-            },
-        ),
-    );
+    ipy.registerCommands(context);
 }
 
 // this method is called when extension is deactivated
@@ -102,8 +45,4 @@ export function deactivate() {
     //  - No guarantee that any extension deactivate() will be called immediately
     //  or at all at session closure
 
-    // Remove temporary file used
-    for (let uri of util.tempfiles) {
-        vscode.workspace.fs.delete(uri);
-    }
 }
