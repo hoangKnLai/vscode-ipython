@@ -277,8 +277,10 @@ export async function launchIpyTerminal(
     }
     terminal.show(true);  // bring it to current
     let cmd = getLaunchCommand(extraStartupCmds);
-    await executeSingleLine(terminal, cmd);
-    await util.wait(1000);  // may take awhile to startup ipython
+    let wait = await executeSingleLine(terminal, cmd);
+    if (wait) {
+        await util.wait(1000);  // may take awhile to startup ipython
+    }
     if (TERMINALS.has(terminal)) {
         return TERMINALS.get(terminal);
     }
@@ -411,14 +413,12 @@ export async function executeCodeBlock(
         console.error(`executeCodeBlock: invalid ${file}`);
         return;
     }
-    let nNewLines = 1;
     let execMethod = '%run -i';
     let command = composeIPythonCommand(file, isWithArgs, false, execMethod);
     if (identity) {
         command = `${command} ${identity}`;
     }
-    terminal.sendText(command, false);  // false: no append `newline`
-    await execute(terminal, nNewLines);
+    await executeSingleLine(terminal, command);
 }
 
 /**
@@ -427,6 +427,7 @@ export async function executeCodeBlock(
  * @param terminal - an ipython terminal
  * @param command - a command
  * @param Promise - executed on terminal
+ * @returns - True if extra wait time might be necessary because of sendText
  */
 export async function executeSingleLine(
     terminal: vscode.Terminal,
@@ -435,13 +436,10 @@ export async function executeSingleLine(
     command = command.trim();
 
     if (command.length === 0) {
-        return;
+        return 0;
     }
-
-    // NOTE: no newLine in sendText to execute since IPython is trippy
-    // with when/how to execute a code line, block, multi-lines/blocks.
-    terminal.sendText(command, false); // false: no append `newline`
-    await execute(terminal);
+    await sendTextExecute(terminal, command);
+    return 1;
 }
 
 /**
@@ -451,14 +449,20 @@ export async function executeSingleLine(
  * @param nNewLines - number of ipython execution
  * @param Promise - executed on terminal
  */
-async function execute(
+async function sendTextExecute(
     terminal: vscode.Terminal,
+    command: string,
     nNewLines = 1,
 ) {
     if (nNewLines === 0) {
         return;
     }
-    // Wait for IPython to register command before execution.
+    // Not as shell terminal so back to primitive sendText
+    // NOTE: no newLine in sendText to execute since IPython is trippy
+    // with when/how to execute a code line, block, multi-lines/blocks.
+    terminal.sendText(command, false); // false: no append `newline`
+
+    // Wait for terminal to register command before execution.
     // NOTE: this helps with race condition, not solves it.
     let execLagMilliSec = util.getConfig("ExecutionLagMilliSec") as number;
     util.consoleLog(`+ Number of New Lines: ${nNewLines}`);
@@ -473,6 +477,7 @@ async function execute(
     );
     terminal.show(true);
 }
+
 
 // === COMMANDS ===
 /**
