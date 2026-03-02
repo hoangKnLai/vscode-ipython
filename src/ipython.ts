@@ -9,6 +9,7 @@ import * as util from "./utility";
 import * as cst from "./constants";
 import * as navi from "./navigate";
 
+
 // === CONSTANTS ===
 let newLine = util.getNewLine();
 
@@ -251,6 +252,29 @@ export async function createTerminal(
 }
 
 
+export function directExecuteCommand(
+    terminal: vscode.Terminal,
+    command: string,
+) {
+    if (terminal.shellIntegration === undefined) {
+        console.error("Terminal does not support direct execution!");
+        return;
+    }
+    const execution = terminal.shellIntegration.executeCommand(command);
+    vscode.window.onDidEndTerminalShellExecution(
+        event => {
+            if (event.execution === execution) {
+                if (event.exitCode !== 0){
+                    console.error('Before script exited with error code: %d', event.exitCode);
+                    return;
+                }
+            }
+        }
+    );
+    return execution;
+}
+
+
 /**
  * Create an ipython terminal.
  *
@@ -276,6 +300,15 @@ export async function launchIpyTerminal(
         return;
     }
     terminal.show(true);  // bring it to current
+
+    // Before script
+    let script = util.getConfig('BeforeScript') as string;
+    if (script){
+        let wait = await executeSingleLine(terminal, script);
+        if (wait) {
+            util.wait(1000);
+        }
+    }
     let cmd = getLaunchCommand(extraStartupCmds);
     let wait = await executeSingleLine(terminal, cmd);
     if (wait) {
@@ -285,6 +318,44 @@ export async function launchIpyTerminal(
         return TERMINALS.get(terminal);
     }
     return addTerminal(terminal, filename, uid);
+
+    // if (script) {  // NOTE: works but very slow on Git Bash, try it with powershell?!
+    //     // NOTE: method is async so it can be conflicting with sendText
+    //     if (terminal.shellIntegration) {
+    //         const execution = terminal.shellIntegration.executeCommand(script);
+    //         vscode.window.onDidEndTerminalShellExecution(
+    //             event => {
+    //                 if (event.execution === execution) {
+    //                     if (event.exitCode !== 0){
+    //                         console.error('Before script exited with error code: %d', event.exitCode);
+    //                         return;
+    //                     }
+    //                     let cmd = getLaunchCommand(extraStartupCmds);
+    //                     event.terminal.shellIntegration?.executeCommand(cmd);
+    //                 }
+    //             }
+    //         );
+    //     }
+    //     // Fallback to sendText
+    //     setTimeout(async () => {
+    //         if (!terminal.shellIntegration) {
+    //             let cmd = getLaunchCommand(extraStartupCmds);
+    //             let wait = await executeSingleLine(terminal, cmd);
+    //             if (wait) {
+    //                 await util.wait(1000);  // may take awhile to startup ipython
+    //             }
+    //             if (TERMINALS.has(terminal)) {
+    //                 return TERMINALS.get(terminal);
+    //             }
+    //             return addTerminal(terminal, filename, uid);
+    //         }
+    //     }, 1000);
+    //     // await executeSingleLine(terminal, script);
+    // }
+    // if (TERMINALS.has(terminal)) {
+    //     return TERMINALS.get(terminal);
+    // }
+    // return addTerminal(terminal, filename, uid);
 }
 
 
@@ -296,11 +367,6 @@ export async function launchIpyTerminal(
 export function getLaunchCommand(extraStartupCmds?: string[]) {
     let cmd = 'ipython ';
 
-    // Before script
-    let script = util.getConfig('BeforeScript');
-    if (script){
-        cmd = script + ' && ' + cmd;
-    }
     // Launch options
     let launchArgs = util.getConfig('LaunchArguments') as string;
 
@@ -457,10 +523,9 @@ async function sendTextExecute(
     if (nNewLines === 0) {
         return;
     }
-    // Not as shell terminal so back to primitive sendText
     // NOTE: no newLine in sendText to execute since IPython is trippy
     // with when/how to execute a code line, block, multi-lines/blocks.
-    terminal.sendText(command, false); // false: no append `newline`
+    terminal.sendText(command, false); // false: no appending `newline`
 
     // Wait for terminal to register command before execution.
     // NOTE: this helps with race condition, not solves it.
@@ -1096,4 +1161,3 @@ export function registerCommands(context: vscode.ExtensionContext) {
         ),
     );
 }
-

@@ -75,12 +75,12 @@
                 "ipython.WorkFolder": {
                     "type": "string",
                     "default": "",
-                    "markdownDescription": "A folder to be used by this extension to write temporary files. If a relative path like `.vscode/ipython` is given, the first workspaceFolder is the root like `/your/workspace/folder/.vscode/ipython`. Default to `HOME/.vscode/ipython` when empty."
+                    "markdownDescription": "A folder to be used by this extension to write temporary files. Use a full path if the `%run` command is having trouble finding `code.py`.  When a relative path like `.vscode/ipython` is given, the first workspaceFolder is the root; E.g., `/your/workspace/folder/.vscode/ipython`. Default to `HOME/.vscode/ipython` when empty."
                 },
                 "ipython.UseRelativePath": {
                     "type": "boolean",
                     "default": false,
-                    "markdownDescription": "When executing a file, use path relative to the first Workspace Folder instead of absolute path. This is useful when running ipython in docker a container with repo mapped directly to the Workspace Folder."
+                    "markdownDescription": "When executing a file, use path relative to the first Workspace Folder instead of absolute path. This is useful when running ipython in docker a container with repo mapped directly to the Workspace Folder or just wanting a shorter `%run path/to/file` instead of long `%run /full/path/to/file.py`."
                 },
                 "ipython.BeforeScript": {
                     "type": "string",
